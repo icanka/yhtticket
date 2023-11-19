@@ -1,0 +1,107 @@
+[
+    {
+        "station_name": "Ankara Gar",
+        "station_code": "2503",
+        "station_id": 234516259
+    },
+    {
+        "station_name": "Arifiye",
+        "station_code": "1512",
+        "station_id": 234515954
+    },
+    {
+        "station_name": "Bilecik YHT",
+        "station_code": "1712",
+        "station_id": 12030322511
+    },
+    {
+        "station_name": "Boz\u00fcy\u00fck YHT",
+        "station_code": "1715",
+        "station_id": 12030322514
+    },
+    {
+        "station_name": "ERYAMAN YHT",
+        "station_code": "9092",
+        "station_id": 15224209550
+    },
+    {
+        "station_name": "Eski\u015fehir",
+        "station_code": "2435",
+        "station_id": 234516254
+    },
+    {
+        "station_name": "Gebze",
+        "station_code": "1552",
+        "station_id": 234515972
+    },
+    {
+        "station_name": "Karaman",
+        "station_code": "6569",
+        "station_id": 234518516
+    },
+    {
+        "station_name": "Konya",
+        "station_code": "6575",
+        "station_id": 234518520
+    },
+    {
+        "station_name": "Konya (Sel\u00e7uklu YHT)",
+        "station_code": "9800",
+        "station_id": 16942718500
+    },
+    {
+        "station_name": "K\u0131r\u0131kkale YHT",
+        "station_code": "9401",
+        "station_id": 34026520100
+    },
+    {
+        "station_name": "Polatl\u0131 YHT",
+        "station_code": "2712",
+        "station_id": 234516719
+    },
+    {
+        "station_name": "Sivas",
+        "station_code": "4642",
+        "station_id": 234517773
+    },
+    {
+        "station_name": "Yozgat YHT",
+        "station_code": "9405",
+        "station_id": 34026520101
+    },
+    {
+        "station_name": "\u00c7umra",
+        "station_code": "6537",
+        "station_id": 234518394
+    },
+    {
+        "station_name": "\u0130stanbul(Bak\u0131rk\u00f6y)",
+        "station_code": "9721",
+        "station_id": 15917493900
+    },
+    {
+        "station_name": "\u0130stanbul(Bostanc\u0131)",
+        "station_code": "9711",
+        "station_id": 15917435910
+    },
+    {
+        "station_name": "\u0130stanbul(Halkal\u0131)",
+        "station_code": "8524",
+        "station_id": 234519135
+    },
+    {
+        "station_name": "\u0130stanbul(Pendik)",
+        "station_code": "1609",
+        "station_id": 234516104
+    },
+    {
+        "station_name": "\u0130stanbul(S\u00f6\u011f\u00fctl\u00fc\u00e7e\u015fme)",
+        "station_code": "9713",
+        "station_id": 15917435912
+    },
+    {
+        "station_name": "\u0130zmit YHT",
+        "station_code": "1705",
+        "station_id": 12030322504
+    }
+]
