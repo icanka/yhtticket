@@ -25,7 +25,7 @@ REQUEST_HEADER = {
 
 # Send the request to the endpoint
 response = requests.post(STATION_LIST_ENDPOINT,
-                         headers=REQUEST_HEADER, data=REQUEST_BODY)
+                         headers=REQUEST_HEADER, data=REQUEST_BODY, timeout=10)
 # Parse the JSON response
 data = json.loads(response.text)
 

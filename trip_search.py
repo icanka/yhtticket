@@ -22,10 +22,17 @@ REQUEST_HEADER = {
 }
 
 
-
-
 from_station = "İstanbul(Pendik)"
 to_station = "Ankara Gar"
+
+
+vagon_req_body = {
+    "kanalKodu": "3",
+    "dil": 0,
+    "seferBaslikId": None,
+    "binisIstId": None,
+    "inisIstId": None
+}
 
 request_body = {
     "kanalKodu": 3,
@@ -37,7 +44,7 @@ request_body = {
         "inisIstasyonu": f"{to_station}",
         "inisIstasyonu_isHaritaGosterimi": 'false',
         "seyahatTuru": 1,
-        "gidisTarih": "Nov 20, 2023 00:00:00 AM",
+        "gidisTarih": "Nov 30, 2023 00:00:00 AM",
         "bolgeselGelsin": 'false',
         "islemTipi": 0,
         "yolcuSayisi": 1,
@@ -47,6 +54,20 @@ request_body = {
     }
 }
 
+# return a list of dictionaries
+
+
+def get_active_vagons(json_data):
+    active_vagons = list()
+    for item in json_data:
+        for vagon in item['vagonListesi']:
+            if vagon['aktif'] == True:
+                v = {'vagonBaslikId': vagon['vagonBaslikId'],
+                     'vagonSiraNo': vagon['vagonSiraNo']}
+                active_vagons.append(v)
+    return active_vagons
+
+
 # Load the JSON file
 with open('station_list.json') as f:
     station_list = json.load(f)
@@ -55,40 +76,62 @@ with open('station_list.json') as f:
     for station in station_list:
         if station['station_name'] == from_station:
             binisIstasyonId = station['station_id']
+            vagon_req_body['binisIstId'] = binisIstasyonId
             request_body['seferSorgulamaKriterWSDVO']['binisIstasyonId'] = binisIstasyonId
         if station['station_name'] == to_station:
             inisIstasyonId = station['station_id']
+            vagon_req_body['inisIstId'] = inisIstasyonId
             request_body['seferSorgulamaKriterWSDVO']['inisIstasyonId'] = inisIstasyonId
-            
+
 # Send the request to the endpoint
 response = requests.post(SEARCH_ENDPOINT,
-                         headers=REQUEST_HEADER, data=json.dumps(request_body))
+                         headers=REQUEST_HEADER, data=json.dumps(request_body), timeout=10)
 
 response_json = json.loads(response.text)
-sorted_trips = sorted(response_json['seferSorgulamaSonucList'], key=lambda trip: datetime.strptime(trip['binisTarih'], "%b %d, %Y %I:%M:%S %p"))
+sorted_trips = sorted(response_json['seferSorgulamaSonucList'], key=lambda trip: datetime.strptime(
+    trip['binisTarih'], "%b %d, %Y %I:%M:%S %p"))
 trips = list()
 
 for trip in sorted_trips:
     if trip['satisDurum'] == 1 and trip['vagonHaritasindanKoltukSecimi'] == 1:
         # 0 is economy class and 1 is business class
-        t = {}
-        t['eco_empty_seat_count'] = trip['vagonTipleriBosYerUcret'][0]['kalanSayi'] - trip['vagonTipleriBosYerUcret'][0]['kalanEngelliKoltukSayisi']
-        t['buss_empty_seat_count'] = trip['vagonTipleriBosYerUcret'][1]['kalanSayi'] - trip['vagonTipleriBosYerUcret'][1]['kalanEngelliKoltukSayisi']
-        t['empty_seat_count'] = t['eco_empty_seat_count'] + t['buss_empty_seat_count']
-        t['binisTarih'] = trip['binisTarih']
-        t['inisTarih'] = trip['inisTarih']
-        t['trenAdi'] = trip['trenAdi']
-        t['seferAdi'] = trip['seferAdi']
-        t['seferId'] = trip['seferId']
-        trips.append(t)
-        date_object = datetime.strptime(trip['binisTarih'], "%b %d, %Y %I:%M:%S %p")
-        print(f"Economy class empty seat count: {t['eco_empty_seat_count']+t['buss_empty_seat_count']} -- {date_object.strftime('%H:%M')}")
+        try:
+            t = {}
+            t['vagons'] = get_active_vagons(trip['vagonTipleriBosYerUcret'])
+            t['eco_empty_seat_count'] = trip['vagonTipleriBosYerUcret'][0]['kalanSayi'] - \
+                trip['vagonTipleriBosYerUcret'][0]['kalanEngelliKoltukSayisi']
+            t['buss_empty_seat_count'] = trip['vagonTipleriBosYerUcret'][1]['kalanSayi'] - \
+                trip['vagonTipleriBosYerUcret'][1]['kalanEngelliKoltukSayisi']
+            t['empty_seat_count'] = t['eco_empty_seat_count'] + \
+                t['buss_empty_seat_count']
+            t['binisTarih'] = trip['binisTarih']
+            t['inisTarih'] = trip['inisTarih']
+            t['trenAdi'] = trip['trenAdi']
+            t['seferAdi'] = trip['seferAdi']
+            t['seferId'] = trip['seferId']
+            t['binisIstasyonId'] = request_body['seferSorgulamaKriterWSDVO']['binisIstasyonId']
+            t['inisIstasyonId'] = request_body['seferSorgulamaKriterWSDVO']['inisIstasyonId']
+            trips.append(t)
+            date_object = datetime.strptime(
+                trip['binisTarih'], "%b %d, %Y %I:%M:%S %p")
+            print(
+                f"Economy class empty seat count: {t['eco_empty_seat_count']+t['buss_empty_seat_count']} -- {date_object.strftime('%H:%M')}")
+        except IndexError:
+            pass
 
 # dump trips to json and then write to file
 trips_json = json.dumps(trips)
 with open('trips.json', 'w', encoding='utf-8') as file:
     file.write(trips_json)
 
-# write repsonse to file
+for trip in trips:
+    if trip['empty_seat_count'] > 0:
+        vagon_req_body['seferBaslikId'] = trip['seferId']
+        pprint(
+            f"{trip['binisTarih']} -- {trip['empty_seat_count']} -- {trip['seferId']}")
+        pprint(trip['vagons'])
+
+
+# write repsonse to fila
 with open('response.json', 'w', encoding='utf-8') as file:
     file.write(response.text)
