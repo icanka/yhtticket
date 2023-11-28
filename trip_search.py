@@ -4,7 +4,27 @@ from datetime import datetime
 from pprint import pprint
 
 
+SEATS_IDS = [13371893752, 13371893753, 16801693056, 16801693057]
+
+def get_empty_vagon_seats(vagon_json):
+
+    vagon_yerlesim = vagon_json['vagonHaritasiIcerikDVO']['vagonYerlesim']
+    koltuk_durumlari = vagon_json['vagonHaritasiIcerikDVO']['koltukDurumlari']
+    pprint(len(koltuk_durumlari))
+    index_dict = {d['koltukNo'] : d for d in koltuk_durumlari if 'koltukNo' in d}
+    pprint(len(index_dict))
+    merged_list = []
+    for seat in vagon_yerlesim:
+        seat_no = seat.get('koltukNo')
+        if seat_no:
+            merged_dict = {**seat, **index_dict.get(seat_no, {})}
+            merged_list.append(merged_dict)
+    return merged_list
+
+
 SEARCH_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/sefer/seferSorgula"
+VAGON_SEARCH_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/vagon/vagonBosYerSorgula"
+VAGON_HARITA_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/vagon/vagonHaritasindanYerSecimi"
 REQUEST_HEADER = {
     "Host": "api-yebsp.tcddtasimacilik.gov.tr",
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/119.0",
@@ -26,12 +46,34 @@ from_station = "İstanbul(Pendik)"
 to_station = "Ankara Gar"
 
 
+vagon_harita_req_body = {
+    "kanalKodu": "3",
+    "dil": 0,
+    "seferBaslikId": None,
+    "vagonSiraNo": None,
+    "binisIst": from_station,
+    "InisIst": to_station,
+}
+
 vagon_req_body = {
     "kanalKodu": "3",
     "dil": 0,
     "seferBaslikId": None,
     "binisIstId": None,
     "inisIstId": None
+}
+
+koltuk_sec_req_body = {
+    "kanalKodu": "3",
+    "dil": 0,
+    "seferId": 39260008468,
+    "vagonSiraNo": 8,
+    "koltukNo": "1b",
+    "cinsiyet": "E",
+    "binisIst": 234516104,
+    "inisIst": 234516259,
+    "dakika": 10,
+    "huawei": 'false'
 }
 
 request_body = {
@@ -116,7 +158,7 @@ for trip in sorted_trips:
                 trip['binisTarih'], "%b %d, %Y %I:%M:%S %p")
             print(
                 f"Economy class empty seat count: {t['eco_empty_seat_count']+t['buss_empty_seat_count']} -- {date_object.strftime('%H:%M')}")
-        except IndexError:
+        except IndexError:  # no business class, just ignore
             pass
 
 # dump trips to json and then write to file
@@ -127,9 +169,62 @@ with open('trips.json', 'w', encoding='utf-8') as file:
 for trip in trips:
     if trip['empty_seat_count'] > 0:
         vagon_req_body['seferBaslikId'] = trip['seferId']
-        pprint(
-            f"{trip['binisTarih']} -- {trip['empty_seat_count']} -- {trip['seferId']}")
-        pprint(trip['vagons'])
+
+for trip in trips:
+    if trip['seferId'] == 39433411143:
+        vagon_req_body['seferBaslikId'] = trip['seferId']
+        vagon_req_body['binisIstId'] = trip['binisIstasyonId']
+        vagon_req_body['inisIstId'] = trip['inisIstasyonId']
+        # Send the request to the endpoint
+        response = requests.post(VAGON_SEARCH_ENDPOINT,
+                                 headers=REQUEST_HEADER, data=json.dumps(vagon_req_body), timeout=10)
+        response_json = json.loads(response.text)
+        for vagon in response_json['vagonBosYerList']:
+            if vagon['vagonSiraNo'] == 8:
+                vagon_harita_req_body['vagonSiraNo'] = vagon['vagonSiraNo']
+                vagon_harita_req_body['seferBaslikId'] = vagon_req_body['seferBaslikId']
+                # Send the request to the endpoint
+                response = requests.post(VAGON_HARITA_ENDPOINT,
+                                         headers=REQUEST_HEADER, data=json.dumps(vagon_harita_req_body), timeout=10)
+                response_json = json.loads(response.text)
+
+
+# Get empty seats for each vagon in a trip
+for trip in trips:
+    pprint(trip['binisTarih'])
+    vagon_req_body['seferBaslikId'] = trip['seferId']
+    vagon_req_body['binisIstId'] = trip['binisIstasyonId']
+    vagon_req_body['inisIstId'] = trip['inisIstasyonId']
+    # get vagons
+    response = requests.post(VAGON_SEARCH_ENDPOINT,
+                             headers=REQUEST_HEADER, data=json.dumps(vagon_req_body), timeout=10)
+    vagons_json = json.loads(response.text)
+    for vagon in vagons_json['vagonBosYerList']:
+        pprint(vagon)
+        vagon_harita_req_body['vagonSiraNo'] = vagon['vagonSiraNo']
+        vagon_harita_req_body['seferBaslikId'] = vagon_req_body['seferBaslikId']
+        # get vagon harita
+        response = requests.post(VAGON_HARITA_ENDPOINT,
+                                 headers=REQUEST_HEADER, data=json.dumps(vagon_harita_req_body), timeout=10)
+        vagon_harita_json = json.loads(response.text)
+        pprint(get_empty_vagon_seats(vagon_harita_json))
+        pprint(len(get_empty_vagon_seats(vagon_harita_json)))
+        exit(0)
+
+    # for yerlesim in vagon_yerlesim:
+
+        # for koltuk in vagon_harita_json['koltukBilgileri']:
+        #     if koltuk['koltukDurumu'] == 0:
+        #         print(koltuk['koltukNo'])
+        #         koltuk_sec_req_body['seferId'] = trip['seferId']
+        #         koltuk_sec_req_body['vagonSiraNo'] = vagon['vagonSiraNo']
+        #         koltuk_sec_req_body['koltukNo'] = koltuk['koltukNo']
+        #         # Send the request to the endpoint
+        #         response = requests.post(VAGON_HARITA_ENDPOINT,
+        #                                  headers=REQUEST_HEADER, data=json.dumps(koltuk_sec_req_body), timeout=10)
+        #         response_json = json.loads(response.text)
+        #         pprint(response_json)
+        #         exit(0)
 
 
 # write repsonse to fila
