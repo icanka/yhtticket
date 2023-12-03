@@ -14,7 +14,6 @@ from_date = "10 december 12:00"
 to_date = "10 december 16:00"
 tariff = 'TSK'
 
-    
 
 def get_empty_vagon_seats(vagon_json):
     """
@@ -31,8 +30,7 @@ def get_empty_vagon_seats(vagon_json):
     vagon_yerlesim = vagon_json['vagonHaritasiIcerikDVO']['vagonYerlesim']
     koltuk_durumlari = vagon_json['vagonHaritasiIcerikDVO']['koltukDurumlari']
     # efficient way to merge two lists of dictionaries based on a common key
-    index_dict = {d['koltukNo']
-        : d for d in koltuk_durumlari if 'koltukNo' in d}
+    index_dict = {d['koltukNo']                  : d for d in koltuk_durumlari if 'koltukNo' in d}
     merged_list = []
     for seat in vagon_yerlesim:
         seat_no = seat.get('koltukNo')
@@ -110,7 +108,8 @@ def select_first_empty_seat(trip):
         else:
             pprint("Seat is locked")
             return None
-        
+
+
 def get_price(trip, empty_seat):
     """
     Get the price of a trip for a given empty seat.
@@ -122,7 +121,7 @@ def get_price(trip, empty_seat):
     Returns:
         float: The price of the trip for the given empty seat.
     """
-    
+
     pr_req_body = api_constants.price_req_body.copy()
     pr_req_body['yolcuList'][0] = api_constants.TARIFFS[tariff]
     pr_req_body['yolcuList']['seferKoltuk']['seferBaslikId'] = trip['seferId']
@@ -131,14 +130,13 @@ def get_price(trip, empty_seat):
     pr_req_body['yolcuList']['seferKoltuk']['binisIstasyonId'] = trip['binisIstasyonId']
     pr_req_body['yolcuList']['seferKoltuk']['inisIstasyonId'] = trip['inisIstasyonId']
     pr_req_body['yolcuList']['seferKoltuk']['vagonTipi'] = empty_seat['vagonTipId']
-    
-    # send request 
+
+    # send request
     response = requests.post(api_constants.PRICE_ENDPOINT,
-                                headers=api_constants.REQUEST_HEADER, data=json.dumps(pr_req_body), timeout=10)
+                             headers=api_constants.REQUEST_HEADER, data=json.dumps(pr_req_body), timeout=10)
     response_json = json.loads(response.text)
     return response_json['anahatFiyatHesSonucDVO']['indirimliToplamUcret']
-    
-    
+
 
 def get_empty_seats_trip(trip):
     """
