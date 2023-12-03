@@ -1,4 +1,5 @@
 import json
+import tempfile
 import requests
 import api_constants
 import dateparser
@@ -9,9 +10,11 @@ from payment import SeleniumPayment
 
 to_station = "İstanbul(Pendik)"
 from_station = "Ankara Gar"
-from_date = "10 december 14:00"
+from_date = "10 december 12:00"
 to_date = "10 december 16:00"
+tariff = 'TSK'
 
+    
 
 def get_empty_vagon_seats(vagon_json):
     """
@@ -28,7 +31,8 @@ def get_empty_vagon_seats(vagon_json):
     vagon_yerlesim = vagon_json['vagonHaritasiIcerikDVO']['vagonYerlesim']
     koltuk_durumlari = vagon_json['vagonHaritasiIcerikDVO']['koltukDurumlari']
     # efficient way to merge two lists of dictionaries based on a common key
-    index_dict = {d['koltukNo']: d for d in koltuk_durumlari if 'koltukNo' in d}
+    index_dict = {d['koltukNo']
+        : d for d in koltuk_durumlari if 'koltukNo' in d}
     merged_list = []
     for seat in vagon_yerlesim:
         seat_no = seat.get('koltukNo')
@@ -42,6 +46,7 @@ def get_empty_vagon_seats(vagon_json):
     empty_seats = [d for d in merged_list if d.get('durum') == 0]
     # yield items from empty_seats
     for empty_seat in empty_seats:
+        pprint(empty_seat)
         yield empty_seat
 
 # return a list of dictionaries
@@ -62,7 +67,8 @@ def get_active_vagons(json_data):
         for vagon in item['vagonListesi']:
             if vagon['aktif'] == True:
                 v = {'vagonBaslikId': vagon['vagonBaslikId'],
-                     'vagonSiraNo': vagon['vagonSiraNo']}
+                     'vagonSiraNo': vagon['vagonSiraNo'],
+                     'vagonTipId': item['vagonTipId']}
                 active_vagons.append(v)
     return active_vagons
 
@@ -100,11 +106,39 @@ def select_first_empty_seat(trip):
                                      headers=api_constants.REQUEST_HEADER, data=json.dumps(seat_select_req), timeout=10)
             response_json = json.loads(response.text)
             # return trip with selected seat if the response code is 200
-            return response_json
+            return response_json, empty_seat
         else:
             pprint("Seat is locked")
             return None
+        
+def get_price(trip, empty_seat):
+    """
+    Get the price of a trip for a given empty seat.
 
+    Args:
+        trip (dict): The trip information.
+        empty_seat (dict): The empty seat information.
+
+    Returns:
+        float: The price of the trip for the given empty seat.
+    """
+    
+    pr_req_body = api_constants.price_req_body.copy()
+    pr_req_body['yolcuList'][0] = api_constants.TARIFFS[tariff]
+    pr_req_body['yolcuList']['seferKoltuk']['seferBaslikId'] = trip['seferId']
+    pr_req_body['yolcuList']['seferKoltuk']['vagonSiraNo'] = empty_seat['vagonSiraNo']
+    pr_req_body['yolcuList']['seferKoltuk']['koltukNo'] = empty_seat['koltukNo']
+    pr_req_body['yolcuList']['seferKoltuk']['binisIstasyonId'] = trip['binisIstasyonId']
+    pr_req_body['yolcuList']['seferKoltuk']['inisIstasyonId'] = trip['inisIstasyonId']
+    pr_req_body['yolcuList']['seferKoltuk']['vagonTipi'] = empty_seat['vagonTipId']
+    
+    # send request 
+    response = requests.post(api_constants.PRICE_ENDPOINT,
+                                headers=api_constants.REQUEST_HEADER, data=json.dumps(pr_req_body), timeout=10)
+    response_json = json.loads(response.text)
+    return response_json['anahatFiyatHesSonucDVO']['indirimliToplamUcret']
+    
+    
 
 def get_empty_seats_trip(trip):
     """
@@ -118,6 +152,7 @@ def get_empty_seats_trip(trip):
     """
     # clone trip object
     trip_with_seats = trip.copy()
+    pprint(trip)
     vagon_req = api_constants.vagon_req_body.copy()
     vagon_map_req = api_constants.vagon_harita_req_body.copy()
     empty_seats = list()
@@ -138,6 +173,8 @@ def get_empty_seats_trip(trip):
                                  headers=api_constants.REQUEST_HEADER, data=json.dumps(vagon_map_req), timeout=10)
         response_json = json.loads(response.text)
         for empty_set in get_empty_vagon_seats(response_json):
+            empty_set['vagonTipId'] = next(
+                vagon['vagonTipId'] for vagon in trip['vagons'] if vagon['vagonSiraNo'] == vagon_map_req['vagonSiraNo'])
             empty_seats.append(empty_set)
     trip_with_seats['empty_seats'] = empty_seats
     return trip_with_seats
@@ -241,15 +278,16 @@ def get_trips(from_station, to_station, from_date, to_date):
 
 
 trips = get_trips(from_station, to_station, from_date, to_date)
-pprint(len(trips))
 for trip in trips:
     trip = get_empty_seats_trip(trip)
     # pprint(trip)
     if trip['empty_seat_count'] > 0:
         pprint("Found empty seats")
-        result = select_first_empty_seat(trip)
+        result, empty_seat = select_first_empty_seat(trip)
+        price = get_price(trip, empty_seat)
+        pprint(price)
         vb_enroll_control_req = api_constants.vb_enroll_control_req_body.copy()
-        pprint(result)
+        # pprint(result)
         for seat in result['koltuklarimListesi']:
             vb_enroll_control_req['koltukLockList'].append(
                 seat['koltukLockId'])
@@ -258,7 +296,9 @@ for trip in trips:
 
         response_json = json.loads(response.text)
         pprint(vb_enroll_control_req)
+        pprint(response_json)
 
+        #  Payment request
         session = requests.Session()
 
         acs_url = response_json['paymentAuthRequest']['acsUrl']
@@ -273,10 +313,13 @@ for trip in trips:
         }
 
         response = session.post(acs_url, data=form_data)
-        # save the response to a file and then open it with selenium
-
-        seleniumPayment = SeleniumPayment()
-        seleniumPayment.open_html_with_selenium(response.text)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as temp_file:
+            temp_file.write(response.encode('utf-8'))
+            temp_file_path = temp_file.name
+            pprint(temp_file_path)
+        # # Open the response with selenium
+        # seleniumPayment = SeleniumPayment()
+        # seleniumPayment.open_html_with_selenium(response.text)
     else:
         pprint("No empty seats")
 exit(0)
