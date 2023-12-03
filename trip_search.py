@@ -10,8 +10,8 @@ from payment import SeleniumPayment
 
 to_station = "İstanbul(Pendik)"
 from_station = "Ankara Gar"
-from_date = "10 december 12:00"
-to_date = "10 december 16:00"
+from_date = "15 december 12:00"
+to_date = "15 december 16:00"
 tariff = 'TSK'
 
 
@@ -44,7 +44,7 @@ def get_empty_vagon_seats(vagon_json):
     empty_seats = [d for d in merged_list if d.get('durum') == 0]
     # yield items from empty_seats
     for empty_seat in empty_seats:
-        pprint(empty_seat)
+        #pprint(empty_seat)
         yield empty_seat
 
 # return a list of dictionaries
@@ -123,13 +123,14 @@ def get_price(trip, empty_seat):
     """
 
     pr_req_body = api_constants.price_req_body.copy()
-    pr_req_body['yolcuList'][0] = api_constants.TARIFFS[tariff]
-    pr_req_body['yolcuList']['seferKoltuk']['seferBaslikId'] = trip['seferId']
-    pr_req_body['yolcuList']['seferKoltuk']['vagonSiraNo'] = empty_seat['vagonSiraNo']
-    pr_req_body['yolcuList']['seferKoltuk']['koltukNo'] = empty_seat['koltukNo']
-    pr_req_body['yolcuList']['seferKoltuk']['binisIstasyonId'] = trip['binisIstasyonId']
-    pr_req_body['yolcuList']['seferKoltuk']['inisIstasyonId'] = trip['inisIstasyonId']
-    pr_req_body['yolcuList']['seferKoltuk']['vagonTipi'] = empty_seat['vagonTipId']
+    pr_req_body['yolcuList'][0]['tarifeId'] = api_constants.TARIFFS[tariff]
+    pr_req_body['yolcuList'][0]['seferKoltuk'][0]['seferBaslikId'] = trip['seferId']
+    pr_req_body['yolcuList'][0]['seferKoltuk'][0]['binisTarihi'] = trip['binisTarih']
+    pr_req_body['yolcuList'][0]['seferKoltuk'][0]['vagonSiraNo'] = empty_seat['vagonSiraNo']
+    pr_req_body['yolcuList'][0]['seferKoltuk'][0]['koltukNo'] = empty_seat['koltukNo']
+    pr_req_body['yolcuList'][0]['seferKoltuk'][0]['binisIstasyonId'] = trip['binisIstasyonId']
+    pr_req_body['yolcuList'][0]['seferKoltuk'][0]['inisIstasyonId'] = trip['inisIstasyonId']
+    pr_req_body['yolcuList'][0]['seferKoltuk'][0]['vagonTipi'] = empty_seat['vagonTipId']
 
     # send request
     response = requests.post(api_constants.PRICE_ENDPOINT,
@@ -150,7 +151,6 @@ def get_empty_seats_trip(trip):
     """
     # clone trip object
     trip_with_seats = trip.copy()
-    pprint(trip)
     vagon_req = api_constants.vagon_req_body.copy()
     vagon_map_req = api_constants.vagon_harita_req_body.copy()
     empty_seats = list()
@@ -283,7 +283,7 @@ for trip in trips:
         pprint("Found empty seats")
         result, empty_seat = select_first_empty_seat(trip)
         price = get_price(trip, empty_seat)
-        pprint(price)
+        #pprint(price)
         vb_enroll_control_req = api_constants.vb_enroll_control_req_body.copy()
         # pprint(result)
         for seat in result['koltuklarimListesi']:
@@ -312,7 +312,7 @@ for trip in trips:
 
         response = session.post(acs_url, data=form_data)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as temp_file:
-            temp_file.write(response.encode('utf-8'))
+            temp_file.write(response.text.encode('utf-8'))
             temp_file_path = temp_file.name
             pprint(temp_file_path)
         # # Open the response with selenium
@@ -320,7 +320,8 @@ for trip in trips:
         # seleniumPayment.open_html_with_selenium(response.text)
     else:
         pprint("No empty seats")
-exit(0)
+        
+    exit(0)
 # dump trips to json and then write to file
 trips_json = json.dumps(trips)
 with open('trips.json', 'w', encoding='utf-8') as file:

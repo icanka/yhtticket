@@ -72,7 +72,7 @@ trip_search_req_body = {
         "inisIstasyonu": None,
         "inisIstasyonu_isHaritaGosterimi": 'false',
         "seyahatTuru": 1,
-        "gidisTarih": "Nov 30, 2023 00:00:00 AM",
+        "gidisTarih": None, # "Dec 10, 2023 12:10:00 PM"
         "bolgeselGelsin": 'false',
         "islemTipi": 0,
         "yolcuSayisi": 1,
@@ -100,7 +100,7 @@ price_req_body = {
                     "inisIstasyonId": None,
                     "biletTipi": 1,
                     "gidisMi": True,
-                    "binisTarihi": "Dec 10, 2023 12:10:00 PM",
+                    "binisTarihi": None, # "Dec 10, 2023 12:10:00 PM"
                     "vagonSiraNo": None,
                     "vagonTipi": None, # 0 economy, 1 business
                     "koltukNo": None
