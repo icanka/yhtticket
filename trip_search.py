@@ -1,10 +1,11 @@
+""" This module contains the functions for searching for trips and selecting empty seats."""
 import json
 import tempfile
-import requests
-import api_constants
-import dateparser
-from datetime import datetime
 from pprint import pprint
+from datetime import datetime
+import requests
+import dateparser
+import api_constants
 from payment import SeleniumPayment
 
 
@@ -58,7 +59,8 @@ def get_active_vagons(json_data):
         json_data (list): A list of dictionaries representing the JSON data.
 
     Returns:
-        list: A list of dictionaries containing the active wagon details, including 'vagonBaslikId' and 'vagonSiraNo'.
+        list: A list of dictionaries containing the active wagon details, 
+        including 'vagonBaslikId' and 'vagonSiraNo'.
     """
     active_vagons = list()
     for item in json_data:
@@ -79,7 +81,8 @@ def select_first_empty_seat(trip):
         trip (dict): The trip information.
 
     Returns:
-        dict: The response JSON containing the selected seat information if the response code is 200.
+        dict: The response JSON containing the selected seat information 
+        if the response code is 200.
     """
 
     # Select the first empty seat
@@ -112,7 +115,7 @@ def select_first_empty_seat(trip):
             # return trip with selected seat if the response code is 200
             return response_json, empty_seat
         else:
-            pprint("Seat is locked")
+            pprint("Seat is already locked locked")
             return None
 
 
@@ -122,27 +125,30 @@ def get_price(trip, empty_seat):
 
     Args:
         trip (dict): The trip information.
-        empty_seat (dict): The empty seat information.
+        empty_seat (dict): The information of the empty seat.
 
     Returns:
-        float: The price of the trip for the given empty seat.
+        float: The price of the trip for the empty seat.
     """
 
-    pr_req_body = api_constants.price_req_body.copy()
-    pr_req_body['yolcuList'][0]['tarifeId'] = api_constants.TARIFFS[tariff]
-    pr_req_body['yolcuList'][0]['seferKoltuk'][0]['seferBaslikId'] = trip['seferId']
-    pr_req_body['yolcuList'][0]['seferKoltuk'][0]['binisTarihi'] = trip['binisTarih']
-    pr_req_body['yolcuList'][0]['seferKoltuk'][0]['vagonSiraNo'] = empty_seat['vagonSiraNo']
-    pr_req_body['yolcuList'][0]['seferKoltuk'][0]['koltukNo'] = empty_seat['koltukNo']
-    pr_req_body['yolcuList'][0]['seferKoltuk'][0]['binisIstasyonId'] = trip['binisIstasyonId']
-    pr_req_body['yolcuList'][0]['seferKoltuk'][0]['inisIstasyonId'] = trip['inisIstasyonId']
-    pr_req_body['yolcuList'][0]['seferKoltuk'][0]['vagonTipi'] = empty_seat['vagonTipId']
+    req_body = api_constants.price_req_body.copy()
+    req_body['yolcuList'][0]['tarifeId'] = api_constants.TARIFFS[tariff]
+    seat_info = req_body['yolcuList'][0]['seferKoltuk'][0]
+    seat_info.update({
+        'seferBaslikId': trip['seferId'],
+        'binisTarihi': trip['binisTarih'],
+        'vagonSiraNo': empty_seat['vagonSiraNo'],
+        'koltukNo': empty_seat['koltukNo'],
+        'binisIstasyonId': trip['binisIstasyonId'],
+        'inisIstasyonId': trip['inisIstasyonId'],
+        'vagonTipi': empty_seat['vagonTipId']
+    })
 
     # send request
     response = requests.post(
         api_constants.PRICE_ENDPOINT,
         headers=api_constants.REQUEST_HEADER,
-        data=json.dumps(pr_req_body),
+        data=json.dumps(req_body),
         timeout=10)
     response_json = json.loads(response.text)
     return response_json['anahatFiyatHesSonucDVO']['indirimliToplamUcret']
@@ -156,7 +162,8 @@ def get_empty_seats_trip(trip):
         trip (dict): The trip object containing information about the trip.
 
     Returns:
-        dict: The trip object with an additional 'empty_seats' field containing the list of empty seats.
+        dict: The trip object with an additional 'empty_seats' field 
+        containing the list of empty seats.
     """
     # clone trip object
     trip_with_seats = trip.copy()
@@ -363,4 +370,3 @@ for trip in trips:
     with open('trip_seats.json', 'w', encoding='utf-8') as file:
         file.write(result_json)
     exit(0)
-exit(0)
