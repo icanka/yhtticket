@@ -122,8 +122,8 @@ vb_enroll_control_req_body = {
         "krediKartSahibiAdSoyad": "izzet can karakuş",
         "ccv": "035",
         "sonKullanmaTarihi": 2406,
-        "toplamBiletTutari": 370,
-        "krediKartiTutari": 370,
+        "toplamBiletTutari": None,  # 370
+        "krediKartiTutari": None,  # 370
         "abonmanTutar": 0,
         "acikBiletKuponNoList": [],
         "acikBiletTutar": 0,
