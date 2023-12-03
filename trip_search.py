@@ -44,7 +44,7 @@ def get_empty_vagon_seats(vagon_json):
     empty_seats = [d for d in merged_list if d.get('durum') == 0]
     # yield items from empty_seats
     for empty_seat in empty_seats:
-        #pprint(empty_seat)
+        # pprint(empty_seat)
         yield empty_seat
 
 # return a list of dictionaries
@@ -63,7 +63,7 @@ def get_active_vagons(json_data):
     active_vagons = list()
     for item in json_data:
         for vagon in item['vagonListesi']:
-            if vagon['aktif'] == True:
+            if vagon['aktif']:
                 v = {'vagonBaslikId': vagon['vagonBaslikId'],
                      'vagonSiraNo': vagon['vagonSiraNo'],
                      'vagonTipId': item['vagonTipId']}
@@ -95,13 +95,19 @@ def select_first_empty_seat(trip):
         s_check['seferId'] = trip['seferId']
         s_check['seciliVagonSiraNo'] = empty_seat['vagonSiraNo']
         s_check['koltukNo'] = empty_seat['koltukNo']
-        s_response = requests.post(api_constants.SEAT_CHECK_ENDPOINT,
-                                   headers=api_constants.REQUEST_HEADER, data=json.dumps(s_check), timeout=10)
+        s_response = requests.post(
+            api_constants.SEAT_CHECK_ENDPOINT,
+            headers=api_constants.REQUEST_HEADER,
+            data=json.dumps(s_check),
+            timeout=10)
         s_response_json = json.loads(s_response.text)
-        if s_response_json['koltukLocked'] == False:
+        if not s_response_json['koltukLocked']:
             # Send the request to the endpoint
-            response = requests.post(api_constants.SELECT_EMPTY_SEAT_ENDPOINT,
-                                     headers=api_constants.REQUEST_HEADER, data=json.dumps(seat_select_req), timeout=10)
+            response = requests.post(
+                api_constants.SELECT_EMPTY_SEAT_ENDPOINT,
+                headers=api_constants.REQUEST_HEADER,
+                data=json.dumps(seat_select_req),
+                timeout=10)
             response_json = json.loads(response.text)
             # return trip with selected seat if the response code is 200
             return response_json, empty_seat
@@ -133,8 +139,11 @@ def get_price(trip, empty_seat):
     pr_req_body['yolcuList'][0]['seferKoltuk'][0]['vagonTipi'] = empty_seat['vagonTipId']
 
     # send request
-    response = requests.post(api_constants.PRICE_ENDPOINT,
-                             headers=api_constants.REQUEST_HEADER, data=json.dumps(pr_req_body), timeout=10)
+    response = requests.post(
+        api_constants.PRICE_ENDPOINT,
+        headers=api_constants.REQUEST_HEADER,
+        data=json.dumps(pr_req_body),
+        timeout=10)
     response_json = json.loads(response.text)
     return response_json['anahatFiyatHesSonucDVO']['indirimliToplamUcret']
 
@@ -158,8 +167,11 @@ def get_empty_seats_trip(trip):
     vagon_req['binisIstId'] = trip['binisIstasyonId']
     vagon_req['inisIstId'] = trip['inisIstasyonId']
     # Send the request to the endpoint
-    response = requests.post(api_constants.VAGON_SEARCH_ENDPOINT,
-                             headers=api_constants.REQUEST_HEADER, data=json.dumps(vagon_req), timeout=10)
+    response = requests.post(
+        api_constants.VAGON_SEARCH_ENDPOINT,
+        headers=api_constants.REQUEST_HEADER,
+        data=json.dumps(vagon_req),
+        timeout=10)
     response_json = json.loads(response.text)
     for vagon in response_json['vagonBosYerList']:
         vagon_map_req['vagonSiraNo'] = vagon['vagonSiraNo']
@@ -167,8 +179,11 @@ def get_empty_seats_trip(trip):
         vagon_map_req['binisIst'] = from_station
         vagon_map_req['InisIst'] = to_station
         # Send the request to the endpoint
-        response = requests.post(api_constants.VAGON_HARITA_ENDPOINT,
-                                 headers=api_constants.REQUEST_HEADER, data=json.dumps(vagon_map_req), timeout=10)
+        response = requests.post(
+            api_constants.VAGON_HARITA_ENDPOINT,
+            headers=api_constants.REQUEST_HEADER,
+            data=json.dumps(vagon_map_req),
+            timeout=10)
         response_json = json.loads(response.text)
         for empty_set in get_empty_vagon_seats(response_json):
             empty_set['vagonTipId'] = next(
@@ -228,14 +243,20 @@ def get_trips(from_station, to_station, from_date, to_date):
         from_date, "%b %d, %Y %I:%M:%S %p")
     # pprint(trip_req)
 
-    response = requests.post(api_constants.TRIP_SEARCH_ENDPOINT,
-                             headers=api_constants.REQUEST_HEADER, data=json.dumps(trip_req), timeout=10)
+    response = requests.post(
+        api_constants.TRIP_SEARCH_ENDPOINT,
+        headers=api_constants.REQUEST_HEADER,
+        data=json.dumps(trip_req),
+        timeout=10)
 
     response_json = json.loads(response.text)
     # pprint(response_json)
 
-    sorted_trips = sorted(response_json['seferSorgulamaSonucList'], key=lambda trip: datetime.strptime(
-        trip['binisTarih'], "%b %d, %Y %I:%M:%S %p"))
+    sorted_trips = sorted(
+        response_json['seferSorgulamaSonucList'],
+        key=lambda trip: datetime.strptime(
+            trip['binisTarih'],
+            "%b %d, %Y %I:%M:%S %p"))
 
     # pprint(len(sorted_trips))
     # ony get trips whose date is less than to_date
@@ -267,7 +288,10 @@ def get_trips(from_station, to_station, from_date, to_date):
                 date_object = datetime.strptime(
                     trip['binisTarih'], "%b %d, %Y %I:%M:%S %p")
                 # print(
-                #    f"Engelli  : {trip['vagonTipleriBosYerUcret'][0]['kalanEngelliKoltukSayisi']}  Total Kalan Bos: {trip['vagonTipleriBosYerUcret'][0]['kalanSayi']}")
+                # f"Engelli  :
+                # {trip['vagonTipleriBosYerUcret'][0]['kalanEngelliKoltukSayisi']}
+                # Total Kalan Bos:
+                # {trip['vagonTipleriBosYerUcret'][0]['kalanSayi']}")
                 print(
                     f"Eco empty: {t['eco_empty_seat_count']}  Buss empty:{t['buss_empty_seat_count']}         -- {date_object.strftime('%H:%M')}")
             except IndexError:  # no business class, just ignore
@@ -283,14 +307,17 @@ for trip in trips:
         pprint("Found empty seats")
         result, empty_seat = select_first_empty_seat(trip)
         price = get_price(trip, empty_seat)
-        #pprint(price)
+        # pprint(price)
         vb_enroll_control_req = api_constants.vb_enroll_control_req_body.copy()
         # pprint(result)
         for seat in result['koltuklarimListesi']:
             vb_enroll_control_req['koltukLockList'].append(
                 seat['koltukLockId'])
-        response = requests.post(api_constants.VB_ENROLL_CONTROL_ENDPOINT,
-                                 headers=api_constants.REQUEST_HEADER, data=json.dumps(vb_enroll_control_req), timeout=10)
+        response = requests.post(
+            api_constants.VB_ENROLL_CONTROL_ENDPOINT,
+            headers=api_constants.REQUEST_HEADER,
+            data=json.dumps(vb_enroll_control_req),
+            timeout=10)
 
         response_json = json.loads(response.text)
         pprint(vb_enroll_control_req)
@@ -320,7 +347,7 @@ for trip in trips:
         # seleniumPayment.open_html_with_selenium(response.text)
     else:
         pprint("No empty seats")
-        
+
     exit(0)
 # dump trips to json and then write to file
 trips_json = json.dumps(trips)

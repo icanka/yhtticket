@@ -20,8 +20,7 @@ REQUEST_HEADER = {
     "Referer": "https://bilet.tcdd.gov.tr/",
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "cors",
-    "Sec-Fetch-Site": "cross-site"
-}
+    "Sec-Fetch-Site": "cross-site"}
 
 # Send the request to the endpoint
 response = requests.post(STATION_LIST_ENDPOINT,

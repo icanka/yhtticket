@@ -7,7 +7,7 @@ VB_ENROLL_CONTROL_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/odeme/vbE
 PRICE_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/fiyatlandirma/anahatFiyatSimple"
 
 SEATS_IDS = [13371893752, 13371893753, 16801693056, 16801693057]
-TARIFFS = { 'TSK': 11750067704, 'TAM': 1 }
+TARIFFS = {'TSK': 11750067704, 'TAM': 1}
 REQUEST_HEADER = {
     "Host": "api-yebsp.tcddtasimacilik.gov.tr",
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/119.0",
@@ -21,8 +21,7 @@ REQUEST_HEADER = {
     "Referer": "https://bilet.tcdd.gov.tr/",
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "cors",
-    "Sec-Fetch-Site": "cross-site"
-}
+    "Sec-Fetch-Site": "cross-site"}
 
 vagon_harita_req_body = {
     "kanalKodu": "3",
@@ -72,7 +71,7 @@ trip_search_req_body = {
         "inisIstasyonu": None,
         "inisIstasyonu_isHaritaGosterimi": 'false',
         "seyahatTuru": 1,
-        "gidisTarih": None, # "Dec 10, 2023 12:10:00 PM"
+        "gidisTarih": None,  # "Dec 10, 2023 12:10:00 PM"
         "bolgeselGelsin": 'false',
         "islemTipi": 0,
         "yolcuSayisi": 1,
@@ -91,7 +90,7 @@ price_req_body = {
         {
             "siraNo": 1,
             "cinsiyet": "E",
-            "tarifeId": None, # 11750067704: TSK calisan , 1: tam(adult)
+            "tarifeId": None,  # 11750067704: TSK calisan , 1: tam(adult)
             "seferKoltuk": [
                 {
                     "seferBaslikId": None,
@@ -100,9 +99,9 @@ price_req_body = {
                     "inisIstasyonId": None,
                     "biletTipi": 1,
                     "gidisMi": True,
-                    "binisTarihi": None, # "Dec 10, 2023 12:10:00 PM"
+                    "binisTarihi": None,  # "Dec 10, 2023 12:10:00 PM"
                     "vagonSiraNo": None,
-                    "vagonTipi": None, # 0 economy, 1 business
+                    "vagonTipi": None,  # 0 economy, 1 business
                     "koltukNo": None
                 }
             ]

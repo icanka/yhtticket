@@ -6,8 +6,11 @@ for trip in trips:
     vagon_req_body['binisIstId'] = trip['binisIstasyonId']
     vagon_req_body['inisIstId'] = trip['inisIstasyonId']
     # get vagons
-    response = requests.post(VAGON_SEARCH_ENDPOINT,
-                             headers=REQUEST_HEADER, data=json.dumps(vagon_req_body), timeout=10)
+    response = requests.post(
+        VAGON_SEARCH_ENDPOINT,
+        headers=REQUEST_HEADER,
+        data=json.dumps(vagon_req_body),
+        timeout=10)
     vagons_json = json.loads(response.text)
     for vagon in vagons_json['vagonBosYerList']:
         if vagon['vagonSiraNo'] == 4:
@@ -15,8 +18,11 @@ for trip in trips:
             vagon_harita_req_body['vagonSiraNo'] = vagon['vagonSiraNo']
             vagon_harita_req_body['seferBaslikId'] = vagon_req_body['seferBaslikId']
             # get vagon harita
-            response = requests.post(VAGON_HARITA_ENDPOINT,
-                                     headers=REQUEST_HEADER, data=json.dumps(vagon_harita_req_body), timeout=10)
+            response = requests.post(
+                VAGON_HARITA_ENDPOINT,
+                headers=REQUEST_HEADER,
+                data=json.dumps(vagon_harita_req_body),
+                timeout=10)
             vagon_harita_json = json.loads(response.text)
             empty_seats = get_empty_vagon_seats(vagon_harita_json)
 
@@ -33,8 +39,11 @@ for trip in trips:
                 pprint(json.dumps(koltuk_sec_req_body))
                 pprint(koltuk_sec_req_body)
                 # Send the request to the endpoint
-                response = requests.post(SELECT_EMPTY_SEAT_ENDPOINT,
-                                         headers=REQUEST_HEADER, data=json.dumps(koltuk_sec_req_body), timeout=10)
+                response = requests.post(
+                    SELECT_EMPTY_SEAT_ENDPOINT,
+                    headers=REQUEST_HEADER,
+                    data=json.dumps(koltuk_sec_req_body),
+                    timeout=10)
                 response_json = json.loads(response.text)
                 pprint(response_json)
             exit(0)
@@ -59,29 +68,27 @@ for trip in trips:
 # write repsonse to fila
 with open('response.json', 'w', encoding='utf-8') as file:
     file.write(response.text)
-    
-    
-    
-    
-    
-    
+
     for trip in trips:
     if trip['seferId'] == 39433411143:
         vagon_req_body['seferBaslikId'] = trip['seferId']
         vagon_req_body['binisIstId'] = trip['binisIstasyonId']
         vagon_req_body['inisIstId'] = trip['inisIstasyonId']
         # Send the request to the endpoint
-        response = requests.post(VAGON_SEARCH_ENDPOINT,
-                                 headers=REQUEST_HEADER, data=json.dumps(vagon_req_body), timeout=10)
+        response = requests.post(
+            VAGON_SEARCH_ENDPOINT,
+            headers=REQUEST_HEADER,
+            data=json.dumps(vagon_req_body),
+            timeout=10)
         response_json = json.loads(response.text)
         for vagon in response_json['vagonBosYerList']:
             if vagon['vagonSiraNo'] == 8:
                 vagon_harita_req_body['vagonSiraNo'] = vagon['vagonSiraNo']
                 vagon_harita_req_body['seferBaslikId'] = vagon_req_body['seferBaslikId']
                 # Send the request to the endpoint
-                response = requests.post(VAGON_HARITA_ENDPOINT,
-                                         headers=REQUEST_HEADER, data=json.dumps(vagon_harita_req_body), timeout=10)
+                response = requests.post(
+                    VAGON_HARITA_ENDPOINT,
+                    headers=REQUEST_HEADER,
+                    data=json.dumps(vagon_harita_req_body),
+                    timeout=10)
                 response_json = json.loads(response.text)
-
-
-

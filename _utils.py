@@ -13,5 +13,3 @@ def find_value(json_data, key):
             if result is not None:
                 return result
     return None
-
-

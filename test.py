@@ -17,15 +17,16 @@ _to.screenshot('_to.png')
 _from.click()
 _from.send_keys('istanbul pendik')
 
-_from_station = driver.find_element(by=By.XPATH, value="//*[contains(text(), 'Tüm İstasyonlar')]/following-sibling::div[1]")
+_from_station = driver.find_element(
+    by=By.XPATH,
+    value="//*[contains(text(), 'Tüm İstasyonlar')]/following-sibling::div[1]")
 _from_station.screenshot('_from_station.png')
 _from_station.click()
 exit(0)
 
-_station = _stations.find_element(by=By.XPATH ,value=".//div[1]")
+_station = _stations.find_element(by=By.XPATH, value=".//div[1]")
 _station.screenshot('_station.png')
 
-#_to.click()
-#_to.send_keys('ankara gar')
+# _to.click()
+# _to.send_keys('ankara gar')
 time.sleep(10)
-

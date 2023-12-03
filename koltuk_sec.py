@@ -13,6 +13,3 @@ request_body = {
     "dakika": 10,
     "huawei": 'false'
 }
-
-
-
