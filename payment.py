@@ -2,6 +2,7 @@
 import tempfile
 import requests
 import json
+from pprint import pprint
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException
@@ -34,15 +35,20 @@ class SeleniumPayment:
             max_wait_time=120,
             trip,
             empty_seat,
+            seat_lck_json,
             tariff,
             **kwargs):
         """
-        Initializes a new instance of the SeleniumPayment class.
+        Initialize the Payment class.
 
         Args:
-            max_wait_time (int): Maximum wait time in seconds for page loading (default: 120).
-            *args: Additional arguments to be passed to the Chrome options.
-            **kwargs: Additional keyword arguments to be set as instance attributes.
+            *args: Variable length arguments.
+            max_wait_time (int): Maximum wait time in seconds (default is 120).
+            trip: Trip information.
+            empty_seat: Empty seat information.
+            seat_lck_json: Seat lock JSON.
+            tariff: Tariff information.
+            **kwargs: Variable keyword arguments.
         """
         self.options = Options()
         self.options.add_argument("--disable-notifications")
@@ -70,8 +76,10 @@ class SeleniumPayment:
         self.max_wait_time = max_wait_time
         self.trip = trip
         self.empty_seat = empty_seat
+        self.seat_lck_json = seat_lck_json
         self.tariff = api_constants.TARIFFS[tariff]
         self.vb_enroll_control_req = api_constants.vb_enroll_control_req_body.copy()
+        self.is_payment_successful = None
         self.vb_enroll_control_response = None
         self.html_response = None
 
@@ -111,20 +119,20 @@ class SeleniumPayment:
             data=json.dumps(req_body),
             timeout=10)
         response_json = json.loads(response.text)
-        return response_json['anahatFiyatHesSonucDVO']['indirimliToplamUcret']
+        return int(
+            response_json['anahatFiyatHesSonucDVO']['indirimliToplamUcret'])
 
-    def process_payment(self, json_res, trip, empty_seat):
+    def process_payment(self):
         """
-        Opens an HTML response using Selenium WebDriver.
+        Process the payment for the trip.
 
-        Args:
-            response (requests.Response): The response object containing the HTML content.
+        This method calculates the price, updates the payment information,
+        sends a request to the payment API, and handles the payment authentication process.
 
-        Raises:
-            TimeoutException: If the page loading takes too much time.
+        Returns:
+            None
         """
-
-        price = self.get_price(trip, empty_seat)
+        price = self.get_price(self.trip, self.empty_seat)
         print(f"Price: {price}")
 
         self.vb_enroll_control_req['biletRezOdemeBilgileri'].update({
@@ -132,20 +140,27 @@ class SeleniumPayment:
             'krediKartiTutari': price
         })
 
-        for seat in json_res['koltuklarimListesi']:
+        for seat in self.seat_lck_json['koltuklarimListesi']:
             self.vb_enroll_control_req['koltukLockList'].append(
                 seat['koltukLockId'])
+
         response = requests.post(
             api_constants.VB_ENROLL_CONTROL_ENDPOINT,
             headers=api_constants.REQUEST_HEADER,
             data=json.dumps(self.vb_enroll_control_req),
             timeout=10)
 
+        if response.status_code != 200:
+            print("Payment failed.")
+            pprint(json.loads(response.text))
+            return
+
         response_json = json.loads(response.text)
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as temp_file:
             temp_file.write(response.text.encode('utf-8'))
-            self.vb_enroll_control_response, temp_file_path = temp_file.name
+            temp_file_path = temp_file.name
+            self.vb_enroll_control_response = temp_file_path
 
         #  Payment request
         session = requests.Session()
@@ -163,15 +178,29 @@ class SeleniumPayment:
 
         response = session.post(acs_url, data=form_data)
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as temp_file:
-            temp_file.write(response.encode('utf-8'))
-            self.html_response, temp_file_path = temp_file.name
+        if response.status_code != 200:
+            print("Payment failed.")
+            pprint(json.loads(response.text))
+            return
 
-            driver = webdriver.Chrome(options=self.options)
-            driver.get(f"file:///{temp_file_path}")
-            driver.implicitly_wait(10)
-            try:
-                WebDriverWait(driver, self.max_wait_time).until(
-                    EC.url_contains("https://bilet.tcdd.gov.tr/"))
-            except TimeoutException:
-                print("Loading took too much time!")
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as temp_file:
+            temp_file.write(response.text.encode('utf-8'))
+            temp_file_path = temp_file.name
+            self.html_response = temp_file_path
+
+        print(f"Opening {temp_file_path} with Selenium...")
+        driver = webdriver.Chrome(options=self.options)
+        driver.get(f"file:///{temp_file_path}")
+        driver.implicitly_wait(10)
+        try:
+            WebDriverWait(driver, self.max_wait_time).until(
+                EC.url_contains("https://bilet.tcdd.gov.tr/"))
+            current_url = driver.current_url
+            if current_url.contain("odeme-sonuc"):
+                print("Payment successful.")
+                self.is_payment_successful = True
+            else:
+                print("Payment failed.")
+                self.is_payment_successful = False
+        except TimeoutException:
+            print("Loading took too much time!")

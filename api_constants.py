@@ -1,4 +1,5 @@
 SEAT_CHECK_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/koltuk/klCheck"
+STATION_LIST_ENDPOINT = 'https://api-yebsp.tcddtasimacilik.gov.tr/istasyon/istasyonYukle'
 SELECT_EMPTY_SEAT_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/koltuk/klSec"
 TRIP_SEARCH_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/sefer/seferSorgula"
 VAGON_SEARCH_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/vagon/vagonBosYerSorgula"
@@ -8,6 +9,7 @@ PRICE_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/fiyatlandirma/anahatF
 
 SEATS_IDS = [13371893752, 13371893753, 16801693056, 16801693057]
 TARIFFS = {'TSK': 11750067704, 'TAM': 1}
+VAGON_TYPES = {'ECO': 17002, 'BUSS': 17001}
 REQUEST_HEADER = {
     "Host": "api-yebsp.tcddtasimacilik.gov.tr",
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/119.0",
@@ -22,6 +24,8 @@ REQUEST_HEADER = {
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "cors",
     "Sec-Fetch-Site": "cross-site"}
+
+STATION_LIST_REQUEST_BODY = '{"kanalKodu":"3","dil":1,"tarih":"Nov 10, 2011 12:00:00 AM","satisSorgu":true}'
 
 vagon_harita_req_body = {
     "kanalKodu": "3",

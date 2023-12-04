@@ -1,19 +1,11 @@
 """ This module contains the functions for searching for trips and selecting empty seats."""
 import json
-import tempfile
 from pprint import pprint
 from datetime import datetime
 import requests
 import dateparser
 import api_constants
-from payment import SeleniumPayment
-
-
-to_station = "İstanbul(Pendik)"
-from_station = "Ankara Gar"
-from_date = "15 december 12:00"
-to_date = "15 december 16:00"
-tariff = 'TSK'
+from stations import get_station_list
 
 
 def get_empty_vagon_seats(vagon_json):
@@ -31,8 +23,8 @@ def get_empty_vagon_seats(vagon_json):
     vagon_yerlesim = vagon_json['vagonHaritasiIcerikDVO']['vagonYerlesim']
     koltuk_durumlari = vagon_json['vagonHaritasiIcerikDVO']['koltukDurumlari']
     # efficient way to merge two lists of dictionaries based on a common key
-    index_dict = {d['koltukNo']
-        : d for d in koltuk_durumlari if 'koltukNo' in d}
+    index_dict = {d['koltukNo']: d for d in koltuk_durumlari
+                  if 'koltukNo' in d}
     merged_list = []
     for seat in vagon_yerlesim:
         seat_no = seat.get('koltukNo')
@@ -120,7 +112,34 @@ def select_first_empty_seat(trip):
             return None
 
 
-def get_empty_seats_trip(trip):
+def get_detailed_vagon_info_empty_seats(vagon_map_req, vagons):
+    """
+    Retrieves the empty seats for a given vagon.
+
+    Args:
+        vagon_map_req (dict): The request body for getting the seat map of a vagon.
+
+    Returns:
+        list: The list of dictionaries containing the empty seat information.
+    """
+    empty_seats = list()
+    response = requests.post(
+        api_constants.VAGON_HARITA_ENDPOINT,
+        headers=api_constants.REQUEST_HEADER,
+        data=json.dumps(vagon_map_req),
+        timeout=10)
+    response_json = json.loads(response.text)
+
+    for empty_seat in get_empty_vagon_seats(response_json):
+        empty_seat['vagonTipId'] = next(
+            vagon['vagonTipId'] for vagon in vagons
+            if vagon['vagonSiraNo'] == vagon_map_req['vagonSiraNo'])
+        empty_seats.append(empty_seat)
+
+    return empty_seats
+
+
+def get_empty_seats_trip(trip, from_station, to_station, seat_type=None):
     """
     Retrieves the empty seats for a given trip.
 
@@ -135,49 +154,78 @@ def get_empty_seats_trip(trip):
     trip_with_seats = trip.copy()
     vagon_req = api_constants.vagon_req_body.copy()
     vagon_map_req = api_constants.vagon_harita_req_body.copy()
-    empty_seats = list()
-    vagon_req['seferBaslikId'] = trip['seferId']
-    vagon_req['binisIstId'] = trip['binisIstasyonId']
-    vagon_req['inisIstId'] = trip['inisIstasyonId']
-    # Send the request to the endpoint
+
+    vagon_req['seferBaslikId'] = trip_with_seats['seferId']
+    vagon_req['binisIstId'] = trip_with_seats['binisIstasyonId']
+    vagon_req['inisIstId'] = trip_with_seats['inisIstasyonId']
+
+    # get the vagons' seat status for the trip
     response = requests.post(
         api_constants.VAGON_SEARCH_ENDPOINT,
         headers=api_constants.REQUEST_HEADER,
         data=json.dumps(vagon_req),
         timeout=10)
     response_json = json.loads(response.text)
+
+    trip_with_seats['empty_seats'] = list()
     for vagon in response_json['vagonBosYerList']:
+
         vagon_map_req['vagonSiraNo'] = vagon['vagonSiraNo']
         vagon_map_req['seferBaslikId'] = vagon_req['seferBaslikId']
         vagon_map_req['binisIst'] = from_station
         vagon_map_req['InisIst'] = to_station
-        # Send the request to the endpoint
-        response = requests.post(
-            api_constants.VAGON_HARITA_ENDPOINT,
-            headers=api_constants.REQUEST_HEADER,
-            data=json.dumps(vagon_map_req),
-            timeout=10)
-        response_json = json.loads(response.text)
-        for empty_set in get_empty_vagon_seats(response_json):
-            empty_set['vagonTipId'] = next(
-                vagon['vagonTipId'] for vagon in trip['vagons'] if vagon['vagonSiraNo'] == vagon_map_req['vagonSiraNo'])
-            empty_seats.append(empty_set)
-    trip_with_seats['empty_seats'] = empty_seats
+
+        if seat_type:
+            vagon_type = next(
+                vagon_['vagonTipId'] for vagon_ in trip['vagons']
+                if vagon_['vagonSiraNo'] == vagon['vagonSiraNo'])
+            if seat_type != vagon_type:
+                continue
+            empty_seats = get_detailed_vagon_info_empty_seats(
+                vagon_map_req, trip['vagons'])
+            trip_with_seats['empty_seats'].extend(empty_seats)
+        else:
+            empty_seats = get_detailed_vagon_info_empty_seats(
+                vagon_map_req, trip['vagons'])
+            trip_with_seats['empty_seats'].extend(empty_seats)
+
     return trip_with_seats
 
 
-def get_trips(from_station, to_station, from_date, to_date):
+def check_stations(stations, from_station, to_station):
     """
-    Retrieves a list of trips based on the specified parameters.
+    Check if the given from_station and to_station are valid stations.
+
+    Parameters:
+    stations (list): A list of dictionaries representing the available stations.
+    from_station (str): The name of the departure station.
+    to_station (str): The name of the destination station.
+
+    Raises:
+    ValueError: If either from_station or to_station is not a valid station.
+
+    Returns:
+    None
+    """
+    if from_station not in [station['station_name'] for station in stations]:
+        raise ValueError(f"{from_station} is not a valid station")
+
+    if to_station not in [station['station_name'] for station in stations]:
+        raise ValueError(f"{to_station} is not a valid station")
+
+
+def search_trips(from_station, to_station, from_date=None, to_date=None):
+    """
+    Search for trips based on the given parameters.
 
     Args:
         from_station (str): The name of the departure station.
         to_station (str): The name of the destination station.
-        from_date (str): The departure date in the format 'YYYY-MM-DD'.
-        to_date (str): The maximum date for the trips in the format 'YYYY-MM-DD'.
+        from_date (str): The departure date in an human readable format.
+        to_date (str, optional): The maximum arrival date in an human readable format. Defaults to None.
 
     Returns:
-        list: A list of dictionaries representing the trips. Each dictionary contains the following keys:
+        list: A list of dictionaries representing the found trips. Each dictionary contains the following keys:
             - 'vagons': A list of active vagon types.
             - 'eco_empty_seat_count': The number of empty seats in the economy class.
             - 'buss_empty_seat_count': The number of empty seats in the business class.
@@ -190,31 +238,32 @@ def get_trips(from_station, to_station, from_date, to_date):
             - 'binisIstasyonId': The ID of the departure station.
             - 'inisIstasyonId': The ID of the destination station.
     """
+    if not from_date:
+        from_date = datetime.now().strftime("%b %d, %Y %I:%M:%S %p")
 
     vagon_req_body = api_constants.vagon_req_body.copy()
     trip_req = api_constants.trip_search_req_body.copy()
     trips = list()
     from_date = dateparser.parse(from_date)
-    to_date = dateparser.parse(to_date)
 
-    with open('station_list.json') as f:
-        station_list = json.load(f)
+    stations = get_station_list()
+    check_stations(stations, from_station, to_station)
+
     # Find the station that matches from_station
-        for station in station_list:
-            if station['station_name'] == from_station:
-                binisIstasyonId = station['station_id']
-                vagon_req_body['binisIstId'] = binisIstasyonId
-                trip_req['seferSorgulamaKriterWSDVO']['binisIstasyonu'] = from_station
-                trip_req['seferSorgulamaKriterWSDVO']['binisIstasyonId'] = binisIstasyonId
-            if station['station_name'] == to_station:
-                inisIstasyonId = station['station_id']
-                vagon_req_body['inisIstId'] = inisIstasyonId
-                trip_req['seferSorgulamaKriterWSDVO']['inisIstasyonId'] = inisIstasyonId
-                trip_req['seferSorgulamaKriterWSDVO']['inisIstasyonu'] = to_station
+    for station in stations:
+        if station['station_name'] == from_station:
+            binis_istasyon_id = station['station_id']
+            vagon_req_body['binisIstId'] = binis_istasyon_id
+            trip_req['seferSorgulamaKriterWSDVO']['binisIstasyonu'] = from_station
+            trip_req['seferSorgulamaKriterWSDVO']['binisIstasyonId'] = binis_istasyon_id
+        if station['station_name'] == to_station:
+            inis_istasyon_id = station['station_id']
+            vagon_req_body['inisIstId'] = inis_istasyon_id
+            trip_req['seferSorgulamaKriterWSDVO']['inisIstasyonId'] = inis_istasyon_id
+            trip_req['seferSorgulamaKriterWSDVO']['inisIstasyonu'] = to_station
     # Set the date
     trip_req['seferSorgulamaKriterWSDVO']['gidisTarih'] = datetime.strftime(
         from_date, "%b %d, %Y %I:%M:%S %p")
-    # pprint(trip_req)
 
     response = requests.post(
         api_constants.TRIP_SEARCH_ENDPOINT,
@@ -223,7 +272,6 @@ def get_trips(from_station, to_station, from_date, to_date):
         timeout=10)
 
     response_json = json.loads(response.text)
-    # pprint(response_json)
 
     sorted_trips = sorted(
         response_json['seferSorgulamaSonucList'],
@@ -231,12 +279,12 @@ def get_trips(from_station, to_station, from_date, to_date):
             trip['binisTarih'],
             "%b %d, %Y %I:%M:%S %p"))
 
-    # pprint(len(sorted_trips))
-    # ony get trips whose date is less than to_date
-    sorted_trips = [trip for trip in sorted_trips if datetime.strptime(
-        trip['binisTarih'], "%b %d, %Y %I:%M:%S %p") < to_date]
-    # pprint(len(sorted_trips))
-
+    # filter trips based on to_date
+    if to_date:
+        to_date = dateparser.parse(to_date)
+        sorted_trips = [trip for trip in sorted_trips if datetime.strptime(
+            trip['binisTarih'], "%b %d, %Y %I:%M:%S %p") < to_date]
+        print('*' * 40)
     for trip in sorted_trips:
         if trip['satisDurum'] == 1 and trip['vagonHaritasindanKoltukSecimi'] == 1:
             # 0 is economy class and 1 is business class
@@ -246,8 +294,9 @@ def get_trips(from_station, to_station, from_date, to_date):
                     trip['vagonTipleriBosYerUcret'])
                 t['eco_empty_seat_count'] = trip['vagonTipleriBosYerUcret'][0]['kalanSayi'] - \
                     trip['vagonTipleriBosYerUcret'][0]['kalanEngelliKoltukSayisi']
-                t['buss_empty_seat_count'] = trip['vagonTipleriBosYerUcret'][1]['kalanSayi'] - \
-                    trip['vagonTipleriBosYerUcret'][1]['kalanEngelliKoltukSayisi']
+                t['buss_empty_seat_count'] = trip['vagonTipleriBosYerUcret'][
+                    1]['kalanSayi'] - trip['vagonTipleriBosYerUcret'][1][
+                    'kalanEngelliKoltukSayisi']
                 t['empty_seat_count'] = t['eco_empty_seat_count'] + \
                     t['buss_empty_seat_count']
                 t['binisTarih'] = trip['binisTarih']
@@ -255,47 +304,34 @@ def get_trips(from_station, to_station, from_date, to_date):
                 t['trenAdi'] = trip['trenAdi']
                 t['seferAdi'] = trip['seferAdi']
                 t['seferId'] = trip['seferId']
-                t['binisIstasyonId'] = trip_req['seferSorgulamaKriterWSDVO']['binisIstasyonId']
-                t['inisIstasyonId'] = trip_req['seferSorgulamaKriterWSDVO']['inisIstasyonId']
+                t['binisIstasyonId'] = trip_req['seferSorgulamaKriterWSDVO'][
+                    'binisIstasyonId']
+                t['inisIstasyonId'] = trip_req['seferSorgulamaKriterWSDVO'][
+                    'inisIstasyonId']
                 trips.append(t)
-                date_object = datetime.strptime(
-                    trip['binisTarih'], "%b %d, %Y %I:%M:%S %p")
-                # print(
-                # f"Engelli  :
-                # {trip['vagonTipleriBosYerUcret'][0]['kalanEngelliKoltukSayisi']}
-                # Total Kalan Bos:
-                # {trip['vagonTipleriBosYerUcret'][0]['kalanSayi']}")
-                print(
-                    f"Eco empty: {t['eco_empty_seat_count']}  Buss empty:{t['buss_empty_seat_count']}         -- {date_object.strftime('%H:%M')}")
             except IndexError:  # no business class, just ignore
                 pprint("No business class")
     return trips
 
 
-trips = get_trips(from_station, to_station, from_date, to_date)
-for trip in trips:
-    trip = get_empty_seats_trip(trip)
-    # pprint(trip)
-    if trip['empty_seat_count'] > 0:
-        pprint("Found empty seats")
-        seat_lock_json_result, empty_seat = select_first_empty_seat(trip)
-        p = SeleniumPayment(trip=trip, empty_seat=empty_seat)
-        p.process_payment(seat_lock_json_result, trip, empty_seat)
-    else:
-        pprint("No empty seats")
+# trips = search_trips(from_station, to_station, from_date, to_date)
+# for trip in trips:
+#     trip = get_empty_seats_trip(trip)
+#     # pprint(trip)
+#     if trip['empty_seat_count'] > 0:
+#         pprint("Found empty seats")
+#         seat_lock_json_result, empty_seat = select_first_empty_seat(trip)
+#         p = SeleniumPayment(
+#             trip=trip,
+#             empty_seat=empty_seat,
+#             seat_lck_json=seat_lock_json_result,
+#             tariff=tariff)
+#         p.process_payment()
+#     else:
+#         pprint("No empty seats")
 
-    exit(0)
-# dump trips to json and then write to file
-trips_json = json.dumps(trips)
-with open('trips.json', 'w', encoding='utf-8') as file:
-    file.write(trips_json)
-
-
-for trip in trips:
-    result = get_empty_seats_trip(trip)
-    seat = select_first_empty_seat(result)
-    # dump to json and write result to the file named trip_seats.json
-    result_json = json.dumps(seat)
-    with open('trip_seats.json', 'w', encoding='utf-8') as file:
-        file.write(result_json)
-    exit(0)
+#     exit(0)
+# # dump trips to json and then write to file
+# trips_json = json.dumps(trips)
+# with open('trips.json', 'w', encoding='utf-8') as file:
+#     file.write(trips_json)
