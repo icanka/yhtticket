@@ -58,7 +58,7 @@ def search(
     """
     # print all args and options
     pprint(locals())
-    
+
     if seat_type:
         seat_type = seat_type.upper()
         seat_type = api_constants.VAGON_TYPES[seat_type]
@@ -78,12 +78,11 @@ def search(
     for trip in trips:
         trip = trip_search.get_empty_seats_trip(
             trip, from_station, to_station, seat_type)
-        
+
         # dump to json and write to file
-        #with open('trip.json', 'w') as f:
+        # with open('trip.json', 'w') as f:
         #    f.write(json.dumps(trip))
-            
-            
+
         # print trip if empty seats are available
         if trip['empty_seat_count'] > 0:
             pprint(trip)
@@ -91,7 +90,7 @@ def search(
             print('No empty seats available for this trip.')
 
     if list_trips:
-        #pprint(len(trips))
+        # pprint(len(trips))
         for trip in trips:
             dep_date_object = datetime.strptime(
                 trip['binisTarih'], "%b %d, %Y %I:%M:%S %p")

@@ -191,8 +191,6 @@ class SeleniumPayment:
             temp_file_path = temp_file.name
             self.html_response = temp_file_path
 
-
-
         data = [{
             "ad": "izzet can",
             "soyad": "karakuş",
@@ -204,27 +202,27 @@ class SeleniumPayment:
             "kimlikNo": "18700774442",
             "tc_degil": False
         }]
-        
+
         # Convert the data to a properly formatted string
         data_str = json.dumps(data)
         data_str_js = data_str.replace('"', '\\"')
 
-
         print(f"Opening {temp_file_path} with Selenium...")
         driver = webdriver.Chrome(options=self.options)
         # Set local storage variables using execute_script
-        
-        
+
         driver.get("https://bilet.tcdd.gov.tr")
         time.sleep(5)
-        driver.execute_script(f"window.localStorage.setItem('enrollees', \"{data_str_js}\");")
+        driver.execute_script(
+            f"window.localStorage.setItem('enrollees', \"{data_str_js}\");")
         time.sleep(5)
         driver.refresh()
         time.sleep(5)
         # To verify, you can retrieve the value like this
-        value = driver.execute_script("return window.localStorage.getItem('enrollees');")
+        value = driver.execute_script(
+            "return window.localStorage.getItem('enrollees');")
         print(value)  # This should print your data
-        
+
         driver.get(f"file:///{temp_file_path}")
         driver.implicitly_wait(10)
         time.sleep(5)
@@ -233,7 +231,7 @@ class SeleniumPayment:
         # Find the OTP input field and submit button
         try:
             text_input = driver.find_element(
-            By.CSS_SELECTOR, "input[type='number'], input[type='text']")
+                By.CSS_SELECTOR, "input[type='number'], input[type='text']")
             btn = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
             if text_input and btn and btn.text:
                 pprint(btn.text)
@@ -243,7 +241,7 @@ class SeleniumPayment:
                 btn.click()
         except selenium.common.exceptions.NoSuchElementException:
             pprint("Button element not found.")
-        
+
         try:
             # Wait for the redirection from payment to the main page
             WebDriverWait(driver, self.max_wait_time).until(
