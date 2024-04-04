@@ -61,7 +61,7 @@ koltuk_sec_req_body = {
     "cinsiyet": "E",
     "binisIst": None,
     "inisIst": None,
-    "dakika": 10,
+    "dakika": 60,
     "huawei": False
 }
 
@@ -122,10 +122,10 @@ vb_enroll_control_req_body = {
     "yebspPaymentSuccessUrl": "https://bilet.tcdd.gov.tr/odeme-sonuc",
     "yebspPaymentFailureUrl": "https://bilet.tcdd.gov.tr/odeme",
     "biletRezOdemeBilgileri": {
-        "krediKartNO": "4506347008156065",
-        "krediKartSahibiAdSoyad": "izzet can karakuş",
-        "ccv": "035",
-        "sonKullanmaTarihi": 2406,
+        "krediKartNO": "4912055091562978",                                        # TODO: Get this from the user
+        "krediKartSahibiAdSoyad": "izzet can karakuş",                            # TODO: Get this from the user
+        "ccv": "296",                                                             # TODO: Get this from the user
+        "sonKullanmaTarihi": 2901,                                                # TODO: Get this from the user
         "toplamBiletTutari": None,  # 370
         "krediKartiTutari": None,  # 370
         "abonmanTutar": 0,
@@ -136,3 +136,26 @@ vb_enroll_control_req_body = {
     },
     "koltukLockList": []
 }
+
+
+# vb_enroll_control_req_body = {
+#     "kanalKodu": 3,
+#     "dil": 0,
+#     "islemTipi": 0,
+#     "yebspPaymentSuccessUrl": "https://bilet.tcdd.gov.tr/odeme-sonuc",
+#     "yebspPaymentFailureUrl": "https://bilet.tcdd.gov.tr/odeme",
+#     "biletRezOdemeBilgileri": {
+#         "krediKartNO": "6501700157813193",
+#         "krediKartSahibiAdSoyad": "izzet can karakuş",
+#         "ccv": "360",
+#         "sonKullanmaTarihi": 3004,
+#         "toplamBiletTutari": None,  # 370
+#         "krediKartiTutari": None,  # 370
+#         "abonmanTutar": 0,
+#         "acikBiletKuponNoList": [],
+#         "acikBiletTutar": 0,
+#         "islemYeri": "7",
+#         "milPuan": 0
+#     },
+#     "koltukLockList": []
+# }

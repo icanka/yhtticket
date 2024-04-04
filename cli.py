@@ -80,15 +80,18 @@ def search(
             trip, from_station, to_station, seat_type)
         
         # dump to json and write to file
-        with open('trip.json', 'w') as f:
-            f.write(json.dumps(trip))
+        #with open('trip.json', 'w') as f:
+        #    f.write(json.dumps(trip))
             
             
-        #pprint(trip)
-        exit(0)
+        # print trip if empty seats are available
+        if trip['empty_seat_count'] > 0:
+            pprint(trip)
+        else:
+            print('No empty seats available for this trip.')
 
     if list_trips:
-        pprint(len(trips))
+        #pprint(len(trips))
         for trip in trips:
             dep_date_object = datetime.strptime(
                 trip['binisTarih'], "%b %d, %Y %I:%M:%S %p")
