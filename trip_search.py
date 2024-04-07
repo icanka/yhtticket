@@ -1,13 +1,10 @@
 """ This module contains the functions for searching for trips and selecting empty seats."""
 import json
-import os
 from pprint import pprint
 from datetime import datetime
 import requests
 import dateparser
 import api_constants
-import time
-from payment import SeleniumPayment
 from stations import get_station_list
 
 
@@ -111,7 +108,7 @@ def select_first_empty_seat(trip):
             # return trip with selected seat if the response code is 200
             return response_json, empty_seat
         else:
-            pprint("Seat is already locked locked")
+            pprint("Seat is already locked")
             return None
 
 
@@ -269,7 +266,7 @@ def search_trips(from_station, to_station, from_date=None, to_date=None):
         api_constants.TRIP_SEARCH_ENDPOINT,
         headers=api_constants.REQUEST_HEADER,
         data=json.dumps(trip_req),
-        timeout=10)
+        timeout=30)
 
     response_json = json.loads(response.text)
 
@@ -284,7 +281,7 @@ def search_trips(from_station, to_station, from_date=None, to_date=None):
         to_date = dateparser.parse(to_date)
         sorted_trips = [trip for trip in sorted_trips if datetime.strptime(
             trip['binisTarih'], "%b %d, %Y %I:%M:%S %p") < to_date]
-        print('*' * 40)
+        #print('*' * 40)
     for trip in sorted_trips:
         if trip['satisDurum'] == 1 and trip['vagonHaritasindanKoltukSecimi'] == 1:
             # 0 is economy class and 1 is business class
@@ -313,55 +310,3 @@ def search_trips(from_station, to_station, from_date=None, to_date=None):
                 pprint("No business class")
     return trips
 
-
-from_station = 'Ankara Gar'
-to_station = 'İstanbul(Pendik)'
-from_date = '5 April 15:00'
-to_date = '5 April 21:00'
-pprint(
-    f"Searching for trips from {from_station} to {to_station} on {from_date}")
-
-
-# while True:
-#     trips = search_trips(from_station, to_station, from_date, to_date)
-#     pprint(f"Total of {len(trips)} trips found")
-#     if len(trips) == 0:
-#         pprint("No trips found")
-#         time.sleep(5)
-#     else:
-#         # clear the console
-#         for trip in trips:
-#             pprint("Checking for empty seats")
-#             trip = get_empty_seats_trip(trip, from_station, to_station)
-#             # pprint(trip)
-#             os.system('cls' if os.name == 'nt' else 'clear')
-#             if trip['empty_seat_count'] > 0:
-#                 pprint("Found empty seats")
-#                 try:
-#                     seat_lock_json_result, empty_seat = select_first_empty_seat(
-#                         trip)
-#                     pprint(seat_lock_json_result)
-#                     pprint(empty_seat)
-#                     combined_data = {
-#                         'seat_lock_json_result': seat_lock_json_result,
-#                         'empty_seat': empty_seat,
-#                         'trip': trip
-#                     }
-#                     with open(f'trip_{datetime.now().strftime("%Y%m%d%H%M%S")}.json', 'w', encoding='utf-8') as file:
-#                         file.write(json.dumps(combined_data))
-#                 except Exception as e:
-#                     pprint(e)
-
-                # p = SeleniumPayment(
-                #     trip=trip,
-                #     empty_seat=empty_seat,
-                #     seat_lck_json=seat_lock_json_result,
-                #     tariff='TSK')
-                # p.process_payment()
-
-
-#     exit(0)
-# # dump trips to json and then write to file
-# trips_json = json.dumps(trips)
-# with open('trips.json', 'w', encoding='utf-8') as file:
-#     file.write(trips_json)

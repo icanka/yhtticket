@@ -1,1 +1,23 @@
-{"vagons": [{"vagonBaslikId": 13990704405, "vagonSiraNo": 2, "vagonTipId": 17002}, {"vagonBaslikId": 26028148651, "vagonSiraNo": 3, "vagonTipId": 17002}, {"vagonBaslikId": 27948724708, "vagonSiraNo": 4, "vagonTipId": 17002}, {"vagonBaslikId": 13990639051, "vagonSiraNo": 5, "vagonTipId": 17002}, {"vagonBaslikId": 13990704401, "vagonSiraNo": 6, "vagonTipId": 17002}, {"vagonBaslikId": 13990639056, "vagonSiraNo": 7, "vagonTipId": 17002}, {"vagonBaslikId": 13990704402, "vagonSiraNo": 8, "vagonTipId": 17002}, {"vagonBaslikId": 13990704404, "vagonSiraNo": 1, "vagonTipId": 17001}], "eco_empty_seat_count": 0, "buss_empty_seat_count": 0, "empty_seat_count": 0, "binisTarih": "Apr 15, 2024 03:10:00 PM", "inisTarih": "Apr 15, 2024 07:11:00 PM", "trenAdi": "ANKARA-\u0130STANBUL", "seferAdi": "81019-15042024", "seferId": 42797107786, "binisIstasyonId": 234516259, "inisIstasyonId": 234516104, "empty_seats": []}
+{
+  "vagons": [
+    { "vagonBaslikId": 13990704405, "vagonSiraNo": 2, "vagonTipId": 17002 },
+    { "vagonBaslikId": 26028148651, "vagonSiraNo": 3, "vagonTipId": 17002 },
+    { "vagonBaslikId": 27948724708, "vagonSiraNo": 4, "vagonTipId": 17002 },
+    { "vagonBaslikId": 13990639051, "vagonSiraNo": 5, "vagonTipId": 17002 },
+    { "vagonBaslikId": 13990704401, "vagonSiraNo": 6, "vagonTipId": 17002 },
+    { "vagonBaslikId": 13990639056, "vagonSiraNo": 7, "vagonTipId": 17002 },
+    { "vagonBaslikId": 13990704402, "vagonSiraNo": 8, "vagonTipId": 17002 },
+    { "vagonBaslikId": 13990704404, "vagonSiraNo": 1, "vagonTipId": 17001 }
+  ],
+  "eco_empty_seat_count": 0,
+  "buss_empty_seat_count": 0,
+  "empty_seat_count": 0,
+  "binisTarih": "Apr 15, 2024 03:10:00 PM",
+  "inisTarih": "Apr 15, 2024 07:11:00 PM",
+  "trenAdi": "ANKARA-\u0130STANBUL",
+  "seferAdi": "81019-15042024",
+  "seferId": 42797107786,
+  "binisIstasyonId": 234516259,
+  "inisIstasyonId": 234516104,
+  "empty_seats": []
+}

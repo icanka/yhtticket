@@ -61,7 +61,7 @@ koltuk_sec_req_body = {
     "cinsiyet": "E",
     "binisIst": None,
     "inisIst": None,
-    "dakika": 60,
+    "dakika": 1,
     "huawei": False
 }
 

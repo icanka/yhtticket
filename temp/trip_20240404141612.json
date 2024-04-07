@@ -1,1 +1,139 @@
-{"seat_lock_json_result": {"cevapBilgileri": {"cevapKodu": "000", "cevapMsj": "\u0130\u015flem ba\u015far\u0131l\u0131 olarak ger\u00e7ekle\u015ftirildi.", "detay": null}, "koltuklarimListesi": [{"koltukLockId": 43285046419, "seferBaslikId": 42561239936, "vagonSiraNo": 4, "koltukNo": "8b", "bitisZamani": "Apr 4, 2024 02:26:12 PM", "cinsiyet": "E", "istasyonIdBit": null, "istasyonIdBas": null}, {"koltukLockId": 43285046420, "seferBaslikId": 42561239936, "vagonSiraNo": 4, "koltukNo": "8b", "bitisZamani": "Apr 4, 2024 02:26:12 PM", "cinsiyet": "E", "istasyonIdBit": null, "istasyonIdBas": null}, {"koltukLockId": 43285046421, "seferBaslikId": 42561239936, "vagonSiraNo": 4, "koltukNo": "8b", "bitisZamani": "Apr 4, 2024 02:26:12 PM", "cinsiyet": "E", "istasyonIdBit": null, "istasyonIdBas": null}, {"koltukLockId": 43285046422, "seferBaslikId": 42561239936, "vagonSiraNo": 4, "koltukNo": "8b", "bitisZamani": "Apr 4, 2024 02:26:12 PM", "cinsiyet": "E", "istasyonIdBit": null, "istasyonIdBas": null}, {"koltukLockId": 43285046423, "seferBaslikId": 42561239936, "vagonSiraNo": 4, "koltukNo": "8b", "bitisZamani": "Apr 4, 2024 02:26:12 PM", "cinsiyet": "E", "istasyonIdBit": null, "istasyonIdBas": null}, {"koltukLockId": 43285046424, "seferBaslikId": 42561239936, "vagonSiraNo": 4, "koltukNo": "8b", "bitisZamani": "Apr 4, 2024 02:26:12 PM", "cinsiyet": "E", "istasyonIdBit": null, "istasyonIdBas": null}]}, "empty_seat": {"vagonYerlesimId": 27959420641, "vagonBaslikId": 27948724708, "nesneTanimId": 16801693057, "satirNo": 3, "sutunNo": 17, "engelliUyarisi": false, "tekKoltuk": false, "koltukCinsiyetTipi": null, "koltukGrupNo": null, "koltukGrupTipi": null, "koltukNo": "8b", "ekHizmetId": null, "durum": 0, "hasPermi": false, "permiYakinlikAck": null, "vagonSiraNo": 4, "vagonSutunNo": 0, "vagonSatirNo": 0, "seferBaslikId": 42561239936, "vagonTipId": 17002}, "trip": {"vagons": [{"vagonBaslikId": 13990704405, "vagonSiraNo": 2, "vagonTipId": 17002}, {"vagonBaslikId": 26028148651, "vagonSiraNo": 3, "vagonTipId": 17002}, {"vagonBaslikId": 27948724708, "vagonSiraNo": 4, "vagonTipId": 17002}, {"vagonBaslikId": 13990639051, "vagonSiraNo": 5, "vagonTipId": 17002}, {"vagonBaslikId": 13990704401, "vagonSiraNo": 6, "vagonTipId": 17002}, {"vagonBaslikId": 13990639056, "vagonSiraNo": 7, "vagonTipId": 17002}, {"vagonBaslikId": 13990704402, "vagonSiraNo": 8, "vagonTipId": 17002}, {"vagonBaslikId": 13990704404, "vagonSiraNo": 1, "vagonTipId": 17001}], "eco_empty_seat_count": 1, "buss_empty_seat_count": 0, "empty_seat_count": 1, "binisTarih": "Apr 5, 2024 04:30:00 PM", "inisTarih": "Apr 5, 2024 08:19:00 PM", "trenAdi": "ANKARA-\u0130STANBUL", "seferAdi": "81023-05042024", "seferId": 42561239936, "binisIstasyonId": 234516259, "inisIstasyonId": 234516104, "empty_seats": [{"vagonYerlesimId": 27959420641, "vagonBaslikId": 27948724708, "nesneTanimId": 16801693057, "satirNo": 3, "sutunNo": 17, "engelliUyarisi": false, "tekKoltuk": false, "koltukCinsiyetTipi": null, "koltukGrupNo": null, "koltukGrupTipi": null, "koltukNo": "8b", "ekHizmetId": null, "durum": 0, "hasPermi": false, "permiYakinlikAck": null, "vagonSiraNo": 4, "vagonSutunNo": 0, "vagonSatirNo": 0, "seferBaslikId": 42561239936, "vagonTipId": 17002}]}}
+{
+  "seat_lock_json_result": {
+    "cevapBilgileri": {
+      "cevapKodu": "000",
+      "cevapMsj": "\u0130\u015flem ba\u015far\u0131l\u0131 olarak ger\u00e7ekle\u015ftirildi.",
+      "detay": null
+    },
+    "koltuklarimListesi": [
+      {
+        "koltukLockId": 43285046419,
+        "seferBaslikId": 42561239936,
+        "vagonSiraNo": 4,
+        "koltukNo": "8b",
+        "bitisZamani": "Apr 4, 2024 02:26:12 PM",
+        "cinsiyet": "E",
+        "istasyonIdBit": null,
+        "istasyonIdBas": null
+      },
+      {
+        "koltukLockId": 43285046420,
+        "seferBaslikId": 42561239936,
+        "vagonSiraNo": 4,
+        "koltukNo": "8b",
+        "bitisZamani": "Apr 4, 2024 02:26:12 PM",
+        "cinsiyet": "E",
+        "istasyonIdBit": null,
+        "istasyonIdBas": null
+      },
+      {
+        "koltukLockId": 43285046421,
+        "seferBaslikId": 42561239936,
+        "vagonSiraNo": 4,
+        "koltukNo": "8b",
+        "bitisZamani": "Apr 4, 2024 02:26:12 PM",
+        "cinsiyet": "E",
+        "istasyonIdBit": null,
+        "istasyonIdBas": null
+      },
+      {
+        "koltukLockId": 43285046422,
+        "seferBaslikId": 42561239936,
+        "vagonSiraNo": 4,
+        "koltukNo": "8b",
+        "bitisZamani": "Apr 4, 2024 02:26:12 PM",
+        "cinsiyet": "E",
+        "istasyonIdBit": null,
+        "istasyonIdBas": null
+      },
+      {
+        "koltukLockId": 43285046423,
+        "seferBaslikId": 42561239936,
+        "vagonSiraNo": 4,
+        "koltukNo": "8b",
+        "bitisZamani": "Apr 4, 2024 02:26:12 PM",
+        "cinsiyet": "E",
+        "istasyonIdBit": null,
+        "istasyonIdBas": null
+      },
+      {
+        "koltukLockId": 43285046424,
+        "seferBaslikId": 42561239936,
+        "vagonSiraNo": 4,
+        "koltukNo": "8b",
+        "bitisZamani": "Apr 4, 2024 02:26:12 PM",
+        "cinsiyet": "E",
+        "istasyonIdBit": null,
+        "istasyonIdBas": null
+      }
+    ]
+  },
+  "empty_seat": {
+    "vagonYerlesimId": 27959420641,
+    "vagonBaslikId": 27948724708,
+    "nesneTanimId": 16801693057,
+    "satirNo": 3,
+    "sutunNo": 17,
+    "engelliUyarisi": false,
+    "tekKoltuk": false,
+    "koltukCinsiyetTipi": null,
+    "koltukGrupNo": null,
+    "koltukGrupTipi": null,
+    "koltukNo": "8b",
+    "ekHizmetId": null,
+    "durum": 0,
+    "hasPermi": false,
+    "permiYakinlikAck": null,
+    "vagonSiraNo": 4,
+    "vagonSutunNo": 0,
+    "vagonSatirNo": 0,
+    "seferBaslikId": 42561239936,
+    "vagonTipId": 17002
+  },
+  "trip": {
+    "vagons": [
+      { "vagonBaslikId": 13990704405, "vagonSiraNo": 2, "vagonTipId": 17002 },
+      { "vagonBaslikId": 26028148651, "vagonSiraNo": 3, "vagonTipId": 17002 },
+      { "vagonBaslikId": 27948724708, "vagonSiraNo": 4, "vagonTipId": 17002 },
+      { "vagonBaslikId": 13990639051, "vagonSiraNo": 5, "vagonTipId": 17002 },
+      { "vagonBaslikId": 13990704401, "vagonSiraNo": 6, "vagonTipId": 17002 },
+      { "vagonBaslikId": 13990639056, "vagonSiraNo": 7, "vagonTipId": 17002 },
+      { "vagonBaslikId": 13990704402, "vagonSiraNo": 8, "vagonTipId": 17002 },
+      { "vagonBaslikId": 13990704404, "vagonSiraNo": 1, "vagonTipId": 17001 }
+    ],
+    "eco_empty_seat_count": 1,
+    "buss_empty_seat_count": 0,
+    "empty_seat_count": 1,
+    "binisTarih": "Apr 5, 2024 04:30:00 PM",
+    "inisTarih": "Apr 5, 2024 08:19:00 PM",
+    "trenAdi": "ANKARA-\u0130STANBUL",
+    "seferAdi": "81023-05042024",
+    "seferId": 42561239936,
+    "binisIstasyonId": 234516259,
+    "inisIstasyonId": 234516104,
+    "empty_seats": [
+      {
+        "vagonYerlesimId": 27959420641,
+        "vagonBaslikId": 27948724708,
+        "nesneTanimId": 16801693057,
+        "satirNo": 3,
+        "sutunNo": 17,
+        "engelliUyarisi": false,
+        "tekKoltuk": false,
+        "koltukCinsiyetTipi": null,
+        "koltukGrupNo": null,
+        "koltukGrupTipi": null,
+        "koltukNo": "8b",
+        "ekHizmetId": null,
+        "durum": 0,
+        "hasPermi": false,
+        "permiYakinlikAck": null,
+        "vagonSiraNo": 4,
+        "vagonSutunNo": 0,
+        "vagonSatirNo": 0,
+        "seferBaslikId": 42561239936,
+        "vagonTipId": 17002
+      }
+    ]
+  }
+}
