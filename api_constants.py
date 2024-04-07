@@ -122,10 +122,14 @@ vb_enroll_control_req_body = {
     "yebspPaymentSuccessUrl": "https://bilet.tcdd.gov.tr/odeme-sonuc",
     "yebspPaymentFailureUrl": "https://bilet.tcdd.gov.tr/odeme",
     "biletRezOdemeBilgileri": {
-        "krediKartNO": "4912055091562978",                                        # TODO: Get this from the user
-        "krediKartSahibiAdSoyad": "izzet can karakuş",                            # TODO: Get this from the user
-        "ccv": "296",                                                             # TODO: Get this from the user
-        "sonKullanmaTarihi": 2901,                                                # TODO: Get this from the user
+        # TODO: Get this from the user
+        "krediKartNO": "4912055091562978",
+        # TODO: Get this from the user
+        "krediKartSahibiAdSoyad": "izzet can karakuş",
+        # TODO: Get this from the user
+        "ccv": "296",
+        # TODO: Get this from the user
+        "sonKullanmaTarihi": 2901,
         "toplamBiletTutari": None,  # 370
         "krediKartiTutari": None,  # 370
         "abonmanTutar": 0,

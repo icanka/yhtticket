@@ -281,7 +281,7 @@ def search_trips(from_station, to_station, from_date=None, to_date=None):
         to_date = dateparser.parse(to_date)
         sorted_trips = [trip for trip in sorted_trips if datetime.strptime(
             trip['binisTarih'], "%b %d, %Y %I:%M:%S %p") < to_date]
-        #print('*' * 40)
+        # print('*' * 40)
     for trip in sorted_trips:
         if trip['satisDurum'] == 1 and trip['vagonHaritasindanKoltukSecimi'] == 1:
             # 0 is economy class and 1 is business class
@@ -309,4 +309,3 @@ def search_trips(from_station, to_station, from_date=None, to_date=None):
             except IndexError:  # no business class, just ignore
                 pprint("No business class")
     return trips
-

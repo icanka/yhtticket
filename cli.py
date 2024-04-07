@@ -18,7 +18,6 @@ import payment
 # TODO Reserve seat for a specific seat and vagon number
 def reserve_seat(trip):
     """Reserve a seat for the given trip."""
-    pprint("Found empty seats")
     try:
         seat_lock_json_result, empty_seat = trip_search.select_first_empty_seat(
             trip)
@@ -27,8 +26,10 @@ def reserve_seat(trip):
             'seat_lock_json_result': seat_lock_json_result,
             'empty_seat': empty_seat,
         }
+
         pprint("Reserving seat...")
         pprint(f"empty seat: {empty_seat}")
+        pprint(f"jsonLockResult: {combined_data['seat_lock_json_result']}")
         return combined_data
     except Exception as e:
         pprint(e)
@@ -80,71 +81,77 @@ def search(
         str: The trip details if list_trips is True, otherwise None.
     """
     # print all args and options
-    #pprint(locals())
+    # pprint(locals())
 
     if seat_type:
         seat_type = seat_type.upper()
         seat_type = api_constants.VAGON_TYPES[seat_type]
 
     # create an empty list of trips
-    trips = []
-    if len(trips) == 0:
-        print("NO TRIPS FOUND, RETRYING...")
-    while len(trips) == 0:
+    while True:
         time.sleep(1)
-        trips = trip_search.search_trips(
-            from_station, to_station, from_date, to_date)
-        if datetime.now().second % 60 == 0:
+        trips = []
+        if len(trips) == 0:
             print("NO TRIPS FOUND, RETRYING...")
-        
-    for trip in trips:
-        trip = trip_search.get_empty_seats_trip(
-            trip, from_station, to_station, seat_type)
+        while len(trips) == 0:
+            time.sleep(1)
+            trips = trip_search.search_trips(
+                from_station, to_station, from_date, to_date)
+            if datetime.now().second % 60 == 0:
+                print("NO TRIPS FOUND, RETRYING...")
+
+        for trip in trips:
+            trip = trip_search.get_empty_seats_trip(
+                trip, from_station, to_station, seat_type)
 
         # print trip if empty seats are available
-        if trip['empty_seat_count'] > 0:
-            if reserve and not list_trips:
-                combined_data = reserve_seat(trip)
+            if trip['empty_seat_count'] > 0:
+                pprint(f"empty seats: {trip['empty_seat_count']}")
+                if reserve and not list_trips:
+                    combined_data = reserve_seat(trip)
                 # reserve_seat rezerves only for 10 minutes, so until the user exits the script check the seat indefinitely and keep it reserved
                 # wait for 8 minutes after first reservation
 
-                if combined_data['seat_lock_json_result']:
-                    while True:
-                        trip_str = combined_data['trip']['binisTarih']
-                        seat_str = combined_data['empty_seat']['koltukNo']
-                        vagon_str = combined_data['empty_seat']['vagonSiraNo']
-                        pprint(f"Seat {seat_str} in vagon {vagon_str} is reserved for trip {trip_str}")
-                        end_time = combined_data['seat_lock_json_result']['koltuklarimListesi'][0]['bitisZamani']
-                        # end_time = now + 10 sec
-                        
-                        #end_time = datetime.now() + timedelta(seconds=10)
-                        # stringfy the end_time to format "Apr 5, 2024 01:41:30 AM"
-                        #end_time = end_time.strftime("%b %d, %Y %I:%M:%S %p")
-                        
-                        pprint(f"Lock will end at {end_time}")
-                        # parse the bitisZamani to datetime and wait until that time -5 seconds to renew the reservation
-                        end_time = datetime.strptime(end_time, "%b %d, %Y %I:%M:%S %p")
-                        pprint(f"Waiting  until {end_time - timedelta(seconds=5)}")
-                        while datetime.now() - timedelta(seconds=3) < end_time:
-                            time.sleep(1)
-                        pprint("Renewing the reservation")
+                    if combined_data['seat_lock_json_result']:
                         while True:
-                            time.sleep(1)
-                            pprint("S1")
+                            trip_str = combined_data['trip']['binisTarih']
+                            seat_str = combined_data['empty_seat']['koltukNo']
+                            vagon_str = combined_data['empty_seat']['vagonSiraNo']
+                            pprint(
+                                f"Seat {seat_str} in vagon {vagon_str} is reserved for trip {trip_str}")
+                            end_time = combined_data['seat_lock_json_result']['koltuklarimListesi'][0]['bitisZamani']
+                        # end_time = now + 10 sec
+
+                        # end_time = datetime.now() + timedelta(seconds=10)
+                        # stringfy the end_time to format "Apr 5, 2024 01:41:30 AM"
+                        # end_time = end_time.strftime("%b %d, %Y %I:%M:%S %p")
+
+                            pprint(f"Lock will end at {end_time}")
+                        # parse the bitisZamani to datetime and wait until that time -5 seconds to renew the reservation
+                            end_time = datetime.strptime(
+                                end_time, "%b %d, %Y %I:%M:%S %p")
+                            pprint(
+                                f"Waiting  until {end_time - timedelta(seconds=5)}")
+                            while datetime.now() - timedelta(seconds=3) < end_time:
+                                time.sleep(1)
+                            pprint("Renewing the reservation")
+                            while True:
+                                time.sleep(1)
+                                pprint("S1")
                             # start reserving the seat
-                            combined_data = reserve_seat(trip) 
+                                combined_data = reserve_seat(trip)
                             # We reserved the seat
-                            if combined_data and combined_data['seat_lock_json_result']:
-                                break
-                        trip_str = combined_data['trip']['binisTarih']
-                        seat_str = combined_data['empty_seat']['koltukNo']
-                        vagon_str = combined_data['empty_seat']['vagonSiraNo']
-                        pprint(f"Reservation renewed, Vagon:{vagon_str} Seat:{seat_str} Trip:{trip_str}")
+                                if combined_data and combined_data['seat_lock_json_result']:
+                                    break
+                            trip_str = combined_data['trip']['binisTarih']
+                            seat_str = combined_data['empty_seat']['koltukNo']
+                            vagon_str = combined_data['empty_seat']['vagonSiraNo']
+                            pprint(
+                                f"Reservation renewed, Vagon:{vagon_str} Seat:{seat_str} Trip:{trip_str}")
 
-            break
-        else:
-            print('No empty seats available for this trip.')
-
+                break
+            else:
+                print('No empty seats available for this trip.')
     if list_trips:
         # pprint(len(trips))
         for trip in trips:
