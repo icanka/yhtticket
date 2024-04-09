@@ -36,10 +36,10 @@ class SeleniumPayment:
             self,
             *args,
             max_wait_time=120,
-            trip,
-            empty_seat,
-            seat_lck_json,
-            tariff,
+            trip=None,
+            empty_seat=None,
+            seat_lck_json=None,
+            tariff=None,
             **kwargs):
         """
         Initialize the Payment class.
@@ -80,7 +80,7 @@ class SeleniumPayment:
         self.trip = trip
         self.empty_seat = empty_seat
         self.seat_lck_json = seat_lck_json
-        self.tariff = api_constants.TARIFFS[tariff]
+        #self.tariff = api_constants.TARIFFS[tariff]
         self.vb_enroll_control_req = api_constants.vb_enroll_control_req_body.copy()
         self.is_payment_successful = None
         self.vb_enroll_control_response = None
@@ -89,6 +89,14 @@ class SeleniumPayment:
         # add kwargs as instance attributes
         for key, value in kwargs.items():
             setattr(self, key, value)
+
+        self.driver = webdriver.Chrome(options=self.options)
+
+    def open_site(self):
+        self.driver.get("https://bilet.tcdd.gov.tr")
+        time.sleep(10)
+        self.driver.save_screenshot("site.png")
+        self.driver.quit()
 
     def get_price(self, trip, empty_seat):
         """

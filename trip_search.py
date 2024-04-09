@@ -6,6 +6,17 @@ import requests
 import dateparser
 import api_constants
 from stations import get_station_list
+import logging
+logging.basicConfig(level=logging.INFO)
+
+
+class SeatLockedException(Exception):
+    """Exception raised when a seat is already locked."""
+
+    def __init__(self, seat):
+        self.seat = seat
+        self.message = f"Seat: {seat} is already locked"
+        super().__init__(self.message)
 
 
 def get_empty_vagon_seats(vagon_json):
@@ -97,6 +108,7 @@ def select_first_empty_seat(trip):
             data=json.dumps(s_check),
             timeout=10)
         s_response_json = json.loads(s_response.text)
+        logging.info(s_response_json)
         if not s_response_json['koltukLocked']:
             # Send the request to the endpoint
             response = requests.post(
@@ -105,11 +117,15 @@ def select_first_empty_seat(trip):
                 data=json.dumps(seat_select_req),
                 timeout=10)
             response_json = json.loads(response.text)
-            # return trip with selected seat if the response code is 200
-            return response_json, empty_seat
+            end_time = response_json['koltuklarimListesi'][0]['bitisZamani']
+            logging.info(response_json)
+            if response_json['cevapBilgileri']['cevapKodu'] != "000":
+                logging.error("Non zero response code: response_json: %s", response_json)
+                return None
         else:
-            pprint("Seat is already locked")
-            return None
+            raise SeatLockedException(empty_seat)
+        logging.info(end_time, empty_seat)
+        return end_time, empty_seat
 
 
 def get_detailed_vagon_info_empty_seats(vagon_map_req, vagons):
@@ -148,7 +164,7 @@ def get_empty_seats_trip(trip, from_station, to_station, seat_type=None):
 
     Returns:
         dict: The trip object with an additional 'empty_seats' field
-        containing the list of empty seats.
+        containing the list of empty seats or an empty list if no empty seats are found.
     """
     # clone trip object
     trip_with_seats = trip.copy()

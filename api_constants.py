@@ -1,6 +1,7 @@
 SEAT_CHECK_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/koltuk/klCheck"
 STATION_LIST_ENDPOINT = 'https://api-yebsp.tcddtasimacilik.gov.tr/istasyon/istasyonYukle'
 SELECT_EMPTY_SEAT_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/koltuk/klSec"
+RELEASE_SEAT_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/koltuk/klBirak"
 TRIP_SEARCH_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/sefer/seferSorgula"
 VAGON_SEARCH_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/vagon/vagonBosYerSorgula"
 VAGON_HARITA_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/vagon/vagonHaritasindanYerSecimi"

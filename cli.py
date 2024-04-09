@@ -7,38 +7,35 @@ from stations import get_station_list
 from pprint import pprint
 from datetime import datetime, timedelta
 import payment
+import logging
 
+logging.basicConfig(level=logging.INFO)
 
-# to_station = "İstanbul(Pendik)"
-# from_station = "Ankara Gar"
-# from_date = "15 december 12:00"
-# to_date = "15 december 16:00"
-# tariff = 'TSK'
 
 # TODO Reserve seat for a specific seat and vagon number
+
+
 def reserve_seat(trip):
     """Reserve a seat for the given trip."""
     try:
-        seat_lock_json_result, empty_seat = trip_search.select_first_empty_seat(
+        end_time, empty_seat = trip_search.select_first_empty_seat(
             trip)
-        combined_data = {
+        reserved_trip_data = {
+            'lock_end_time': datetime.strptime(
+                end_time, "%b %d, %Y %I:%M:%S %p"),
             'trip': trip,
-            'seat_lock_json_result': seat_lock_json_result,
-            'empty_seat': empty_seat,
+            'reserved_empty_seat': empty_seat,
         }
-
-        pprint("Reserving seat...")
-        pprint(f"empty seat: {empty_seat}")
-        pprint(f"jsonLockResult: {combined_data['seat_lock_json_result']}")
-        return combined_data
+        logging.info("empty seat: %s", empty_seat)
+        return reserved_trip_data
     except Exception as e:
-        pprint(e)
+        logging.error("Error while reserving the seat: %s", e)
         return None
 
 
 @click.group(help='This script is used to automate the ticket purchase process from TCDD website.')
 def cli():
-    pass
+    """This script is used to automate the ticket purchase process from TCDD website."""
 
 
 @cli.command()
@@ -48,8 +45,6 @@ def cli():
 @click.option('--from-date', '-f', default=None,
               help='The departure date.')
 @click.option('--to-date', '-t', default=None, help='The arrival date.')
-@click.option('--list-trips', '-l', is_flag=True,
-              help='List all the available trips.')
 @click.option('--reserve', '-r', is_flag=True,
               help='Reserve a seat for the first available trip.')
 @click.option('--seat-type',
@@ -64,7 +59,6 @@ def search(
         from_date,
         to_date,
         reserve,
-        list_trips,
         seat_type):
     """
     Search for trips based on the given parameters.
@@ -88,7 +82,7 @@ def search(
         seat_type = api_constants.VAGON_TYPES[seat_type]
 
     # create an empty list of trips
-    while True:
+    while reserve:
         time.sleep(1)
         trips = []
         if len(trips) == 0:
@@ -104,13 +98,13 @@ def search(
             trip = trip_search.get_empty_seats_trip(
                 trip, from_station, to_station, seat_type)
 
-        # print trip if empty seats are available
+            # print trip if empty seats are available
             if trip['empty_seat_count'] > 0:
                 pprint(f"empty seats: {trip['empty_seat_count']}")
-                if reserve and not list_trips:
+                if reserve:
                     combined_data = reserve_seat(trip)
-                # reserve_seat rezerves only for 10 minutes, so until the user exits the script check the seat indefinitely and keep it reserved
-                # wait for 8 minutes after first reservation
+                    # reserve_seat rezerves only for 10 minutes, so until the user exits the script check the seat indefinitely and keep it reserved
+                    # wait for 8 minutes after first reservation
 
                     if combined_data['seat_lock_json_result']:
                         while True:
@@ -120,14 +114,14 @@ def search(
                             pprint(
                                 f"Seat {seat_str} in vagon {vagon_str} is reserved for trip {trip_str}")
                             end_time = combined_data['seat_lock_json_result']['koltuklarimListesi'][0]['bitisZamani']
-                        # end_time = now + 10 sec
+                            # end_time = now + 10 sec
 
-                        # end_time = datetime.now() + timedelta(seconds=10)
-                        # stringfy the end_time to format "Apr 5, 2024 01:41:30 AM"
-                        # end_time = end_time.strftime("%b %d, %Y %I:%M:%S %p")
+                            # end_time = datetime.now() + timedelta(seconds=10)
+                            # stringfy the end_time to format "Apr 5, 2024 01:41:30 AM"
+                            # end_time = end_time.strftime("%b %d, %Y %I:%M:%S %p")
 
                             pprint(f"Lock will end at {end_time}")
-                        # parse the bitisZamani to datetime and wait until that time -5 seconds to renew the reservation
+                            # parse the bitisZamani to datetime and wait until that time -5 seconds to renew the reservation
                             end_time = datetime.strptime(
                                 end_time, "%b %d, %Y %I:%M:%S %p")
                             pprint(
@@ -152,8 +146,20 @@ def search(
                 break
             else:
                 print('No empty seats available for this trip.')
+
+
+def get_trips(from_station, to_station, from_date, to_date, list_trips):
+    """Get the trips based on the given parameters."""
+    trips = []
+    logging.info("Searching for trips...")
+    trips = trip_search.search_trips(
+        from_station, to_station, from_date, to_date)
+    # return none if no trips are found
+    if len(trips) == 0:
+        logging.info("No trips found.")
+        return None
+    # pprint(len(trips))
     if list_trips:
-        # pprint(len(trips))
         for trip in trips:
             dep_date_object = datetime.strptime(
                 trip['binisTarih'], "%b %d, %Y %I:%M:%S %p")
@@ -165,8 +171,29 @@ def search(
                             f"Arrival  : {arr_formatted_date}\n"
                             f"Economy  : {trip['eco_empty_seat_count']}\n"
                             f"Business : {trip['buss_empty_seat_count']}\n")
-            print(trip_details)
-            print('-' * 40)
+            logging.info(trip_details)
+            logging.info("--------------------------------------------------")
+    return trips
+
+
+def find_trip(from_date, to_date, from_station, to_station, seat_type=None):
+    """Find a trip based on the given parameters.
+    This function will keep searching for trips until it finds a trip with empty seats."""
+
+    trips_with_empty_seats = []
+    logging.info("Searching for trips with empty seat...")
+    while len(trips_with_empty_seats) == 0:
+        time.sleep(1)
+        if datetime.now().second % 60 == 0:
+            logging.info("No trips found, still searching...")
+        trips = get_trips(from_station, to_station, from_date, to_date, False)
+        logging.info("Total of %s trips found", len(trips))
+        for trip in trips:
+            trip = trip_search.get_empty_seats_trip(
+                trip, from_station, to_station, seat_type)
+            if trip['empty_seat_count'] > 0:
+                trips_with_empty_seats.append(trip)
+    return trips_with_empty_seats
 
 
 @cli.command()
@@ -176,6 +203,32 @@ def list_stations():
     for station in stations:
         print(station['station_name'])
 
+
+selenium_payment = payment.SeleniumPayment()
+selenium_payment.open_site()
+
+to_station = "İstanbul(Pendik)"
+from_station = "Ankara Gar"
+from_date = "25 april 12:00"
+to_date = "25 april 16:00"
+tripst = find_trip(from_date, to_date, from_station, to_station,
+                   seat_type=api_constants.VAGON_TYPES['ECO'])
+# pprint(tripst)
+pprint(len(tripst))
+
+if len(tripst) > 0:
+    trip = tripst[0]
+    reserved_seat_data = reserve_seat(trip)
+    # write the reserved seat data to a file
+    # with open(f'trip_{datetime.now().strftime("%Y%m%d%H%M")}.json', 'w', encoding='utf-8') as file:
+    #     file.write(json.dumps(reserved_seat_data))
+
+    trip_str = reserved_seat_data['trip']['binisTarih']
+    seat_str = reserved_seat_data['reserved_empty_seat']['koltukNo']
+    vagon_str = reserved_seat_data['reserved_empty_seat']['vagonSiraNo']
+    end_time = reserved_seat_data['lock_end_time']
+    pprint(
+        f"Seat {seat_str} in vagon {vagon_str} is reserved for trip {trip_str}")
 
 if __name__ == '__main__':
     cli()
