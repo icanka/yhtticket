@@ -86,6 +86,7 @@ trip_search_req_body = {
     }
 }
 
+
 price_req_body = {
     "anahatFiyatHesKriterWSDVO": {
         "islemTipi": 0,
@@ -142,7 +143,62 @@ vb_enroll_control_req_body = {
     "koltukLockList": []
 }
 
-
+ticket_reservation_req_body = {
+    "kanalKodu": "3",
+    "dil": 0,
+    "islemTipi": 0,
+    "biletRezYerBilgileri": [
+        {
+            "biletWSDVO": {
+                "seferBaslikId": None,
+                "aktarmaSiraNo": "0",
+                "binisIstasyonId": None,
+                "inisIstasyonId": None,
+                "hareketTarihi": None,
+                "varisTarihi": None,
+                "biletTipi": 1,
+                "maliyeNo": 0,
+                "grupMu": False,
+                "cezali": False,
+                "farkBileti": False,
+                "bagajBileti": False,
+                "hesCode": "",
+                "yolcuSiraNo": 1,
+                "tarifeId": None,
+                "tckn": None,
+                "ad": None,
+                "soyad": None,
+                "dogumTar": None,
+                "iletisimEposta": None,
+                "iletisimCepTel": None,
+                "cinsiyet": None,
+                "vagonSiraNo": None,
+                "koltukNo": None,
+                "ucret": None,
+                "statu": 0,
+                "seyahatTur": 2,
+                "trenTurTktId": 49549,  # may not be necessary
+                "vagonTipi": 0,
+                "koltukBazUcret": None, # may not be necessary
+                "indirimsizUcret": None, # may not be necessary
+                "minimumTasimaUcretiFarki": 0
+            }
+        }
+    ],
+    "biletRezOdemeBilgileri": {
+        "vposReference": None,
+        "krediKartSahibiAdSoyad": None,
+        "krediKartNO": None,
+        "toplamBiletTutari": None,
+        "krediKartiTutari": None,
+        "abonmanTutar": 0,
+        "acikBiletTutar": 0,
+        "islemYeri": "7",
+        "milPuan": 0,
+        "permiDetayList": []
+    },
+    "koltukLockIdList": []
+}
 # vb_enroll_control_req_body = {
 #     "kanalKodu": 3,
 #     "dil": 0,

@@ -44,12 +44,14 @@ def get_empty_vagon_seats(vagon_json):
             merged_list.append(merged_dict)
 
     # Take only the seats which has the key for nesneTanimId in empty_seat_ids
+    for item in merged_list:
+        pprint(f"{item['nesneTanimId']} -- {item['durum']}")
     merged_list = [d for d in merged_list if d.get(
         'nesneTanimId') in api_constants.SEATS_IDS]
     empty_seats = [d for d in merged_list if d.get('durum') == 0]
     # yield items from empty_seats
     for empty_seat in empty_seats:
-        # pprint(empty_seat)
+        pprint(empty_seat)
         yield empty_seat
 
 # return a list of dictionaries
@@ -88,11 +90,15 @@ def select_first_empty_seat(trip):
         dict: The response JSON containing the selected seat information
         if the response code is 200.
     """
-
+    pprint("selecting the first empty seat")
     # Select the first empty seat
     seat_select_req = api_constants.koltuk_sec_req_body.copy()
+    pprint('test')
     s_check = api_constants.seat_check.copy()
+    pprint('test2')
+    pprint(trip)
     if trip['empty_seats']:
+        pprint('there are empty trips')
         empty_seat = trip['empty_seats'][0]
         seat_select_req['seferId'] = trip['seferId']
         seat_select_req['vagonSiraNo'] = empty_seat['vagonSiraNo']
@@ -109,7 +115,9 @@ def select_first_empty_seat(trip):
             timeout=10)
         s_response_json = json.loads(s_response.text)
         logging.info(s_response_json)
+        pprint(s_response_json)
         if not s_response_json['koltukLocked']:
+            pprint("Seat is not locked")
             # Send the request to the endpoint
             response = requests.post(
                 api_constants.SELECT_EMPTY_SEAT_ENDPOINT,
@@ -117,6 +125,7 @@ def select_first_empty_seat(trip):
                 data=json.dumps(seat_select_req),
                 timeout=10)
             response_json = json.loads(response.text)
+            pprint(response_json)
             end_time = response_json['koltuklarimListesi'][0]['bitisZamani']
             logging.info(response_json)
             if response_json['cevapBilgileri']['cevapKodu'] != "000":
@@ -125,7 +134,7 @@ def select_first_empty_seat(trip):
         else:
             raise SeatLockedException(empty_seat)
         logging.info(end_time, empty_seat)
-        return end_time, empty_seat
+        return end_time, empty_seat, response_json
 
 
 def get_detailed_vagon_info_empty_seats(vagon_map_req, vagons):

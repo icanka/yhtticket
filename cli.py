@@ -9,8 +9,6 @@ from datetime import datetime, timedelta
 import payment
 import logging
 
-logging.basicConfig(level=logging.INFO)
-
 
 # TODO Reserve seat for a specific seat and vagon number
 
@@ -18,15 +16,17 @@ logging.basicConfig(level=logging.INFO)
 def reserve_seat(trip):
     """Reserve a seat for the given trip."""
     try:
-        end_time, empty_seat = trip_search.select_first_empty_seat(
+        pprint("Reserving the seat")
+        end_time, reserve_seat, seat_lock_response = trip_search.select_first_empty_seat(
             trip)
         reserved_trip_data = {
+            'seat_lock_response': seat_lock_response,
             'lock_end_time': datetime.strptime(
                 end_time, "%b %d, %Y %I:%M:%S %p"),
             'trip': trip,
-            'reserved_empty_seat': empty_seat,
+            'reserved_seat': reserve_seat,
         }
-        logging.info("empty seat: %s", empty_seat)
+        logging.info("empty seat: %s", reserve_seat)
         return reserved_trip_data
     except Exception as e:
         logging.error("Error while reserving the seat: %s", e)
@@ -193,6 +193,7 @@ def find_trip(from_date, to_date, from_station, to_station, seat_type=None):
                 trip, from_station, to_station, seat_type)
             if trip['empty_seat_count'] > 0:
                 trips_with_empty_seats.append(trip)
+                pprint(f"empty seats: {trip['empty_seat_count']}")
     return trips_with_empty_seats
 
 
@@ -204,31 +205,33 @@ def list_stations():
         print(station['station_name'])
 
 
-selenium_payment = payment.SeleniumPayment()
-selenium_payment.open_site()
+# stations = get_station_list()
+# # get the station view name for the given station name
+# #
 
 to_station = "İstanbul(Pendik)"
 from_station = "Ankara Gar"
 from_date = "25 april 12:00"
 to_date = "25 april 16:00"
-tripst = find_trip(from_date, to_date, from_station, to_station,
-                   seat_type=api_constants.VAGON_TYPES['ECO'])
-# pprint(tripst)
-pprint(len(tripst))
 
-if len(tripst) > 0:
-    trip = tripst[0]
-    reserved_seat_data = reserve_seat(trip)
-    # write the reserved seat data to a file
-    # with open(f'trip_{datetime.now().strftime("%Y%m%d%H%M")}.json', 'w', encoding='utf-8') as file:
-    #     file.write(json.dumps(reserved_seat_data))
+# to_station_view_name = next(
+#     (station['station_view_name'] for station in stations if station['station_name'] == to_station), None)
+# from_station_view_name = next(
+#     (station['station_view_name'] for station in stations if station['station_name'] == from_station), None)
 
-    trip_str = reserved_seat_data['trip']['binisTarih']
-    seat_str = reserved_seat_data['reserved_empty_seat']['koltukNo']
-    vagon_str = reserved_seat_data['reserved_empty_seat']['vagonSiraNo']
-    end_time = reserved_seat_data['lock_end_time']
-    pprint(
-        f"Seat {seat_str} in vagon {vagon_str} is reserved for trip {trip_str}")
 
-if __name__ == '__main__':
-    cli()
+# selenium_payment = payment.SeleniumPayment()
+# for _ in range(100):
+#     selenium_payment.open_site()
+#     selenium_payment.fill_in_departure_arrival_input(
+#         "Ankara Gar", "İstanbul(Pendik)")
+
+# exit(0)
+
+
+# ready selenium
+# selenium_payment = payment.SeleniumPayment()
+
+
+# if __name__ == '__main__':
+#     cli()

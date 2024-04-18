@@ -12,9 +12,50 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 import api_constants
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from stations import get_station_list
+import logging
 
 
-class SeleniumPayment:
+# create a class which will be inherited from the SeleniumPayment class
+class MainSeleniumPayment:
+    def __init__(self, *args) -> None:
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        self.logger.addHandler(handler)
+        self.options = Options()
+        self.options.add_argument("--disable-notifications")
+        self.options.add_argument("--disable-geolocation")
+        # self.options.add_argument("--disable-application-cache")
+        # self.options.add_argument("--disable-cache")
+        # self.options.add_argument("--headless")
+        self.options.add_argument("--disable-infobars")
+        self.options.add_argument("--mute-audio")
+        # self.options.add_argument("--disable-gpu")
+        # self.options.add_argument("--no-sandbox")
+        # self.options.add_argument("--disable-dev-shm-usage")
+        self.options.add_argument("--disable-extensions")
+        # self.options.add_argument("--disable-software-rasterizer")
+        # self.options.add_argument("--disable-setuid-sandbox")
+        # self.options.add_argument("--disable-sandbox")
+        # self.options.add_argument("--single-process")
+        # self.options.add_argument("--ignore-certificate-errors")
+        # self.options.add_argument("--ignore-ssl-errors")
+        self.options.add_argument("--disable-logging")
+        self.options.page_load_strategy = 'eager'
+        # add args values to options
+        for arg in args:
+            self.options.add_argument(arg)
+        self.stations = get_station_list()
+        self.driver = webdriver.Chrome(options=self.options)
+        self.driver.implicitly_wait(10)
+
+
+#
+class SeleniumPayment(MainSeleniumPayment):
     """
     A class for handling Selenium-based payment operations.
 
@@ -35,10 +76,9 @@ class SeleniumPayment:
     def __init__(
             self,
             *args,
-            max_wait_time=120,
             trip=None,
-            empty_seat=None,
-            seat_lck_json=None,
+            reserrved_seat=None,
+            seat_lock_response=None,
             tariff=None,
             **kwargs):
         """
@@ -53,51 +93,46 @@ class SeleniumPayment:
             tariff: Tariff information.
             **kwargs: Variable keyword arguments.
         """
-        self.options = Options()
-        # self.options.add_argument("--disable-notifications")
-        # self.options.add_argument("--disable-geolocation")
-        # self.options.add_argument("--disable-application-cache")
-        # self.options.add_argument("--disable-cache")
-        # self.options.add_argument("--headless")
-        self.options.add_argument("--disable-infobars")
-        self.options.add_argument("--mute-audio")
-        # self.options.add_argument("--disable-gpu")
-        # self.options.add_argument("--no-sandbox")
-        # self.options.add_argument("--disable-dev-shm-usage")
-        # self.options.add_argument("--disable-extensions")
-        # self.options.add_argument("--disable-software-rasterizer")
-        # self.options.add_argument("--disable-setuid-sandbox")
-        # self.options.add_argument("--disable-sandbox")
-        # self.options.add_argument("--single-process")
-        # self.options.add_argument("--ignore-certificate-errors")
-        # self.options.add_argument("--ignore-ssl-errors")
-        # self.options.add_argument("--disable-logging")
-        # add args values to options
-        for arg in args:
-            self.options.add_argument(arg)
+        super().__init__(*args)  # Call the __init__ method of the base class
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        self.logger.addHandler(handler)
 
-        self.max_wait_time = max_wait_time
+        self.price = None
         self.trip = trip
-        self.empty_seat = empty_seat
-        self.seat_lck_json = seat_lck_json
-        #self.tariff = api_constants.TARIFFS[tariff]
+        self.reserved_seat = reserrved_seat
+        self.seat_lock_response = seat_lock_response
+
+        self.tariff = api_constants.TARIFFS[tariff.upper(
+        )] if tariff else api_constants.TARIFFS['TAM']
+
         self.vb_enroll_control_req = api_constants.vb_enroll_control_req_body.copy()
+        self.ticket_reservation_req = api_constants.ticket_reservation_req_body.copy()
         self.is_payment_successful = None
         self.vb_enroll_control_response = None
         self.html_response = None
 
-        # add kwargs as instance attributes
+        # add kwargs as instance attributes, you can override the default values
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-        self.driver = webdriver.Chrome(options=self.options)
-
-    def open_site(self):
-        self.driver.get("https://bilet.tcdd.gov.tr")
-        time.sleep(10)
-        self.driver.save_screenshot("site.png")
-        self.driver.quit()
-
+    def set_ticket_res_values(self):
+        self.ticket_reservation_req['biletRezYerBilgileri'][0]['biletWSDVO'].update({
+            'seferBaslikId': self.trip['seferId'],
+            'binisIstasyonId': self.trip['binisIstasyonId'],
+            'inisIstasyonId': self.trip['inisIstasyonId'],
+            'hareketTarihi': self.trip['binisTarih'],
+            'varisTarihi': self.trip['varisTarih'],
+            'tarifeId': self.tariff,
+            
+            'vagonSiraNo': self.reserved_seat['vagonSiraNo'],
+            'koltukNo': self.reserved_seat['koltukNo'],
+            'ucret': self.price,
+            
+        })
     def get_price(self, trip, empty_seat):
         """
         Get the price of a trip for a given empty seat.
@@ -120,9 +155,11 @@ class SeleniumPayment:
             'koltukNo': empty_seat['koltukNo'],
             'binisIstasyonId': trip['binisIstasyonId'],
             'inisIstasyonId': trip['inisIstasyonId'],
+            # This should '0' maybe, vuejs code sends '0' always
             'vagonTipi': empty_seat['vagonTipId']
         })
-
+        pprint(seat_info)
+        pprint(req_body)
         # send request
         response = requests.post(
             api_constants.PRICE_ENDPOINT,
@@ -143,15 +180,15 @@ class SeleniumPayment:
         Returns:
             None
         """
-        price = self.get_price(self.trip, self.empty_seat)
-        print(f"Price: {price}")
+        self.price = self.get_price(self.trip, self.reserved_seat)
+        print(f"Price: {self.price}")
 
         self.vb_enroll_control_req['biletRezOdemeBilgileri'].update({
-            'toplamBiletTutari': price,
-            'krediKartiTutari': price
+            'toplamBiletTutari': self.price,
+            'krediKartiTutari':self. price
         })
 
-        for seat in self.seat_lck_json['koltuklarimListesi']:
+        for seat in self.seat_lock_response['koltuklarimListesi']:
             self.vb_enroll_control_req['koltukLockList'].append(
                 seat['koltukLockId'])
 
@@ -172,7 +209,6 @@ class SeleniumPayment:
             temp_file.write(response.text.encode('utf-8'))
             temp_file_path = temp_file.name
             self.vb_enroll_control_response = temp_file_path
-
         #  Payment request
         session = requests.Session()
 
@@ -180,12 +216,17 @@ class SeleniumPayment:
         pareq = response_json['paymentAuthRequest']['pareq']
         md = response_json['paymentAuthRequest']['md']
         term_url = response_json['paymentAuthRequest']['termUrl']
-
+        enroll_reference = response_json['enrollReference']
+        pprint(f"Enroll reference: {enroll_reference}")
         form_data = {
             'PaReq': pareq,
             'MD': md,
             'TermUrl': term_url
         }
+
+        # print form_data to file but not tempfile
+        with open("form_data.json", "w") as f:
+            f.write(json.dumps(form_data))
 
         response = session.post(acs_url, data=form_data)
 
@@ -233,7 +274,7 @@ class SeleniumPayment:
 
         driver.get(f"file:///{temp_file_path}")
         driver.implicitly_wait(10)
-        time.sleep(5)
+        time.sleep(5000)
         driver.save_screenshot("payment_page.png")
 
         # Find the OTP input field and submit button
@@ -252,7 +293,7 @@ class SeleniumPayment:
 
         try:
             # Wait for the redirection from payment to the main page
-            WebDriverWait(driver, self.max_wait_time).until(
+            WebDriverWait(driver, 30).until(
                 EC.url_contains("https://bilet.tcdd.gov.tr/"))
             current_url = driver.current_url
             if "odeme-sonuc" in current_url:
@@ -266,8 +307,166 @@ class SeleniumPayment:
                 self.is_payment_successful = False
                 driver.save_screenshot("payment_failed.png")
                 # wait until element with some id is found
-                WebDriverWait(driver, self.max_wait_time).until(
+                WebDriverWait(driver, 30).until(
                     EC.presence_of_element_located(("id", "some_id")))
 
         except TimeoutException:
             print("Loading took too much time!")
+
+
+######################################################### INTERFACE AUTOMATION ####################################
+    # def send_keys(self, element, string, speed=0.000001):
+    #     """Send keys to the input field with a delay between each character.
+    #     Args:
+    #         string (str): The string to be sent.
+    #         speed (float): The delay between each character (default is 0.1)."""
+    #     for char in string:
+    #         element.send_keys(char)
+    #         time.sleep(speed)
+
+    # def open_site(self):
+    #     """Open the TCDD website using Selenium WebDriver."""
+    #     self.driver.get("https://bilet.tcdd.gov.tr")
+    #     # time.sleep(10)
+    #     # self.driver.save_screenshot("site.png")
+    #     # self.driver.quit()
+
+    # def select_date_from_datepicker(self, date):
+    #     """ Select a date from the date picker. Pfor
+    #     Args:
+    #         date (datetime): The date to be selected."""
+    #     # date picker
+    #     str_date = date.strftime("%Y-%m-%d")
+    #     self.logger.debug("Selecting date: %s", str_date)
+    #     daterangepicker_element = self.driver.find_element(
+    #         By.XPATH, "//div[contains(@class, 'daterangepicker')]")
+    #     date_picker = self.driver.find_element(
+    #         By.CSS_SELECTOR, "div[class='datePickerInput departureDate']")
+    #     # log the found elements
+    #     self.logger.debug("Date picker input element: %s", date_picker)
+    #     self.logger.debug("Date picker element: %s", daterangepicker_element)
+
+    #     date_picker.click()
+    #     self.logger.debug("Clicked on the date picker input element.")
+    #     # wait for the date picker to be displayed
+    #     self.logger.debug("Waiting for the date picker to be displayed.")
+    #     wait = WebDriverWait(self.driver, timeout=3)
+    #     wait.until(lambda d: daterangepicker_element.is_displayed())
+
+    #     self.logger.debug(
+    #         "Finding element with data-date attribute equal to %s", str_date)
+    #     date_element = self.driver.find_element(
+    #         By.CSS_SELECTOR, f"td[data-date='{str_date}']:not(.off)")
+    #     self.logger.debug("Found date element: %s", date_element)
+    #     self.logger.debug("Clicking on the date element.")
+    #     date_element.click()
+    #     wait.until(lambda d: not daterangepicker_element.is_displayed())
+    #     self.logger.debug("Date picker is closed. Finding search button.")
+
+    #     search_button = self.driver.find_element(
+    #         By.CSS_SELECTOR, "button.btnSeferSearch")
+    #     self.logger.debug("Clicking search button %s", search_button.tag_name)
+
+    #     # date format as: 2024-04-12
+    #     # self.driver.save_screenshot("date_picker.png")
+    #     # self.driver.quit()
+
+    # def fill_in_departure_arrival_input(self, departure_station, arrival_station, retries=3):
+    #     """Fill in the departure and arrival stations.
+    #     Args:
+    #         departure_station (str): The departure station.
+    #         arrival_station (str): The arrival station."""
+
+    #     # get the station view names as they are used in the input fields
+    #     for attempt in range(retries):
+    #         try:
+    #             departure_station_view_name = next(
+    #                 (station['station_view_name'] for station in self.stations if station['station_name'] == departure_station), None)
+    #             arrival_station_view_name = next(
+    #                 (station['station_view_name'] for station in self.stations if station['station_name'] == arrival_station), None)
+
+    #             departure_input = self.driver.find_element(
+    #                 By.CSS_SELECTOR, f"input[name='Tren kalkış']")
+    #             self.logger.debug("Clearing the departure input.")
+    #             departure_input.click()
+    #             # select all with ctrl+a and  delete with delete key
+    #             departure_input.send_keys(Keys.CONTROL, 'a')
+    #             departure_input.send_keys(Keys.DELETE)
+    #             self.logger.debug("Clicked on the departure input.")
+
+    #             self.send_keys(departure_input, departure_station_view_name)
+    #             departure_input.send_keys(" denemete")
+
+    #             self.logger.debug("Sent keys to the departure input.")
+    #             # wait for the allStations element to be displayed
+    #             # select element with class 'allStations' which has a button with id 'gidis' for gidis dropdown closest to the input element
+    #             self.logger.debug(
+    #                 "Waiting for the allStations element to be found.")
+    #             all_stations = self.driver.find_element(
+    #                 By.XPATH, "//div[@class='allStations']//button[contains(@id, 'gidis')]")
+
+    #             self.logger.debug(
+    #                 "Waiting for the allStations element to be displayed.")
+    #             wait = WebDriverWait(self.driver, timeout=3)
+    #             wait.until(lambda d: all_stations.is_displayed())
+    #             self.logger.debug("AllStations element is displayed.")
+    #             # click the first station
+    #             self.logger.debug("Finding the first station element.")
+
+    #             departure_station_dropdown_first = WebDriverWait(self.driver, 3).until(
+    #                 EC.presence_of_element_located((By.XPATH, f"//div[@class='allStations']//*[contains(text(), '{departure_station_view_name}')]")
+    #                                                ))
+    #             html = departure_station_dropdown_first.get_property(
+    #                 "innerHTML")
+    #             self.logger.debug("dropdown first element: %s, tag: %s",
+    #                               html, departure_station_dropdown_first.tag_name)
+    #             wait.until(
+    #                 lambda d: departure_station_dropdown_first.is_displayed())
+    #             departure_station_dropdown_first.click()
+
+    #             arrival_input = self.driver.find_element(
+    #                 By.CSS_SELECTOR, f"input[name='Tren varış']")
+    #             arrival_input.clear()
+    #             arrival_input.click()
+    #             arrival_input.send_keys(Keys.CONTROL, 'a')
+    #             arrival_input.send_keys(Keys.DELETE)
+
+    #             all_stations = self.driver.find_element(
+    #                 By.XPATH, "//div[@class='allStations']//button[contains(@id, 'donus')]")
+    #             wait.until(lambda d: all_stations.is_displayed())
+    #             arrival_input.send_keys(arrival_station_view_name)
+    #             # wait until you found the first station element, and assign it to arrival_station_dropdown_first
+    #             arrival_station_dropdown_first = WebDriverWait(self.driver, 10).until(
+    #                 lambda d: d.find_element(
+    #                     By.XPATH, f"//div[@class='allStations']//*[contains(text(), '{arrival_station_view_name}')]")
+    #             )
+
+    #             html = arrival_station_dropdown_first.get_property("innerHTML")
+    #             self.logger.debug("dropdown first element: %s, tag: %s",
+    #                               html, arrival_station_dropdown_first.tag_name)
+
+    #             wait.until(
+    #                 lambda d: arrival_station_dropdown_first.is_displayed())
+    #             arrival_station_dropdown_first.click()
+    #             break
+    #         except Exception as e:
+    #             self.logger.error(
+    #                 "Failed to fill in the departure and arrival stations: %s", str(e))
+    #             if attempt < retries - 1:
+    #                 self.logger.error(
+    #                     "Retrying to fill in the departure and arrival stations.")
+    #                 continue
+    #             else:
+    #                 self.logger.error(
+    #                     "Failed to fill in the departure and arrival stations after %s retries.", retries)
+    #                 raise
+
+    # def click_search_button(self):
+    #     """Click on the search button."""
+    #     button = self.driver.find_element(
+    #         By.XPATH, "//button[contains(contains(text(), 'Sefer Ara')]")
+    #     button.click()
+
+        # selenium.common.exceptions.StaleElementReferenceException
+        # wait.until(lambda d: not all_stations.is_displayed())
+###################################################### INTERFACE AUTOMATION ############################################################

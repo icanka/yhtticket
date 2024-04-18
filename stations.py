@@ -37,6 +37,7 @@ def get_station_list():
                 station['station_name'] = find_value(item, 'istasyonAdi')
                 station['station_code'] = find_value(item, 'istasyonKodu')
                 station['station_id'] = find_value(item, 'istasyonId')
+                station['station_view_name'] = find_value(item, 'stationViewName')
                 station['is_available'] = find_value(item, 'istasyonDurumu')
                 station['is_purchasable'] = find_value(
                     item, 'satisSorgudaGelsin')

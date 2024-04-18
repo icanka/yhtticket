@@ -1,0 +1,16 @@
+ 2780  git status
+ 2781  VAGRANT_DISABLE_STRICT_DEPENDENCY_ENFORCEMENT=1 vagrant plugin install vagrant-libvirt
+ 2782  vim .ssh/known_hosts
+ 2783  ssh vagrant@192.168.1.93 -p 2721
+ 2784  ssh vagrant@192.168.1.93 -p 2710
+ 2785  ssh vagrant@192.168.1.93
+ 2786  route -n
+ 2787  ssh izzetcan@192.168.1.93
+ 2788  ssh vagrant@192.168.1.93 -p 2711
+ 2790  poweroff
+ 2791  trizen -Syyu
+ 2792  ifconfig
+ 2793  source /home/raflman/Documents/git-repos/selenium-bilet2/venv/bin/activate
+ 2794  clear
+ 2795  history
+ 2796  history -a
