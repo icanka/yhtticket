@@ -8,7 +8,7 @@ VAGON_HARITA_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/vagon/vagonHar
 VB_ENROLL_CONTROL_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/odeme/vbEnrollControl"
 PRICE_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/fiyatlandirma/anahatFiyatSimple"
 
-SEATS_IDS = [13371893752, 13371893753, 16801693056, 16801693057]
+DISABLED_SEAT_IDS = [13485128303, 13029825502, 13485128302, 13371669503, 15196333600, 27948604352]
 TARIFFS = {'TSK': 11750067704, 'TAM': 1}
 VAGON_TYPES = {'ECO': 17002, 'BUSS': 17001}
 REQUEST_HEADER = {

@@ -8,7 +8,7 @@ from payment import SeleniumPayment
 
 from_station = 'Ankara Gar'
 to_station = 'İstanbul(Pendik)'
-from_date = '22 April 15:30'
+from_date = '22 April 17:00'
 to_date = '22 April 17:30'
 
 

@@ -209,11 +209,6 @@ def list_stations():
 # # get the station view name for the given station name
 # #
 
-to_station = "İstanbul(Pendik)"
-from_station = "Ankara Gar"
-from_date = "25 april 12:00"
-to_date = "25 april 16:00"
-
 # to_station_view_name = next(
 #     (station['station_view_name'] for station in stations if station['station_name'] == to_station), None)
 # from_station_view_name = next(

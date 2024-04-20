@@ -30,12 +30,24 @@ def get_empty_vagon_seats(vagon_json):
         dict: A dictionary representing an empty seat.
 
     """
+    try:
+        # pprint (vagon_json['vagonHaritasiIcerikDVO']['koltukDurumlari'][0]['vagonSiraNo'])
+        pass
+    except:
+        # print the first elemeng of the list
+        # pprint(vagon_json['vagonHaritasiIcerikDVO']['koltukDurumlari'])
+        pass
+    # vagon json to file
+    with open('vagon_json.json', 'w') as f:
+        json.dump(vagon_json, f)
+
     # business and economy class seat ids
     vagon_yerlesim = vagon_json['vagonHaritasiIcerikDVO']['vagonYerlesim']
     koltuk_durumlari = vagon_json['vagonHaritasiIcerikDVO']['koltukDurumlari']
     # efficient way to merge two lists of dictionaries based on a common key
     index_dict = {d['koltukNo']: d for d in koltuk_durumlari
                   if 'koltukNo' in d}
+    # pprint(index_dict)
     merged_list = []
     for seat in vagon_yerlesim:
         seat_no = seat.get('koltukNo')
@@ -43,12 +55,20 @@ def get_empty_vagon_seats(vagon_json):
             merged_dict = {**seat, **index_dict.get(seat_no, {})}
             merged_list.append(merged_dict)
 
+    # write merged list to file
+    with open('merged_list.json', 'w') as f:
+        json.dump(merged_list, f)
     # Take only the seats which has the key for nesneTanimId in empty_seat_ids
-    for item in merged_list:
-        pprint(f"{item['nesneTanimId']} -- {item['durum']}")
     merged_list = [d for d in merged_list if d.get(
-        'nesneTanimId') in api_constants.SEATS_IDS]
+        'nesneTanimId') not in api_constants.DISABLED_SEAT_IDS]
+
+    for item in merged_list:
+        if item['durum'] == 0:
+            print(item['koltukNo'])
+        if item['koltukNo'] == '11b':
+            print(item)
     empty_seats = [d for d in merged_list if d.get('durum') == 0]
+    # pprint(empty_seats)
     # yield items from empty_seats
     for empty_seat in empty_seats:
         pprint(empty_seat)
@@ -90,13 +110,13 @@ def select_first_empty_seat(trip):
         dict: The response JSON containing the selected seat information
         if the response code is 200.
     """
-    pprint("selecting the first empty seat")
+    # pprint("selecting the first empty seat")
     # Select the first empty seat
     seat_select_req = api_constants.koltuk_sec_req_body.copy()
-    pprint('test')
+    # pprint('test')
     s_check = api_constants.seat_check.copy()
-    pprint('test2')
-    pprint(trip)
+    # pprint('test2')
+    # pprint(trip)
     if trip['empty_seats']:
         pprint('there are empty trips')
         empty_seat = trip['empty_seats'][0]
@@ -129,7 +149,8 @@ def select_first_empty_seat(trip):
             end_time = response_json['koltuklarimListesi'][0]['bitisZamani']
             logging.info(response_json)
             if response_json['cevapBilgileri']['cevapKodu'] != "000":
-                logging.error("Non zero response code: response_json: %s", response_json)
+                logging.error(
+                    "Non zero response code: response_json: %s", response_json)
                 return None
         else:
             raise SeatLockedException(empty_seat)
@@ -161,6 +182,7 @@ def get_detailed_vagon_info_empty_seats(vagon_map_req, vagons):
             if vagon['vagonSiraNo'] == vagon_map_req['vagonSiraNo'])
         empty_seats.append(empty_seat)
 
+    pprint(empty_seats)
     return empty_seats
 
 
@@ -191,22 +213,20 @@ def get_empty_seats_trip(trip, from_station, to_station, seat_type=None):
         data=json.dumps(vagon_req),
         timeout=10)
     response_json = json.loads(response.text)
+    # write the response to a file
 
     trip_with_seats['empty_seats'] = list()
     for vagon in response_json['vagonBosYerList']:
-
         vagon_map_req['vagonSiraNo'] = vagon['vagonSiraNo']
         vagon_map_req['seferBaslikId'] = vagon_req['seferBaslikId']
         vagon_map_req['binisIst'] = from_station
         vagon_map_req['InisIst'] = to_station
-
-        if seat_type:
+        if seat_type is not None:
             vagon_type = next(
                 vagon_['vagonTipId'] for vagon_ in trip['vagons']
                 if vagon_['vagonSiraNo'] == vagon['vagonSiraNo'])
             if seat_type != vagon_type:
                 continue
-
         empty_seats = get_detailed_vagon_info_empty_seats(
             vagon_map_req, trip['vagons'])
         trip_with_seats['empty_seats'].extend(empty_seats)
