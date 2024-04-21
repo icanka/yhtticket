@@ -126,14 +126,12 @@ class TripSearchApi:
                 response_json = json.loads(response.text)
                 self.logger.debug(response_json)
                 end_time = response_json['koltuklarimListesi'][0]['bitisZamani']
-                self.logger.info(response_json)
                 if response_json['cevapBilgileri']['cevapKodu'] != "000":
                     self.logger.error(
                         "Non zero response code: response_json: %s", response_json)
                     return None
             else:
                 raise SeatLockedException(empty_seat)
-            self.logger.info(end_time, empty_seat)
             return end_time, empty_seat, response_json
 
     def get_detailed_vagon_info_empty_seats(self, vagon_map_req, vagons):
@@ -194,7 +192,6 @@ class TripSearchApi:
             data=json.dumps(vagon_req),
             timeout=10)
         response_json = json.loads(response.text)
-        # write the response to a file
         self.logger.debug(response_json)
         trip_with_seats['empty_seats'] = list()
         for vagon in response_json['vagonBosYerList']:
@@ -212,7 +209,8 @@ class TripSearchApi:
                 vagon_map_req, trip['vagons'])
             self.logger.debug(empty_seats)
             trip_with_seats['empty_seats'].extend(empty_seats)
-
+        self.logger.info("Length of empty seats: %s",
+                         len(trip_with_seats['empty_seats']))
         return trip_with_seats
 
     def check_stations(self, stations, from_station, to_station):
@@ -231,9 +229,11 @@ class TripSearchApi:
         None
         """
         if from_station not in [station['station_name'] for station in stations]:
+            self.logger.error("%s is not a valid station", from_station)
             raise ValueError(f"{from_station} is not a valid station")
 
         if to_station not in [station['station_name'] for station in stations]:
+            self.logger.error("%s is not a valid station", to_station)
             raise ValueError(f"{to_station} is not a valid station")
 
     def search_trips(self, from_station, to_station, from_date=None, to_date=None):

@@ -93,7 +93,6 @@ class Trip:
                                  self.from_station, self.to_station, self.from_date,
                                  self.to_date, seat_type_id)
             trips = self.get_trips()
-            self.logger.info("Total of %s trips found", len(trips))
             for trip in trips:
                 trip = self.api.get_empty_seats_trip(
                     trip, self.from_station, self.to_station, seat_type_id)

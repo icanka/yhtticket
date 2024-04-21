@@ -25,7 +25,7 @@ class MainSeleniumPayment:
         self.options.add_argument("--disable-geolocation")
         # self.options.add_argument("--disable-application-cache")
         # self.options.add_argument("--disable-cache")
-        self.options.add_argument("--headless")
+        # self.options.add_argument("--headless")
         self.options.add_argument("--disable-infobars")
         self.options.add_argument("--mute-audio")
         # self.options.add_argument("--disable-gpu")
@@ -70,8 +70,7 @@ class SeleniumPayment(MainSeleniumPayment):
             self,
             *args,
             trip=None,
-            reserrved_seat=None,
-            seat_lock_response=None,
+            reserved_seat_data=None,
             tariff=None,
             **kwargs):
         """
@@ -91,8 +90,7 @@ class SeleniumPayment(MainSeleniumPayment):
 
         self.price = None
         self.trip = trip
-        self.reserved_seat = reserrved_seat
-        self.seat_lock_response = seat_lock_response
+        self.reserved_seat_data = reserved_seat_data
 
         self.tariff = api_constants.TARIFFS[tariff.upper(
         )] if tariff else api_constants.TARIFFS['TAM']
@@ -127,13 +125,15 @@ class SeleniumPayment(MainSeleniumPayment):
             'hareketTarihi': self.trip['binisTarih'],
             'varisTarihi': self.trip['varisTarih'],
             'tarifeId': self.tariff,
-            'vagonSiraNo': self.reserved_seat['vagonSiraNo'],
-            'koltukNo': self.reserved_seat['koltukNo'],
+            'vagonSiraNo': self.reserved_seat_data['reserved_seat']['vagonSiraNo'],
+            'koltukNo': self.reserved_seat_data['reserved_seat']['koltukNo'],
             'ucret': self.price,
 
         })
+        self.logger.info("Ticket reservation request values set: %s",
+                         self.ticket_reservation_req)
 
-    def get_price(self, trip, empty_seat):
+    def get_price(self):
         """
         Get the price of a trip for a given empty seat.
 
@@ -149,14 +149,14 @@ class SeleniumPayment(MainSeleniumPayment):
         req_body['yolcuList'][0]['tarifeId'] = self.tariff
         seat_info = req_body['yolcuList'][0]['seferKoltuk'][0]
         seat_info.update({
-            'seferBaslikId': trip['seferId'],
-            'binisTarihi': trip['binisTarih'],
-            'vagonSiraNo': empty_seat['vagonSiraNo'],
-            'koltukNo': empty_seat['koltukNo'],
-            'binisIstasyonId': trip['binisIstasyonId'],
-            'inisIstasyonId': trip['inisIstasyonId'],
+            'seferBaslikId': self.trip['seferId'],
+            'binisTarihi': self.trip['binisTarih'],
+            'vagonSiraNo': self.reserved_seat_data['reserved_seat']['vagonSiraNo'],
+            'koltukNo': self.reserved_seat_data['reserved_seat']['koltukNo'],
+            'binisIstasyonId': self.trip['binisIstasyonId'],
+            'inisIstasyonId': self.trip['inisIstasyonId'],
             # This should '0' maybe, vuejs code sends '0' always
-            'vagonTipi': empty_seat['vagonTipId']
+            'vagonTipi': self.reserved_seat_data['reserved_seat']['vagonTipId']
         })
         # send request
         response = requests.post(
@@ -178,7 +178,7 @@ class SeleniumPayment(MainSeleniumPayment):
         Returns:
             None
         """
-        self.price = self.get_price(self.trip, self.reserved_seat)
+        self.price = self.get_price()
         print(f"Price: {self.price}")
 
         self.vb_enroll_control_req['biletRezOdemeBilgileri'].update({
@@ -186,7 +186,7 @@ class SeleniumPayment(MainSeleniumPayment):
             'krediKartiTutari': self. price
         })
 
-        for seat in self.seat_lock_response['koltuklarimListesi']:
+        for seat in self.reserved_seat_data['seat_lock_response']['koltuklarimListesi']:
             self.vb_enroll_control_req['koltukLockList'].append(
                 seat['koltukLockId'])
 
@@ -197,8 +197,8 @@ class SeleniumPayment(MainSeleniumPayment):
             timeout=10)
 
         if response.status_code != 200:
-            print("Payment failed.")
-            pprint(json.loads(response.text))
+            self.logger.error("Payment failed.")
+            self.logger.error("Response: %s", response.text)
             return
 
         response_json = json.loads(response.text)
@@ -223,12 +223,25 @@ class SeleniumPayment(MainSeleniumPayment):
             'MD': md,
             'TermUrl': term_url
         }
-
         # print form_data to file but not tempfile
         with open("form_data.json", "w", encoding='utf-8') as f:
             f.write(json.dumps(form_data))
 
-        response = session.post(acs_url, data=form_data)
+        odeme_sorgu = {
+            "kanalKodu": "3",
+            "dil": 0,
+            "enrollReference": enroll_reference
+        }
+
+        # send odeme soru request
+        odeme_sorgu_response = requests.post(api_constants.VB_ODEME_SORGU,
+                                 headers=api_constants.REQUEST_HEADER,
+                                 data=json.dumps(odeme_sorgu),
+                                 timeout=10)
+        odeme_sorgu_response_json = json.loads(odeme_sorgu_response.text)
+        
+        vspos_ref = odeme_sorgu_response_json['vsposReference']
+        
 
         if response.status_code != 200:
             self.logger.error("Payment failed.")
@@ -272,7 +285,7 @@ class SeleniumPayment(MainSeleniumPayment):
                 text_input.send_keys(user_input)
                 btn.click()
         except selenium.common.exceptions.NoSuchElementException:
-            pprint("Button element not found.")
+            self.logger.error("OTP input field or submit button not found.")
 
         try:
             # Wait for the redirection from payment to the main page
@@ -281,12 +294,12 @@ class SeleniumPayment(MainSeleniumPayment):
             current_url = self.driver.current_url
             if "odeme-sonuc" in current_url:
                 self.is_payment_successful = True
-                print("Payment successful.")
+                self.logger.info("Payment successful.")
                 # take a screenshot
                 time.sleep(10)
                 self.driver.save_screenshot("payment_success.png")
             else:
-                print("Payment failed.")
+                self.logger.error("Payment failed.")
                 self.is_payment_successful = False
                 self.driver.save_screenshot("payment_failed.png")
                 # wait until element with some id is found
@@ -294,7 +307,7 @@ class SeleniumPayment(MainSeleniumPayment):
                     EC.presence_of_element_located(("id", "some_id")))
 
         except TimeoutException:
-            print("Loading took too much time!")
+            self.logger.error("Timeout while waiting for payment result.")
 
 
 ######################################################### INTERFACE AUTOMATION ####################################

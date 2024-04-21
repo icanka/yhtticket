@@ -20,15 +20,14 @@ def main():
     
     from_station = 'Ankara Gar'
     to_station = 'İstanbul(Pendik)'
-    from_date = '22 April 17:00'
-    to_date = '22 April 17:30'
+    from_date = '29 April 17:00'
+    to_date = '29 April 17:30'
     seat_type = 'eco'
-    trip = Trip(from_station, to_station, from_date, to_date, seat_type)
+    my_trip = Trip(from_station, to_station, from_date, to_date, seat_type)
 
     p = SeleniumPayment()
     # find trip
-    trips = trip.find_trip(
-        from_date, to_date, from_station, to_station, seat_type)
+    trips = my_trip.find_trip()
 
     # pprint(tripst)
     pprint(len(trips))
@@ -37,7 +36,6 @@ def main():
         # ready selenium
 
         trip = trips[0]
-        pprint(trip)
         dep_date = datetime.strptime(
             trip['binisTarih'], "%b %d, %Y %I:%M:%S %p")
 
@@ -46,13 +44,12 @@ def main():
         #    file.write(json.dumps(trip))
 
         # reserve seat
-        pprint("Reserving the seat")
-        reserved_seat_data = trip.reserve_seat(trip)
-        pprint(reserved_seat_data)
-        exit()
+        reserved_seat_data = my_trip.reserve_seat(trip)
+        p.reserved_seat_data = reserved_seat_data
+        
+        
         # ready the page with selenium
-        # selenium_payment.open_site()
-        # selenium_payment.select_date_from_datepicker(dep_date)
+
         trip_str = reserved_seat_data['trip']['binisTarih']
         reserved_seat = reserved_seat_data['reserved_seat']
         seat_str = reserved_seat_data['reserved_seat']['koltukNo']
@@ -64,11 +61,9 @@ def main():
         # pprint(trip)
         pprint(
             f"Seat {seat_str} in vagon {vagon_str} is reserved for trip {trip_str}")
-
         p.trip = trip
         p.reserved_seat = reserved_seat
         p.seat_lock_response = seat_lock_response
-        p.tariff = api_constants.TARIFFS['TSK']
 
         # p.process_payment()
         # p = SeleniumPayment(
