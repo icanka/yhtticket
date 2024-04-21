@@ -89,6 +89,9 @@ def find_trip(from_date, to_date, from_station, to_station, seat_type=None):
     """Find a trip based on the given parameters.
     This function will keep searching for trips until it finds a trip with empty seats."""
 
+    # get the seaty_type key from value given to this method
+    seat_type_id = api_constants.VAGON_TYPES[seat_type.upper()]
+
     trips_with_empty_seats = []
     logging.info("Searching for trips with empty seat...")
     while len(trips_with_empty_seats) == 0:
@@ -99,8 +102,12 @@ def find_trip(from_date, to_date, from_station, to_station, seat_type=None):
         logging.info("Total of %s trips found", len(trips))
         for trip in trips:
             trip = trip_search.get_empty_seats_trip(
-                trip, from_station, to_station, seat_type)
-            if trip['empty_seat_count'] > 0:
+                trip, from_station, to_station, seat_type_id)
+            if seat_type:
+                empty_seat_count = trip[f"{seat_type.lower()}_empty_seat_count"]
+            else:
+                empty_seat_count = trip['empty_seat_count']
+            if empty_seat_count > 0:
                 trips_with_empty_seats.append(trip)
                 pprint(f"empty seats: {trip['empty_seat_count']}")
     return trips_with_empty_seats

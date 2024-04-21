@@ -14,13 +14,13 @@ from_station = 'Ankara Gar'
 to_station = 'İstanbul(Pendik)'
 from_date = '22 April 17:00'
 to_date = '22 April 17:30'
+seat_type = 'eco'
 
 
 p = SeleniumPayment()
 pprint(p)
 # find trip
-trips = find_trip(from_date, to_date, from_station, to_station,
-                  seat_type=api_constants.VAGON_TYPES['ECO'])
+trips = find_trip(from_date, to_date, from_station, to_station, seat_type)
 
 
 # pprint(tripst)
