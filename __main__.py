@@ -1,80 +1,86 @@
+import logging
 from datetime import datetime
 from pprint import pprint
 import api_constants
-from cli import find_trip
-from cli import reserve_seat
 from payment import SeleniumPayment
-import logging
-
-logging.basicConfig(level=logging.INFO)
-# set logging formatting
-logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
-
-from_station = 'Ankara Gar'
-to_station = 'İstanbul(Pendik)'
-from_date = '22 April 17:00'
-to_date = '22 April 17:30'
-seat_type = 'eco'
+from cli import Trip
 
 
-p = SeleniumPayment()
-pprint(p)
-# find trip
-trips = find_trip(from_date, to_date, from_station, to_station, seat_type)
+def main():
+    # Set up logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s',
+        handlers=[
+            # logging.FileHandler('trip_search.log'),
+            logging.StreamHandler()
+        ]
+    )
 
-
-# pprint(tripst)
-pprint(len(trips))
-
-if len(trips) > 0:
-    # ready selenium
-
-    trip = trips[0]
-    pprint(trip)
-    dep_date = datetime.strptime(
-        trip['binisTarih'], "%b %d, %Y %I:%M:%S %p")
-
-    # pprint(f"Departure date: {dep_date.strftime('%Y-%m-%d')}")
-    # with open(f'trip_{datetime.now().strftime("%Y-%m-%d")}.json', 'w', encoding='utf-8') as file:
-    #    file.write(json.dumps(trip))
-
-    # reserve seat
-    reserved_seat_data = reserve_seat(trip)
-    pprint(reserved_seat_data)
-    exit()
-    # ready the page with selenium
-    # selenium_payment.open_site()
-    # selenium_payment.select_date_from_datepicker(dep_date)
-    trip_str = reserved_seat_data['trip']['binisTarih']
-    reserved_seat = reserved_seat_data['reserved_seat']
-    seat_str = reserved_seat_data['reserved_seat']['koltukNo']
-    vagon_str = reserved_seat_data['reserved_seat']['vagonSiraNo']
-    end_time = reserved_seat_data['lock_end_time']
-    seat_lock_response = reserved_seat_data['seat_lock_response']
-
-
-    pprint(f"Lock will end at {end_time}")
-    # pprint(trip)
-    pprint(
-        f"Seat {seat_str} in vagon {vagon_str} is reserved for trip {trip_str}")
-
-
-    p.trip = trip
-    p.reserved_seat = reserved_seat
-    p.seat_lock_response = seat_lock_response
-    p.tariff = api_constants.TARIFFS['TSK']
     
-    #p.process_payment()
-    # p = SeleniumPayment(
-    #     trip=trip,
-    #     empty_seat=empty_seat,
-    #     seat_lck_json=seat_lock_response,
-    #     tariff='TSK')
-    # p.process_payment()
-    pprint(p.trip)
-    pprint(p.reserved_seat)
-    pprint(p.seat_lock_response)
-    pprint(p.tariff)
+    from_station = 'Ankara Gar'
+    to_station = 'İstanbul(Pendik)'
+    from_date = '22 April 17:00'
+    to_date = '22 April 17:30'
+    seat_type = 'eco'
+    trip = Trip(from_station, to_station, from_date, to_date, seat_type)
+
+    p = SeleniumPayment()
+    # find trip
+    trips = trip.find_trip(
+        from_date, to_date, from_station, to_station, seat_type)
+
+    # pprint(tripst)
+    pprint(len(trips))
+
+    if len(trips) > 0:
+        # ready selenium
+
+        trip = trips[0]
+        pprint(trip)
+        dep_date = datetime.strptime(
+            trip['binisTarih'], "%b %d, %Y %I:%M:%S %p")
+
+        # pprint(f"Departure date: {dep_date.strftime('%Y-%m-%d')}")
+        # with open(f'trip_{datetime.now().strftime("%Y-%m-%d")}.json', 'w', encoding='utf-8') as file:
+        #    file.write(json.dumps(trip))
+
+        # reserve seat
+        pprint("Reserving the seat")
+        reserved_seat_data = trip.reserve_seat(trip)
+        pprint(reserved_seat_data)
+        exit()
+        # ready the page with selenium
+        # selenium_payment.open_site()
+        # selenium_payment.select_date_from_datepicker(dep_date)
+        trip_str = reserved_seat_data['trip']['binisTarih']
+        reserved_seat = reserved_seat_data['reserved_seat']
+        seat_str = reserved_seat_data['reserved_seat']['koltukNo']
+        vagon_str = reserved_seat_data['reserved_seat']['vagonSiraNo']
+        end_time = reserved_seat_data['lock_end_time']
+        seat_lock_response = reserved_seat_data['seat_lock_response']
+
+        pprint(f"Lock will end at {end_time}")
+        # pprint(trip)
+        pprint(
+            f"Seat {seat_str} in vagon {vagon_str} is reserved for trip {trip_str}")
+
+        p.trip = trip
+        p.reserved_seat = reserved_seat
+        p.seat_lock_response = seat_lock_response
+        p.tariff = api_constants.TARIFFS['TSK']
+
+        # p.process_payment()
+        # p = SeleniumPayment(
+        #     trip=trip,
+        #     empty_seat=empty_seat,
+        #     seat_lck_json=seat_lock_response,
+        #     tariff='TSK')
+        # p.process_payment()
+        pprint(p.trip)
+        pprint(p.reserved_seat)
+        pprint(p.seat_lock_response)
+        pprint(p.tariff)
 
 
 # while True:
@@ -111,3 +117,7 @@ if len(trips) > 0:
 #                 #     seat_lck_json=seat_lock_json_result,
 #                 #     tariff='TSK')
 #                 # p.process_payment()
+
+
+if __name__ == "__main__":
+    main()
