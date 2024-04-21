@@ -13,7 +13,6 @@ from selenium.webdriver.chrome.options import Options
 import api_constants
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from stations import get_station_list
 import logging
 
 
@@ -21,11 +20,6 @@ import logging
 class MainSeleniumPayment:
     def __init__(self, *args) -> None:
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-        self.logger.addHandler(handler)
         self.options = Options()
         self.options.add_argument("--disable-notifications")
         self.options.add_argument("--disable-geolocation")
@@ -49,7 +43,6 @@ class MainSeleniumPayment:
         # add args values to options
         for arg in args:
             self.options.add_argument(arg)
-        self.stations = get_station_list()
         self.driver = webdriver.Chrome(options=self.options)
         self.driver.implicitly_wait(10)
 
@@ -95,11 +88,6 @@ class SeleniumPayment(MainSeleniumPayment):
         """
         super().__init__(*args)  # Call the __init__ method of the base class
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-        self.logger.addHandler(handler)
 
         self.price = None
         self.trip = trip
@@ -114,12 +102,24 @@ class SeleniumPayment(MainSeleniumPayment):
         self.is_payment_successful = None
         self.vb_enroll_control_response = None
         self.html_response = None
+        self.user_data = [{
+            "ad": "izzet can",
+            "soyad": "karakuş",
+            "cinsiyet": 1,
+            "tarifeId": 11750067704,
+            "cep": "0(534) 077-1521",
+            "eposta": "izzetcankarakus@gmail.com",
+            "dogumTarihi": "1994-07-14",
+            "kimlikNo": "18700774442",
+            "tc_degil": False
+        }]
 
         # add kwargs as instance attributes, you can override the default values
         for key, value in kwargs.items():
             setattr(self, key, value)
 
     def set_ticket_res_values(self):
+        """_set_ticket_res_values"""
         self.ticket_reservation_req['biletRezYerBilgileri'][0]['biletWSDVO'].update({
             'seferBaslikId': self.trip['seferId'],
             'binisIstasyonId': self.trip['binisIstasyonId'],
@@ -127,12 +127,12 @@ class SeleniumPayment(MainSeleniumPayment):
             'hareketTarihi': self.trip['binisTarih'],
             'varisTarihi': self.trip['varisTarih'],
             'tarifeId': self.tariff,
-            
             'vagonSiraNo': self.reserved_seat['vagonSiraNo'],
             'koltukNo': self.reserved_seat['koltukNo'],
             'ucret': self.price,
-            
+
         })
+
     def get_price(self, trip, empty_seat):
         """
         Get the price of a trip for a given empty seat.
@@ -158,8 +158,6 @@ class SeleniumPayment(MainSeleniumPayment):
             # This should '0' maybe, vuejs code sends '0' always
             'vagonTipi': empty_seat['vagonTipId']
         })
-        pprint(seat_info)
-        pprint(req_body)
         # send request
         response = requests.post(
             api_constants.PRICE_ENDPOINT,
@@ -185,7 +183,7 @@ class SeleniumPayment(MainSeleniumPayment):
 
         self.vb_enroll_control_req['biletRezOdemeBilgileri'].update({
             'toplamBiletTutari': self.price,
-            'krediKartiTutari':self. price
+            'krediKartiTutari': self. price
         })
 
         for seat in self.seat_lock_response['koltuklarimListesi']:
@@ -217,22 +215,27 @@ class SeleniumPayment(MainSeleniumPayment):
         md = response_json['paymentAuthRequest']['md']
         term_url = response_json['paymentAuthRequest']['termUrl']
         enroll_reference = response_json['enrollReference']
-        pprint(f"Enroll reference: {enroll_reference}")
+        
+        
+        self.logger.info("Enroll reference: %s", enroll_reference)
+        
         form_data = {
             'PaReq': pareq,
             'MD': md,
             'TermUrl': term_url
         }
+        
+        
 
         # print form_data to file but not tempfile
-        with open("form_data.json", "w") as f:
+        with open("form_data.json", "w", encoding='utf-8') as f:
             f.write(json.dumps(form_data))
 
         response = session.post(acs_url, data=form_data)
 
         if response.status_code != 200:
-            print("Payment failed.")
-            pprint(json.loads(response.text))
+            self.logger.error("Payment failed.")
+            self.logger.error("Response: %s", response.text)
             return
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as temp_file:
@@ -240,48 +243,31 @@ class SeleniumPayment(MainSeleniumPayment):
             temp_file_path = temp_file.name
             self.html_response = temp_file_path
 
-        data = [{
-            "ad": "izzet can",
-            "soyad": "karakuş",
-            "cinsiyet": 1,
-            "tarifeId": 11750067704,
-            "cep": "0(534) 077-1521",
-            "eposta": "izzetcankarakus@gmail.com",
-            "dogumTarihi": "1994-07-14",
-            "kimlikNo": "18700774442",
-            "tc_degil": False
-        }]
-
         # Convert the data to a properly formatted string
-        data_str = json.dumps(data)
-        data_str_js = data_str.replace('"', '\\"')
+        # data_str = json.dumps(self.user_data)
+        # data_str_js = data_str.replace('"', '\\"')
+        # self.driver.get("https://bilet.tcdd.gov.tr")
+        # time.sleep(5)
+        # driver.execute_script(
+        #     f"window.localStorage.setItem('enrollees', \"{data_str_js}\");")
+        # time.sleep(5)
+        # driver.refresh()
+        # time.sleep(5)
+        # # To verify, you can retrieve the value like this
+        # value = driver.execute_script(
+        #     "return window.localStorage.getItem('enrollees');")
+        # print(value)  # This should print your data
 
-        print(f"Opening {temp_file_path} with Selenium...")
-        driver = webdriver.Chrome(options=self.options)
-        # Set local storage variables using execute_script
-
-        driver.get("https://bilet.tcdd.gov.tr")
-        time.sleep(5)
-        driver.execute_script(
-            f"window.localStorage.setItem('enrollees', \"{data_str_js}\");")
-        time.sleep(5)
-        driver.refresh()
-        time.sleep(5)
-        # To verify, you can retrieve the value like this
-        value = driver.execute_script(
-            "return window.localStorage.getItem('enrollees');")
-        print(value)  # This should print your data
-
-        driver.get(f"file:///{temp_file_path}")
-        driver.implicitly_wait(10)
+        self.driver.get(f"file:///{temp_file_path}")
         time.sleep(5000)
-        driver.save_screenshot("payment_page.png")
+        self.driver.save_screenshot("payment_page.png")
 
         # Find the OTP input field and submit button
         try:
-            text_input = driver.find_element(
+            text_input = self.driver.find_element(
                 By.CSS_SELECTOR, "input[type='number'], input[type='text']")
-            btn = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
+            btn = self.driver.find_element(
+                By.CSS_SELECTOR, "button[type='submit']")
             if text_input and btn and btn.text:
                 pprint(btn.text)
                 # TODO: get this from the USER
@@ -293,21 +279,21 @@ class SeleniumPayment(MainSeleniumPayment):
 
         try:
             # Wait for the redirection from payment to the main page
-            WebDriverWait(driver, 30).until(
+            WebDriverWait(self.driver, 30).until(
                 EC.url_contains("https://bilet.tcdd.gov.tr/"))
-            current_url = driver.current_url
+            current_url = self.driver.current_url
             if "odeme-sonuc" in current_url:
                 self.is_payment_successful = True
                 print("Payment successful.")
                 # take a screenshot
                 time.sleep(10)
-                driver.save_screenshot("payment_success.png")
+                self.driver.save_screenshot("payment_success.png")
             else:
                 print("Payment failed.")
                 self.is_payment_successful = False
-                driver.save_screenshot("payment_failed.png")
+                self.driver.save_screenshot("payment_failed.png")
                 # wait until element with some id is found
-                WebDriverWait(driver, 30).until(
+                WebDriverWait(self.driver, 30).until(
                     EC.presence_of_element_located(("id", "some_id")))
 
         except TimeoutException:
