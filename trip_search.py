@@ -24,6 +24,7 @@ class TripSearchApi:
     def __init__(self) -> None:
         # set up class logger
         self.logger = logging.getLogger(__name__)
+        self.time_format = "%b %d, %Y %I:%M:%S %p"
 
     def get_empty_vagon_seats(self, vagon_json):
         """
@@ -260,7 +261,7 @@ class TripSearchApi:
                 - 'inisIstasyonId': The ID of the destination station.
         """
         if not from_date:
-            from_date = datetime.now().strftime("%b %d, %Y %I:%M:%S %p")
+            from_date = datetime.now().strftime(self.time_format)
 
         vagon_req_body = api_constants.vagon_req_body.copy()
         trip_req = api_constants.trip_search_req_body.copy()
@@ -289,7 +290,7 @@ class TripSearchApi:
                 trip_req['seferSorgulamaKriterWSDVO']['inisIstasyonu'] = to_station
         # Set the date
         trip_req['seferSorgulamaKriterWSDVO']['gidisTarih'] = datetime.strftime(
-            from_date, "%b %d, %Y %I:%M:%S %p")
+            from_date, self.time_format)
 
         response = requests.post(
             api_constants.TRIP_SEARCH_ENDPOINT,
@@ -303,13 +304,13 @@ class TripSearchApi:
             response_json['seferSorgulamaSonucList'],
             key=lambda trip: datetime.strptime(
                 trip['binisTarih'],
-                "%b %d, %Y %I:%M:%S %p"))
+                self.time_format))
 
         # filter trips based on to_date
         if to_date:
             to_date = dateparser.parse(to_date)
             sorted_trips = [trip for trip in sorted_trips if datetime.strptime(
-                trip['binisTarih'], "%b %d, %Y %I:%M:%S %p") < to_date]
+                trip['binisTarih'], self.time_format) < to_date]
         for trip in sorted_trips:
             if trip['satisDurum'] == 1 and trip['vagonHaritasindanKoltukSecimi'] == 1:
                 # 0 is economy class and 1 is business class
