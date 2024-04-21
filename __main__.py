@@ -4,7 +4,11 @@ import api_constants
 from cli import find_trip
 from cli import reserve_seat
 from payment import SeleniumPayment
+import logging
 
+logging.basicConfig(level=logging.INFO)
+# set logging formatting
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 from_station = 'Ankara Gar'
 to_station = 'İstanbul(Pendik)'

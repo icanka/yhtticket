@@ -9,6 +9,9 @@ from datetime import datetime, timedelta
 import payment
 import logging
 
+logging.basicConfig(level=logging.INFO)
+# set logging formatting
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 # TODO Reserve seat for a specific seat and vagon number
 
@@ -151,12 +154,12 @@ def search(
 def get_trips(from_station, to_station, from_date, to_date, list_trips):
     """Get the trips based on the given parameters."""
     trips = []
-    logging.info("Searching for trips...")
+    logging.info("get_trips: Searching for trips...")
     trips = trip_search.search_trips(
         from_station, to_station, from_date, to_date)
     # return none if no trips are found
     if len(trips) == 0:
-        logging.info("No trips found.")
+        logging.info("get_trips: No trips found.")
         return None
     # pprint(len(trips))
     if list_trips:
@@ -171,8 +174,9 @@ def get_trips(from_station, to_station, from_date, to_date, list_trips):
                             f"Arrival  : {arr_formatted_date}\n"
                             f"Economy  : {trip['eco_empty_seat_count']}\n"
                             f"Business : {trip['buss_empty_seat_count']}\n")
-            logging.info(trip_details)
+            logging.info("get_trips: trip_details: %s", trip_details)
             logging.info("--------------------------------------------------")
+    logging.info("get_trips: Total of %s trips found", len(trips))
     return trips
 
 
