@@ -215,17 +215,14 @@ class SeleniumPayment(MainSeleniumPayment):
         md = response_json['paymentAuthRequest']['md']
         term_url = response_json['paymentAuthRequest']['termUrl']
         enroll_reference = response_json['enrollReference']
-        
-        
+
         self.logger.info("Enroll reference: %s", enroll_reference)
-        
+
         form_data = {
             'PaReq': pareq,
             'MD': md,
             'TermUrl': term_url
         }
-        
-        
 
         # print form_data to file but not tempfile
         with open("form_data.json", "w", encoding='utf-8') as f:
