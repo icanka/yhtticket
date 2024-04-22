@@ -8,7 +8,10 @@ VAGON_HARITA_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/vagon/vagonHar
 VB_ENROLL_CONTROL_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/odeme/vbEnrollControl"
 PRICE_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/fiyatlandirma/anahatFiyatSimple"
 VB_ODEME_SORGU = "https://api-yebsp.tcddtasimacilik.gov.tr/odeme/vbOdemeSorgu"
-DISABLED_SEAT_IDS = [13485128303, 13029825502, 13485128302, 13371669503, 15196333600, 27948604352]
+VB_BILET_SATIS_REZERVASYON = "https://api-yebsp.tcddtasimacilik.gov.tr/bilet/biletSatisRezervasyon"
+
+DISABLED_SEAT_IDS = [13485128303, 13029825502,
+                     13485128302, 13371669503, 15196333600, 27948604352]
 TARIFFS = {'TSK': 11750067704, 'TAM': 1}
 VAGON_TYPES = {'ECO': 17002, 'BUSS': 17001}
 REQUEST_HEADER = {
@@ -179,8 +182,8 @@ ticket_reservation_req_body = {
                 "seyahatTur": 2,
                 "trenTurTktId": 49549,  # may not be necessary
                 "vagonTipi": 0,
-                "koltukBazUcret": None, # may not be necessary
-                "indirimsizUcret": None, # may not be necessary
+                "koltukBazUcret": None,  # may not be necessary
+                "indirimsizUcret": None,  # may not be necessary
                 "minimumTasimaUcretiFarki": 0
             }
         }
@@ -199,6 +202,7 @@ ticket_reservation_req_body = {
     },
     "koltukLockIdList": []
 }
+
 # vb_enroll_control_req_body = {
 #     "kanalKodu": 3,
 #     "dil": 0,
@@ -220,3 +224,75 @@ ticket_reservation_req_body = {
 #     },
 #     "koltukLockList": []
 # }
+
+ticket_reservation_req_body = {
+    "kanalKodu": "3",
+    "dil": 0,
+    "islemTipi": 0,
+    "biletRezYerBilgileri": [
+        {
+            "biletWSDVO": {
+                "seferBaslikId": None,
+                "aktarmaSiraNo": "0",
+                "binisIstasyonId": None,
+                "inisIstasyonId": None,
+                "hareketTarihi": None,
+                "varisTarihi": None,
+
+
+
+                "biletTipi": 1,
+                "maliyeNo": 0,
+                "grupMu": False,
+                "cezali": False,
+                "farkBileti": False,
+                "bagajBileti": False,
+                "hesCode": "",
+                "yolcuSiraNo": 1,
+                "tarifeId": None,
+                "vagonSiraNo": None,
+                "koltukNo": None,
+                "ucret": None,
+                
+                
+                "tckn": "18700774442",
+                "ad": "izzet can",
+                "soyad": "karakuş",
+                "dogumTar": "Jul 14, 1994 03:00:00 AM",
+                "iletisimEposta": "izzetcankarakus@gmail.com",
+                "iletisimCepTel": "05340771521",
+                "cinsiyet": "E",
+                "statu": 0,
+                "seyahatTur": 2,
+                "trenTurTktId": 49549,
+                "vagonTipi": 0,
+                "koltukBazUcret": 430,
+                "indirimsizUcret": 430,
+                "minimumTasimaUcretiFarki": 0
+            }
+        }
+    ],
+    "biletRezOdemeBilgileri": {
+        "vposReference": "snkzt4ttvw2gmuxyrwa4vfbjkwzvtiqmz4mpwn3n",
+        "krediKartSahibiAdSoyad": "izzet can karakus",
+        "krediKartNO": "4506347008156065",
+        "toplamBiletTutari": 370,
+        "krediKartiTutari": 370,
+        "abonmanTutar": 0,
+        "acikBiletTutar": 0,
+        "islemYeri": "7",
+        "milPuan": 0,
+        "permiDetayList": []
+    },
+    "koltukLockIdList": [
+        43502967424,
+        43502967425,
+        43502967426,
+        43502967427,
+        43502967428,
+        43502967429,
+        43502967430,
+        43502967431,
+        43502967432
+    ]
+}

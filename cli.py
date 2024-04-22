@@ -10,33 +10,45 @@ import api_constants
 class Trip:
     """Trip class to store trip details."""
 
-    def __init__(self, from_station, to_station, from_date, to_date, seat_type=None):
+    def __init__(self, from_station, to_station, from_date, to_date, tariff=None, seat_type=None):
         self.from_station = from_station
         self.to_station = to_station
         self.from_date = from_date
         self.to_date = to_date
         self.seat_type = seat_type
+        self.trip_json = None
         self.time_format = "%b %d, %Y %I:%M:%S %p"
+        self.reserve_seat_data = None
+        self.seat_lock_response = None
+        self.koltuk_lock_id_list = []
+        self.lock_end_time = None
+        self.is_seat_reserved = False
+        self.tariff = api_constants.TARIFFS[tariff.upper(
+        )] if tariff else api_constants.TARIFFS['TAM']
 
-        # new TripSearch object
         self.api = trip_search.TripSearchApi()
         self.logger = logging.getLogger(__name__)
 
-    def reserve_seat(self, trip):
+    def set_seat_lock_id(self):
+        """Get the lock id of the seat."""
+        seats = self.seat_lock_response['koltuklarimListesi']
+        for seat in seats:
+            self.koltuk_lock_id_list.append(seat['koltukLockId'])
+        self.logger.info("koltuk_lock_id_list: %s", self.koltuk_lock_id_list)
+
+    def reserve_seat(self):
         """Reserve a seat for the given trip."""
         try:
-            self.logger.info("Reserving the seat.")
-            end_time, reserve_seat, seat_lock_response = self.api.select_first_empty_seat(
-                trip)
-            reserved_trip_data = {
-                'seat_lock_response': seat_lock_response,
-                'lock_end_time': datetime.strptime(
-                    end_time, self.time_format),
-                'trip': trip,
-                'reserved_seat': reserve_seat,
-            }
-            logging.info("empty seat: %s", reserve_seat)
-            return reserved_trip_data
+            if not self.is_seat_reserved:
+                self.logger.info("Reserving the seat.")
+                lock_end_time, self.reserve_seat_data, self.seat_lock_response = self.api.select_first_empty_seat(
+                    self.trip_json)
+                self.is_seat_reserved = True
+                self.lock_end_time = datetime.strptime(
+                    lock_end_time, self.time_format)
+                self.set_seat_lock_id()
+                self.logger.info("lock_end_time: %s", self.lock_end_time)
+                logging.info("empty seat: %s", self.reserve_seat_data)
         except Exception as e:
             logging.error("Error while reserving the seat: %s", e)
             raise e
@@ -109,35 +121,3 @@ class Trip:
         stations = self.api.get_station_list()
         for station in stations:
             print(station['station_name'])
-
-
-@click.group(help='This script is used to automate the ticket purchase process from TCDD website.')
-def cli():
-    """This script is used to automate the ticket purchase process from TCDD website."""
-
-
-# stations = get_station_list()
-# # get the station view name for the given station name
-# #
-
-# to_station_view_name = next(
-#     (station['station_view_name'] for station in stations if station['station_name'] == to_station), None)
-# from_station_view_name = next(
-#     (station['station_view_name'] for station in stations if station['station_name'] == from_station), None)
-
-
-# selenium_payment = payment.SeleniumPayment()
-# for _ in range(100):
-#     selenium_payment.open_site()
-#     selenium_payment.fill_in_departure_arrival_input(
-#         "Ankara Gar", "İstanbul(Pendik)")
-
-# exit(0)
-
-
-# ready selenium
-# selenium_payment = payment.SeleniumPayment()
-
-
-# if __name__ == '__main__':
-#     cli()

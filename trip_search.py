@@ -109,27 +109,47 @@ class TripSearchApi:
             s_check['seferId'] = trip['seferId']
             s_check['seciliVagonSiraNo'] = empty_seat['vagonSiraNo']
             s_check['koltukNo'] = empty_seat['koltukNo']
-            s_response = requests.post(
-                api_constants.SEAT_CHECK_ENDPOINT,
-                headers=api_constants.REQUEST_HEADER,
-                data=json.dumps(s_check),
-                timeout=10)
-            s_response_json = json.loads(s_response.text)
-            self.logger.info(s_response_json)
+
+            try:
+                s_response = requests.post(
+                    api_constants.SEAT_CHECK_ENDPOINT,
+                    headers=api_constants.REQUEST_HEADER,
+                    data=json.dumps(s_check),
+                    timeout=10)
+                s_response_json = json.loads(s_response.text)
+                self.logger.debug(s_response_json)
+            except requests.exceptions.RequestException as e:
+                self.logger.error(
+                    "Error occurred while fetching the seat check: %s", e)
+                raise e
+
+            if s_response_json['cevapBilgileri']['cevapKodu'] != "000":
+                self.logger.error("response_json: %s", s_response_json)
+                raise Exception(
+                    "Non zero response code: response_json: %s", s_response_json)
+
             if not s_response_json['koltukLocked']:
                 # Send the request to the endpoint
-                response = requests.post(
-                    api_constants.SELECT_EMPTY_SEAT_ENDPOINT,
-                    headers=api_constants.REQUEST_HEADER,
-                    data=json.dumps(seat_select_req),
-                    timeout=10)
+
+                try:
+                    response = requests.post(
+                        api_constants.SELECT_EMPTY_SEAT_ENDPOINT,
+                        headers=api_constants.REQUEST_HEADER,
+                        data=json.dumps(seat_select_req),
+                        timeout=10)
+                except requests.exceptions.RequestException as e:
+                    self.logger.error(
+                        "Error occurred while fetching the seat lock: %s", e)
+                    raise e
+
                 response_json = json.loads(response.text)
                 self.logger.debug(response_json)
-                end_time = response_json['koltuklarimListesi'][0]['bitisZamani']
                 if response_json['cevapBilgileri']['cevapKodu'] != "000":
                     self.logger.error(
                         "Non zero response code: response_json: %s", response_json)
-                    return None
+                    raise Exception(
+                        "Non zero response code: response_json: %s", response_json)
+                end_time = response_json['koltuklarimListesi'][0]['bitisZamani']
             else:
                 raise SeatLockedException(empty_seat)
             return end_time, empty_seat, response_json

@@ -70,19 +70,13 @@ class SeleniumPayment(MainSeleniumPayment):
             self,
             *args,
             trip=None,
-            reserved_seat_data=None,
-            tariff=None,
             **kwargs):
         """
         Initialize the Payment class.
 
         Args:
             *args: Variable length arguments.
-            max_wait_time (int): Maximum wait time in seconds (default is 120).
-            trip: Trip information.
-            empty_seat: Empty seat information.
-            seat_lck_json: Seat lock JSON.
-            tariff: Tariff information.
+            trip: Trip object.
             **kwargs: Variable keyword arguments.
         """
         super().__init__(*args)  # Call the __init__ method of the base class
@@ -90,16 +84,17 @@ class SeleniumPayment(MainSeleniumPayment):
 
         self.price = None
         self.trip = trip
-        self.reserved_seat_data = reserved_seat_data
-
-        self.tariff = api_constants.TARIFFS[tariff.upper(
-        )] if tariff else api_constants.TARIFFS['TAM']
+        # self.reserved_seat_data = reserved_seat_data
 
         self.vb_enroll_control_req = api_constants.vb_enroll_control_req_body.copy()
         self.ticket_reservation_req = api_constants.ticket_reservation_req_body.copy()
         self.is_payment_successful = None
         self.vb_enroll_control_response = None
         self.html_response = None
+
+        self.enroll_reference = None
+        self.vspos_ref = None
+
         self.user_data = [{
             "ad": "izzet can",
             "soyad": "karakuş",
@@ -119,14 +114,14 @@ class SeleniumPayment(MainSeleniumPayment):
     def set_ticket_res_values(self):
         """_set_ticket_res_values"""
         self.ticket_reservation_req['biletRezYerBilgileri'][0]['biletWSDVO'].update({
-            'seferBaslikId': self.trip['seferId'],
-            'binisIstasyonId': self.trip['binisIstasyonId'],
-            'inisIstasyonId': self.trip['inisIstasyonId'],
-            'hareketTarihi': self.trip['binisTarih'],
-            'varisTarihi': self.trip['varisTarih'],
-            'tarifeId': self.tariff,
-            'vagonSiraNo': self.reserved_seat_data['reserved_seat']['vagonSiraNo'],
-            'koltukNo': self.reserved_seat_data['reserved_seat']['koltukNo'],
+            'seferBaslikId': self.trip.trip_json['seferId'],
+            'binisIstasyonId': self.trip.trip_json['binisIstasyonId'],
+            'inisIstasyonId': self.trip.trip_json['inisIstasyonId'],
+            'hareketTarihi': self.trip.trip_json['binisTarih'],
+            'varisTarihi': self.trip.trip_json['varisTarih'],
+            'tarifeId': self.trip.tariff,
+            'vagonSiraNo': self.trip.reserved_seat_data['reserved_seat']['vagonSiraNo'],
+            'koltukNo': self.trip.reserved_seat_data['reserved_seat']['koltukNo'],
             'ucret': self.price,
 
         })
@@ -146,17 +141,17 @@ class SeleniumPayment(MainSeleniumPayment):
         """
 
         req_body = api_constants.price_req_body.copy()
-        req_body['yolcuList'][0]['tarifeId'] = self.tariff
+        req_body['yolcuList'][0]['tarifeId'] = self.trip.tariff
         seat_info = req_body['yolcuList'][0]['seferKoltuk'][0]
         seat_info.update({
-            'seferBaslikId': self.trip['seferId'],
-            'binisTarihi': self.trip['binisTarih'],
-            'vagonSiraNo': self.reserved_seat_data['reserved_seat']['vagonSiraNo'],
-            'koltukNo': self.reserved_seat_data['reserved_seat']['koltukNo'],
-            'binisIstasyonId': self.trip['binisIstasyonId'],
-            'inisIstasyonId': self.trip['inisIstasyonId'],
+            'seferBaslikId': self.trip.trip_json['seferId'],
+            'binisTarihi': self.trip.trip_json['binisTarih'],
+            'vagonSiraNo': self.trip.reserved_seat_data['reserved_seat']['vagonSiraNo'],
+            'koltukNo': self.trip.reserved_seat_data['reserved_seat']['koltukNo'],
+            'binisIstasyonId': self.trip.trip_json['binisIstasyonId'],
+            'inisIstasyonId': self.trip.trip_json['inisIstasyonId'],
             # This should '0' maybe, vuejs code sends '0' always
-            'vagonTipi': self.reserved_seat_data['reserved_seat']['vagonTipId']
+            'vagonTipi': self.trip.reserved_seat_data['reserved_seat']['vagonTipId']
         })
         # send request
         response = requests.post(
@@ -165,6 +160,7 @@ class SeleniumPayment(MainSeleniumPayment):
             data=json.dumps(req_body),
             timeout=10)
         response_json = json.loads(response.text)
+        self.logger.info("Price response: %s", response_json['anahatFiyatHesSonucDVO'])
         return int(
             response_json['anahatFiyatHesSonucDVO']['indirimliToplamUcret'])
 
@@ -186,7 +182,7 @@ class SeleniumPayment(MainSeleniumPayment):
             'krediKartiTutari': self. price
         })
 
-        for seat in self.reserved_seat_data['seat_lock_response']['koltuklarimListesi']:
+        for seat in self.trip.reserved_seat_data['seat_lock_response']['koltuklarimListesi']:
             self.vb_enroll_control_req['koltukLockList'].append(
                 seat['koltukLockId'])
 
@@ -214,9 +210,9 @@ class SeleniumPayment(MainSeleniumPayment):
         pareq = response_json['paymentAuthRequest']['pareq']
         md = response_json['paymentAuthRequest']['md']
         term_url = response_json['paymentAuthRequest']['termUrl']
-        enroll_reference = response_json['enrollReference']
+        self.enroll_reference = response_json['enrollReference']
 
-        self.logger.info("Enroll reference: %s", enroll_reference)
+        self.logger.info("Enroll reference: %s", self.enroll_reference)
 
         form_data = {
             'PaReq': pareq,
@@ -227,26 +223,12 @@ class SeleniumPayment(MainSeleniumPayment):
         with open("form_data.json", "w", encoding='utf-8') as f:
             f.write(json.dumps(form_data))
 
-        odeme_sorgu = {
-            "kanalKodu": "3",
-            "dil": 0,
-            "enrollReference": enroll_reference
-        }
-
-        # send odeme soru request
-        odeme_sorgu_response = requests.post(api_constants.VB_ODEME_SORGU,
-                                 headers=api_constants.REQUEST_HEADER,
-                                 data=json.dumps(odeme_sorgu),
-                                 timeout=10)
-        odeme_sorgu_response_json = json.loads(odeme_sorgu_response.text)
-        
-        vspos_ref = odeme_sorgu_response_json['vsposReference']
-        
+        response = session.post(acs_url, data=form_data)
 
         if response.status_code != 200:
             self.logger.error("Payment failed.")
             self.logger.error("Response: %s", response.text)
-            return
+            raise Exception("Response: %s", response.text)
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as temp_file:
             temp_file.write(response.text.encode('utf-8'))
@@ -308,6 +290,51 @@ class SeleniumPayment(MainSeleniumPayment):
 
         except TimeoutException:
             self.logger.error("Timeout while waiting for payment result.")
+
+    def vb_odeme_sorgu(self):
+        """vb_odeme_sorgu"""
+        odeme_sorgu = {
+            "kanalKodu": "3",
+            "dil": 0,
+            "enrollReference": self.enroll_reference
+        }
+
+        # send odeme soru request
+
+        try:
+            odeme_sorgu_response = requests.post(api_constants.VB_ODEME_SORGU,
+                                                 headers=api_constants.REQUEST_HEADER,
+                                                 data=json.dumps(odeme_sorgu),
+                                                 timeout=10)
+
+        except requests.exceptions.RequestException as e:
+            self.logger.error("odeme sorgu request failed: %s", e)
+            raise e
+
+        odeme_sorgu_response_json = json.loads(odeme_sorgu_response.text)
+
+        if odeme_sorgu_response_json['cevapBilgileri']['cevapKodu'] != "000":
+            self.logger.error("Payment failed.")
+            self.logger.error("Response: %s", odeme_sorgu_response.text)
+            raise Exception("Response: %s", odeme_sorgu_response.text)
+        self.vspos_ref = odeme_sorgu_response_json['vsposReference']
+
+    def ticket_reservation(self):
+        """ticket_reservation"""
+        req_body = api_constants.ticket_reservation_req_body.copy()
+        req_body['biletRezYerBilgileri'][0]['biletWSDVO'].update({
+            'seferBaslikId': self.trip.trip_json['seferId'],
+            'binisIstasyonId': self.trip.trip_json['binisIstasyonId'],
+            'inisIstasyonId': self.trip.trip_json['inisIstasyonId'],
+            'hareketTarihi': self.trip.trip_json['binisTarih'],
+            'varisTarihi': self.trip['varisTarih'],
+            'tarifeId': self.trip.tariff,
+
+            'vagonSiraNo': self.trip.reserved_seat_data['reserved_seat']['vagonSiraNo'],
+            'koltukNo': self.trip.reserved_seat_data['reserved_seat']['koltukNo'],
+            'ucret': self.price,
+        })
+        req_body['koltukLockList'] = self.trip.reserved_seat_data['seat_lock_response']['koltuklarimListesi']
 
 
 ######################################################### INTERFACE AUTOMATION ####################################
