@@ -93,7 +93,7 @@ class SeleniumPayment(MainSeleniumPayment):
         self.html_response = None
 
         self.enroll_reference = None
-        self.vspos_ref = None
+        self.vpos_ref = None
 
         self.user_data = [{
             "ad": "izzet can",
@@ -128,7 +128,7 @@ class SeleniumPayment(MainSeleniumPayment):
         self.logger.info("Ticket reservation request values set: %s",
                          self.ticket_reservation_req)
 
-    def get_price(self):
+    def set_price(self):
         """
         Get the price of a trip for a given empty seat.
 
@@ -146,12 +146,12 @@ class SeleniumPayment(MainSeleniumPayment):
         seat_info.update({
             'seferBaslikId': self.trip.trip_json['seferId'],
             'binisTarihi': self.trip.trip_json['binisTarih'],
-            'vagonSiraNo': self.trip.reserved_seat_data['reserved_seat']['vagonSiraNo'],
-            'koltukNo': self.trip.reserved_seat_data['reserved_seat']['koltukNo'],
+            'vagonSiraNo': self.trip.reserve_seat_data['vagonSiraNo'],
+            'koltukNo': self.trip.reserve_seat_data['koltukNo'],
             'binisIstasyonId': self.trip.trip_json['binisIstasyonId'],
             'inisIstasyonId': self.trip.trip_json['inisIstasyonId'],
             # This should '0' maybe, vuejs code sends '0' always
-            'vagonTipi': self.trip.reserved_seat_data['reserved_seat']['vagonTipId']
+            'vagonTipi': self.trip.reserve_seat_data['vagonTipId']
         })
         # send request
         response = requests.post(
@@ -161,7 +161,9 @@ class SeleniumPayment(MainSeleniumPayment):
             timeout=10)
         response_json = json.loads(response.text)
         self.logger.info("Price response: %s", response_json['anahatFiyatHesSonucDVO'])
-        return int(
+        self.normal_price = int(
+            response_json['anahatFiyatHesSonucDVO']['indirimsizToplamUcret'])
+        self.price = int(
             response_json['anahatFiyatHesSonucDVO']['indirimliToplamUcret'])
 
     def process_payment(self):
@@ -174,30 +176,35 @@ class SeleniumPayment(MainSeleniumPayment):
         Returns:
             None
         """
-        self.price = self.get_price()
         print(f"Price: {self.price}")
 
         self.vb_enroll_control_req['biletRezOdemeBilgileri'].update({
+            'krediKartNO': self.trip.passenger.credit_card_no,
+            'krediKartSahibiAdSoyad': self.trip.passenger.name + ' ' + self.trip.passenger.surname,
+            'ccv': self.trip.passenger.credit_card_ccv,
+            'sonKullanmaTarihi': self.trip.passenger.credit_card_exp,
             'toplamBiletTutari': self.price,
             'krediKartiTutari': self. price
         })
 
-        for seat in self.trip.reserved_seat_data['seat_lock_response']['koltuklarimListesi']:
+        for seat in self.trip.seat_lock_response['koltuklarimListesi']:
             self.vb_enroll_control_req['koltukLockList'].append(
                 seat['koltukLockId'])
 
-        response = requests.post(
-            api_constants.VB_ENROLL_CONTROL_ENDPOINT,
-            headers=api_constants.REQUEST_HEADER,
-            data=json.dumps(self.vb_enroll_control_req),
-            timeout=10)
-
-        if response.status_code != 200:
-            self.logger.error("Payment failed.")
-            self.logger.error("Response: %s", response.text)
-            return
+        try:
+            response = requests.post(
+                api_constants.VB_ENROLL_CONTROL_ENDPOINT,
+                headers=api_constants.REQUEST_HEADER,
+                data=json.dumps(self.vb_enroll_control_req),
+                timeout=10)
+        except requests.exceptions.RequestException as e:
+            self.logger.error("Payment request failed: %s", e)
+            raise e
 
         response_json = json.loads(response.text)
+        if response_json['cevapBilgileri']['cevapKodu'] != "000":
+            self.logger.error("Payment failed: %s", response_json['cevapBilgileri'])
+            return
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as temp_file:
             temp_file.write(response.text.encode('utf-8'))
@@ -219,16 +226,11 @@ class SeleniumPayment(MainSeleniumPayment):
             'MD': md,
             'TermUrl': term_url
         }
-        # print form_data to file but not tempfile
-        with open("form_data.json", "w", encoding='utf-8') as f:
-            f.write(json.dumps(form_data))
-
-        response = session.post(acs_url, data=form_data)
-
-        if response.status_code != 200:
-            self.logger.error("Payment failed.")
-            self.logger.error("Response: %s", response.text)
-            raise Exception("Response: %s", response.text)
+        try:
+            response = session.post(acs_url, data=form_data)
+        except requests.exceptions.RequestException as e:
+            self.logger.error("Payment request failed: %s", e)
+            raise e
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as temp_file:
             temp_file.write(response.text.encode('utf-8'))
@@ -251,17 +253,21 @@ class SeleniumPayment(MainSeleniumPayment):
         # print(value)  # This should print your data
 
         self.driver.get(f"file:///{temp_file_path}")
-        time.sleep(5000)
+        
+        # wait for the page to be loaded
+        WebDriverWait(self.driver, 30).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+        self.logger.info("Payment Page loaded.")
         self.driver.save_screenshot("payment_page.png")
 
         # Find the OTP input field and submit button
         try:
+            # For OTP input field and submit button
             text_input = self.driver.find_element(
                 By.CSS_SELECTOR, "input[type='number'], input[type='text']")
             btn = self.driver.find_element(
                 By.CSS_SELECTOR, "button[type='submit']")
             if text_input and btn and btn.text:
-                pprint(btn.text)
+                self.logger.info("OTP input field and submit button found.")
                 # TODO: get this from the USER
                 user_input = input("Enter the OTP: ")
                 text_input.send_keys(user_input)
@@ -271,22 +277,23 @@ class SeleniumPayment(MainSeleniumPayment):
 
         try:
             # Wait for the redirection from payment to the main page
-            WebDriverWait(self.driver, 30).until(
+            WebDriverWait(self.driver, 90).until(
                 EC.url_contains("https://bilet.tcdd.gov.tr/"))
             current_url = self.driver.current_url
-            if "odeme-sonuc" in current_url:
+            if "odeme-sonuc" in current_url: # payment success url
                 self.is_payment_successful = True
                 self.logger.info("Payment successful.")
                 # take a screenshot
-                time.sleep(10)
+                # wait for url to be loaded completely and dom ready
+                
                 self.driver.save_screenshot("payment_success.png")
-            else:
+            elif "odeme" in current_url: # payment failure url
                 self.logger.error("Payment failed.")
                 self.is_payment_successful = False
-                self.driver.save_screenshot("payment_failed.png")
+                #self.driver.save_screenshot("payment_failed.png")
                 # wait until element with some id is found
-                WebDriverWait(self.driver, 30).until(
-                    EC.presence_of_element_located(("id", "some_id")))
+                #WebDriverWait(self.driver, 30).until(
+                #    EC.presence_of_element_located(("id", "some_id")))
 
         except TimeoutException:
             self.logger.error("Timeout while waiting for payment result.")
@@ -298,8 +305,7 @@ class SeleniumPayment(MainSeleniumPayment):
             "dil": 0,
             "enrollReference": self.enroll_reference
         }
-
-        # send odeme soru request
+        self.logger.info("Sending odeme sorgu request: %s", odeme_sorgu)
 
         try:
             odeme_sorgu_response = requests.post(api_constants.VB_ODEME_SORGU,
@@ -314,10 +320,10 @@ class SeleniumPayment(MainSeleniumPayment):
         odeme_sorgu_response_json = json.loads(odeme_sorgu_response.text)
 
         if odeme_sorgu_response_json['cevapBilgileri']['cevapKodu'] != "000":
-            self.logger.error("Payment failed.")
             self.logger.error("Response: %s", odeme_sorgu_response.text)
-            raise Exception("Response: %s", odeme_sorgu_response.text)
-        self.vspos_ref = odeme_sorgu_response_json['vsposReference']
+        else:
+            self.logger.info("Response: %s", odeme_sorgu_response_json['vposReference'])
+            self.vpos_ref = odeme_sorgu_response_json['vposReference']
 
     def ticket_reservation(self):
         """ticket_reservation"""
@@ -327,15 +333,33 @@ class SeleniumPayment(MainSeleniumPayment):
             'binisIstasyonId': self.trip.trip_json['binisIstasyonId'],
             'inisIstasyonId': self.trip.trip_json['inisIstasyonId'],
             'hareketTarihi': self.trip.trip_json['binisTarih'],
-            'varisTarihi': self.trip['varisTarih'],
+            'varisTarihi': self.trip.trip_json['inisTarih'],
+            'trenTurTktId': self.trip.trip_json['trenTuruTktId'],
+            'tckn': self.trip.passenger.tckn,
+            'ad': self.trip.passenger.name,
+            'soyad': self.trip.passenger.surname,
+            'dogumTar': self.trip.passenger.birthday,
+            'iletisimEposta': self.trip.passenger.email,
+            'iletisimCepTel': self.trip.passenger.phone,
+            'cinsiyet': self.trip.passenger.sex,
             'tarifeId': self.trip.tariff,
-
-            'vagonSiraNo': self.trip.reserved_seat_data['reserved_seat']['vagonSiraNo'],
-            'koltukNo': self.trip.reserved_seat_data['reserved_seat']['koltukNo'],
+            'vagonSiraNo': self.trip.reserve_seat_data['vagonSiraNo'],
+            'koltukNo': self.trip.reserve_seat_data['koltukNo'],
             'ucret': self.price,
+            'koltukBazUcret': self.normal_price,
+            'indirimsizUcret': self.normal_price,
         })
-        req_body['koltukLockList'] = self.trip.reserved_seat_data['seat_lock_response']['koltuklarimListesi']
-
+        req_body['biletRezOdemeBilgileri'].update({
+            'vposReference': self.vpos_ref,
+            'krediKartSahibiAdSoyad': self.trip.passenger.name + ' ' + self.trip.passenger.surname,
+            'toplamBiletTutari': self.price,
+            'krediKartiTutari': self.price,
+            'krediKartNo': self.trip.passenger.credit_card_no,
+        })
+        req_body['koltukLockIdList'] = self.trip.koltuk_lock_id_list
+        
+        with open("ticket_reservation_req.json", "w") as f:
+            f.write(json.dumps(req_body))
 
 ######################################################### INTERFACE AUTOMATION ####################################
     # def send_keys(self, element, string, speed=0.000001):

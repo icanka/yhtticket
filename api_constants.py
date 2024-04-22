@@ -127,16 +127,12 @@ vb_enroll_control_req_body = {
     "yebspPaymentSuccessUrl": "https://bilet.tcdd.gov.tr/odeme-sonuc",
     "yebspPaymentFailureUrl": "https://bilet.tcdd.gov.tr/odeme",
     "biletRezOdemeBilgileri": {
-        # TODO: Get this from the user
-        "krediKartNO": "4912055091562978",
-        # TODO: Get this from the user
-        "krediKartSahibiAdSoyad": "izzet can karakuş",
-        # TODO: Get this from the user
-        "ccv": "296",
-        # TODO: Get this from the user
-        "sonKullanmaTarihi": 2901,
-        "toplamBiletTutari": None,  # 370
-        "krediKartiTutari": None,  # 370
+        "krediKartNO": None,
+        "krediKartSahibiAdSoyad": None,
+        "ccv": None,
+        "sonKullanmaTarihi": None,
+        "toplamBiletTutari": None,
+        "krediKartiTutari": None,
         "abonmanTutar": 0,
         "acikBiletKuponNoList": [],
         "acikBiletTutar": 0,
@@ -179,11 +175,11 @@ ticket_reservation_req_body = {
                 "koltukNo": None,
                 "ucret": None,
                 "statu": 0,
-                "seyahatTur": 2,
-                "trenTurTktId": 49549,  # may not be necessary
-                "vagonTipi": 0,
-                "koltukBazUcret": None,  # may not be necessary
-                "indirimsizUcret": None,  # may not be necessary
+                "seyahatTur": 2,                 # this looks like 2 for gidis, dunno what it is for gidis-donus
+                "trenTurTktId": 49549,
+                "vagonTipi": 0,                  # This changes the price even for bussiness class even though it should not
+                "koltukBazUcret": None,          # may not be necessary
+                "indirimsizUcret": None,         # may not be necessary
                 "minimumTasimaUcretiFarki": 0
             }
         }
@@ -255,19 +251,20 @@ ticket_reservation_req_body = {
                 "ucret": None,
                 
                 
-                "tckn": "18700774442",
-                "ad": "izzet can",
-                "soyad": "karakuş",
-                "dogumTar": "Jul 14, 1994 03:00:00 AM",
-                "iletisimEposta": "izzetcankarakus@gmail.com",
-                "iletisimCepTel": "05340771521",
-                "cinsiyet": "E",
+                "tckn": None,
+                "ad": None,
+                "soyad": None,
+                "dogumTar": None,
+                "iletisimEposta": None,
+                "iletisimCepTel": None,
+                "cinsiyet": None,
+                "trenTurTktId": None,
+                "koltukBazUcret": None,
+                "indirimsizUcret": None,
                 "statu": 0,
                 "seyahatTur": 2,
-                "trenTurTktId": 49549,
                 "vagonTipi": 0,
-                "koltukBazUcret": 430,
-                "indirimsizUcret": 430,
+
                 "minimumTasimaUcretiFarki": 0
             }
         }

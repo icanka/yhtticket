@@ -2,15 +2,32 @@
 import time
 from datetime import datetime
 import logging
-import click
 import trip_search
 import api_constants
+
+
+class Passenger:
+    """Passenger class to store passenger details."""
+
+    def __init__(self, tckn, name, surname, birthday, email, phone, sex, credit_card_no=None, credit_card_ccv=None, credit_card_exp=None):
+        self.tckn = tckn
+        self.name = name
+        self.surname = surname
+        self.birthday = birthday
+        self.email = email
+        self.phone = phone
+        self.sex = sex
+        self.credit_card_no = credit_card_no
+        self.credit_card_ccv = credit_card_ccv
+        self.credit_card_exp = credit_card_exp
+        self.logger = logging.getLogger(__name__)
 
 
 class Trip:
     """Trip class to store trip details."""
 
-    def __init__(self, from_station, to_station, from_date, to_date, tariff=None, seat_type=None):
+    def __init__(self, from_station, to_station, from_date, to_date, passenger, tariff=None, seat_type=None):
+        self.passenger = passenger
         self.from_station = from_station
         self.to_station = to_station
         self.from_date = from_date

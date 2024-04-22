@@ -350,6 +350,8 @@ class TripSearchApi:
                     t['trenAdi'] = trip['trenAdi']
                     t['seferAdi'] = trip['seferAdi']
                     t['seferId'] = trip['seferId']
+                    t['trenTuruTktId'] = trip['trenTuruTktId']
+                    t['seyahatTuru'] = trip['seyahatTuru']
                     t['binisIstasyonId'] = trip_req['seferSorgulamaKriterWSDVO'][
                         'binisIstasyonId']
                     t['inisIstasyonId'] = trip_req['seferSorgulamaKriterWSDVO'][

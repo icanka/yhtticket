@@ -4,7 +4,8 @@ from datetime import datetime
 from pprint import pprint
 import api_constants
 from payment import SeleniumPayment
-from cli import Trip
+from trip import Trip
+from trip import Passenger
 
 
 def main():
@@ -19,25 +20,37 @@ def main():
         ]
     )
 
+
+    tckn = "18700774442"
+    name = "izzet can"
+    surname = "karakuş"
+    birthday = "Jul 14, 1994 03:00:00 AM"
+    email = "izzetcankarakus@gmail.com"
+    phone = "05340771521"
+    sex = "E"
+    credit_card_no = "4506347008156065"
+    credit_card_ccv = "035"
+    credit_card_exp = "2406"
+    
+    passenger = Passenger(tckn, name, surname, birthday, email, phone, sex, credit_card_no, credit_card_ccv, credit_card_exp)
+    
     from_station = 'Ankara Gar'
     to_station = 'İstanbul(Pendik)'
     from_date = '29 April 17:00'
     to_date = '29 April 17:30'
     seat_type = 'eco'
     tariff = 'tsk'
-    my_trip = Trip(from_station, to_station, from_date, to_date, tariff, seat_type)
-
+    my_trip = Trip(from_station, to_station, from_date,
+                   to_date, passenger, tariff, seat_type)
     p = SeleniumPayment()
     # find trip
     trips = my_trip.find_trip()
     if len(trips) > 0:
         trip = trips[0]
-        pprint(type(trip))
         my_trip.trip_json = trip
         my_trip.reserve_seat()
         p.trip = my_trip
         my_trip.reserve_seat_data['lock_end_time'] = "2022-04-29 17:00:00"
-
         # write to file
         with open(f'trip_{datetime.now().strftime("%H%M")}.json', 'w', encoding='utf-8') as file:
             file.write(json.dumps(p.trip.trip_json))
@@ -55,7 +68,12 @@ def main():
         # pprint(trip)
         pprint(
             f"Seat {seat_str} in vagon {vagon_str} is reserved for trip {trip_str}")
-
+        
+        
+        p.set_price()
+        p.process_payment()
+        p.vb_odeme_sorgu()
+        #p.ticket_reservation()
         # p.process_payment()
         # p = SeleniumPayment(
         #     trip=trip,
