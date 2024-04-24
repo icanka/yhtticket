@@ -25,7 +25,7 @@ class MainSeleniumPayment:
         self.options.add_argument("--disable-geolocation")
         # self.options.add_argument("--disable-application-cache")
         # self.options.add_argument("--disable-cache")
-        # self.options.add_argument("--headless")
+        self.options.add_argument("--headless")
         self.options.add_argument("--disable-infobars")
         self.options.add_argument("--mute-audio")
         # self.options.add_argument("--disable-gpu")

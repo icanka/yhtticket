@@ -85,12 +85,12 @@ class TripSearchApi:
                     active_vagons.append(v)
         return active_vagons
 
-    def select_first_empty_seat(self, trip):
+    def select_first_empty_seat(self, trip, empty_seat=None):
         """
         Selects the first empty seat for a given trip.
 
         Args:
-            trip (dict): The trip information.
+            trip (dict): The trip information. trip_json
 
         Returns:
             dict: The response JSON containing the selected seat information
@@ -100,7 +100,9 @@ class TripSearchApi:
         seat_select_req = api_constants.koltuk_sec_req_body.copy()
         s_check = api_constants.seat_check.copy()
         if trip['empty_seats']:
-            empty_seat = trip['empty_seats'][0]
+            empty_seat = trip['empty_seats'][0] if empty_seat is None else empty_seat
+            self.logger.info("Selecting the first empty seat: %s", empty_seat)
+
             seat_select_req['seferId'] = trip['seferId']
             seat_select_req['vagonSiraNo'] = empty_seat['vagonSiraNo']
             seat_select_req['koltukNo'] = empty_seat['koltukNo']

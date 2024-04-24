@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 from pprint import pprint
 import api_constants
+import time
 from payment import SeleniumPayment
 from trip import Trip
 from trip import Passenger
@@ -54,18 +55,26 @@ def main():
         my_trip.trip_json = trip
         my_trip.reserve_seat()
         p.trip = my_trip
-        my_trip.reserve_seat_data['lock_end_time'] = "2022-04-29 17:00:00"
+
+        
+        
+        while True:
+            time.sleep(1)
+            p.trip.reserve_seat()
+        
+        
+        #my_trip.reserve_seat_data['lock_end_time'] = "2022-04-29 17:00:00"
         # write to file
-        with open(f'trip_{datetime.now().strftime("%H%M")}.json', 'w', encoding='utf-8') as file:
-            file.write(json.dumps(p.trip.trip_json))
+        #with open(f'trip_{datetime.now().strftime("%H%M")}.json', 'w', encoding='utf-8') as file:
+        #    file.write(json.dumps(p.trip.trip_json))
         # write reserved seat data to file
-        with open(f'reserved_seat_{datetime.now().strftime("%H%M")}.json', 'w', encoding='utf-8') as file:
-            file.write(json.dumps(my_trip.reserve_seat_data))
+        #with open(f'reserved_seat_{datetime.now().strftime("%H%M")}.json', 'w', encoding='utf-8') as file:
+        #    file.write(json.dumps(my_trip.reserve_seat_data))
 
         # ready the page with selenium
         trip_str = my_trip.trip_json['binisTarih']
-        seat_str = my_trip.reserve_seat_data['koltukNo']
-        vagon_str = my_trip.reserve_seat_data['vagonSiraNo']
+        seat_str = my_trip.empty_seat_json['koltukNo']
+        vagon_str = my_trip.empty_seat_json['vagonSiraNo']
         end_time = my_trip.lock_end_time
 
         pprint(f"Lock will end at {end_time}")
@@ -73,17 +82,9 @@ def main():
         pprint(
             f"Seat {seat_str} in vagon {vagon_str} is reserved for trip {trip_str}")
 
-        p.set_price()
-        p.process_payment()
-        #p.set_is_payment_success()
-        p.ticket_reservation()
-        # p.process_payment()
-        # p = SeleniumPayment(
-        #     trip=trip,
-        #     empty_seat=empty_seat,
-        #     seat_lck_json=seat_lock_response,
-        #     tariff='TSK')
-        # p.process_payment()
+        #p.set_price()
+        #p.process_payment()
+        #p.ticket_reservation()
 
 
 # while True:

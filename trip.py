@@ -35,7 +35,7 @@ class Trip:
         self.seat_type = seat_type
         self.trip_json = None
         self.time_format = "%b %d, %Y %I:%M:%S %p"
-        self.reserve_seat_data = None
+        self.empty_seat_json = None
         self.seat_lock_response = None
         self.koltuk_lock_id_list = []
         self.lock_end_time = None
@@ -55,20 +55,35 @@ class Trip:
 
     def reserve_seat(self):
         """Reserve a seat for the given trip."""
+
         try:
+            # first reserving of the seat
             if not self.is_seat_reserved:
                 self.logger.info("Reserving the seat.")
-                lock_end_time, self.reserve_seat_data, self.seat_lock_response = self.api.select_first_empty_seat(
+                lock_end_time, self.empty_seat_json, self.seat_lock_response = self.api.select_first_empty_seat(
                     self.trip_json)
-                self.is_seat_reserved = True
                 self.lock_end_time = datetime.strptime(
                     lock_end_time, self.time_format)
                 self.set_seat_lock_id()
+                self.is_seat_reserved = True
                 self.logger.info("lock_end_time: %s", self.lock_end_time)
-                logging.info("empty seat: %s", self.reserve_seat_data)
-        except Exception as e:
+
+            # we have already reserved the seat check lock_end_time and if it is passed then reserve the seat again
+            elif self.is_seat_reserved:
+                time_diff = self.lock_end_time - datetime.now()
+                if time_diff.total_seconds() < 10:
+                    self.logger.info(time_diff.total_seconds())
+                    self.logger.info(
+                        "Lock time ending is approaching. Starting to reserve the seat again")
+                    lock_end_time, _, self.seat_lock_response = self.api.select_first_empty_seat(
+                        self.trip_json, self.empty_seat_json)
+                    self.lock_end_time = datetime.strptime(
+                        lock_end_time, self.time_format)
+                    self.set_seat_lock_id()
+                    self.logger.info("lock_end_time: %s", self.lock_end_time)
+
+        except trip_search.SeatLockedException as e:
             logging.error("Error while reserving the seat: %s", e)
-            raise e
 
     def get_trips(self, list_trips=False):
         """Get the trips based on the given parameters."""
