@@ -238,34 +238,7 @@ class SeleniumPayment(MainSeleniumPayment):
             md.replace('#', '%23') + "&pareq=" + pareq + "&termurl=" + term_url
         self.logger.info("Base URL: %s", base_url)
         self.driver.get(base_url)
-        # try:
-        #     response = session.post(acs_url, data=form_data)
-        # except requests.exceptions.RequestException as e:
-        #     self.logger.error("Payment request failed: %s", e)
-        #     raise e
-        # with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as temp_file:
-        #     temp_file.write(response.text.encode('utf-8'))
-        #     temp_file_path = temp_file.name
-        #     self.html_response = temp_file_path
 
-        # Convert the data to a properly formatted string
-        # data_str = json.dumps(self.user_data)
-        # data_str_js = data_str.replace('"', '\\"')
-        # self.driver.get("https://bilet.tcdd.gov.tr")
-        # time.sleep(5)
-        # driver.execute_script(
-        #     f"window.localStorage.setItem('enrollees', \"{data_str_js}\");")
-        # time.sleep(5)
-        # driver.refresh()
-        # time.sleep(5)
-        # # To verify, you can retrieve the value like this
-        # value = driver.execute_script(
-        #     "return window.localStorage.getItem('enrollees');")
-        # print(value)  # This should print your data
-
-        # self.driver.get(f"file:///{temp_file_path}")
-        # time.sleep(40)
-        # wait for the page to be loaded
         WebDriverWait(self.driver, 30).until(lambda d: d.execute_script(
             'return document.readyState') == 'complete')
         self.logger.info("Payment Page loaded.")
@@ -288,11 +261,11 @@ class SeleniumPayment(MainSeleniumPayment):
                 except selenium.common.exceptions.StaleElementReferenceException as e:
                     self.logger.error("StaleElementReferenceException: %s", e)
         except selenium.common.exceptions.NoSuchElementException:
-            self.logger.error("OTP input field or submit button not found.")
+            self.logger.warning("OTP input field or submit button not found.")
         # wait a while to process the payment
         time.sleep(8)
 
-        # wait until url contains 'bilet.tcdd.gov.tr'
+        # wait until user approves payment and we are redirected to 'bilet.tcdd.gov.tr'
         WebDriverWait(self.driver, 120).until(
             EC.url_contains('https://bilet.tcdd.gov.tr/'))
         self.logger.info("Page redirected to bilet.tcdd.gov.tr")
@@ -305,7 +278,8 @@ class SeleniumPayment(MainSeleniumPayment):
                 break
             else:
                 self.is_payment_successful = False
-                self.logger.error("Payment was not successful. Retrying to be sure.")
+                self.logger.error(
+                    "Payment was not successful. Retrying to be sure.")
                 time.sleep(10)
 
     def set_is_payment_success(self):

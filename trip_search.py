@@ -357,8 +357,9 @@ class TripSearchApi:
                     t['inisIstasyonId'] = trip_req['seferSorgulamaKriterWSDVO'][
                         'inisIstasyonId']
                     trips.append(t)
-                except IndexError:  # no business class, just ignore
-                    pprint("No business class")
+                except IndexError as e:  # no business class, just ignore
+                    self.logger.error("IndexError: %s", e)
+                    self.logger.error("No business class for trip: %s", trip)
         return trips
 
     def get_station_list(self):

@@ -134,7 +134,6 @@ class Trip:
                         trips_with_empty_seats.append(trip)
             except TypeError as e:
                 self.logger.error("Error while finding trip: %s", e)
-                raise e
         return trips_with_empty_seats
 
     def list_stations(self):
