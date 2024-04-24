@@ -122,15 +122,19 @@ class Trip:
                                  self.from_station, self.to_station, self.from_date,
                                  self.to_date, seat_type_id)
             trips = self.get_trips()
-            for trip in trips:
-                trip = self.api.get_empty_seats_trip(
-                    trip, self.from_station, self.to_station, seat_type_id)
-                if self.seat_type:
-                    empty_seat_count = trip[f"{self.seat_type.lower()}_empty_seat_count"]
-                else:
-                    empty_seat_count = trip['empty_seat_count']
-                if empty_seat_count > 0:
-                    trips_with_empty_seats.append(trip)
+            try:
+                for trip in trips:
+                    trip = self.api.get_empty_seats_trip(
+                        trip, self.from_station, self.to_station, seat_type_id)
+                    if self.seat_type:
+                        empty_seat_count = trip[f"{self.seat_type.lower()}_empty_seat_count"]
+                    else:
+                        empty_seat_count = trip['empty_seat_count']
+                    if empty_seat_count > 0:
+                        trips_with_empty_seats.append(trip)
+            except TypeError as e:
+                self.logger.error("Error while finding trip: %s", e)
+                raise e
         return trips_with_empty_seats
 
     def list_stations(self):

@@ -8,7 +8,7 @@ VAGON_HARITA_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/vagon/vagonHar
 VB_ENROLL_CONTROL_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/odeme/vbEnrollControl"
 PRICE_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/fiyatlandirma/anahatFiyatSimple"
 VB_ODEME_SORGU = "https://api-yebsp.tcddtasimacilik.gov.tr/odeme/vbOdemeSorgu"
-VB_BILET_SATIS_REZERVASYON = "https://api-yebsp.tcddtasimacilik.gov.tr/bilet/biletSatisRezervasyon"
+TICKET_RESERVATION_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/bilet/biletSatisRezervasyon"
 
 DISABLED_SEAT_IDS = [13485128303, 13029825502,
                      13485128302, 13371669503, 15196333600, 27948604352]

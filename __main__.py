@@ -15,11 +15,10 @@ def main():
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s',
         handlers=[
-            # logging.FileHandler('trip_search.log'),
+            logging.FileHandler('trip_search.log'),
             logging.StreamHandler()
         ]
     )
-
 
     tckn = "18700774442"
     name = "izzet can"
@@ -28,18 +27,23 @@ def main():
     email = "izzetcankarakus@gmail.com"
     phone = "05340771521"
     sex = "E"
-    credit_card_no = "4506347008156065"
-    credit_card_ccv = "035"
-    credit_card_exp = "2406"
-    
-    passenger = Passenger(tckn, name, surname, birthday, email, phone, sex, credit_card_no, credit_card_ccv, credit_card_exp)
-    
-    from_station = 'Ankara Gar'
-    to_station = 'İstanbul(Pendik)'
-    from_date = '29 April 17:00'
-    to_date = '29 April 17:30'
+    credit_card_no = "4506347008156065" 
+    #credit_card_no = "6501700150491393"
+    credit_card_ccv = "035" 
+    #credit_card_ccv = "777"
+    credit_card_exp = "2406" 
+    #credit_card_exp = "3004"
+
+    passenger = Passenger(tckn, name, surname, birthday, email,
+                          phone, sex, credit_card_no, credit_card_ccv, credit_card_exp)
+
+    from_station = 'İstanbul(Pendik)'
+    to_station = 'Ankara Gar'
+    from_date = '2 May 08:00'
+    to_date = '2 May 09:00'
     seat_type = 'eco'
     tariff = 'tsk'
+    
     my_trip = Trip(from_station, to_station, from_date,
                    to_date, passenger, tariff, seat_type)
     p = SeleniumPayment()
@@ -68,12 +72,11 @@ def main():
         # pprint(trip)
         pprint(
             f"Seat {seat_str} in vagon {vagon_str} is reserved for trip {trip_str}")
-        
-        
+
         p.set_price()
         p.process_payment()
-        p.vb_odeme_sorgu()
-        #p.ticket_reservation()
+        #p.set_is_payment_success()
+        p.ticket_reservation()
         # p.process_payment()
         # p = SeleniumPayment(
         #     trip=trip,

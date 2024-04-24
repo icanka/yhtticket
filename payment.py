@@ -88,6 +88,7 @@ class SeleniumPayment(MainSeleniumPayment):
 
         self.vb_enroll_control_req = api_constants.vb_enroll_control_req_body.copy()
         self.ticket_reservation_req = api_constants.ticket_reservation_req_body.copy()
+        self.ticket_reservation_info = None
         self.is_payment_successful = None
         self.vb_enroll_control_response = None
         self.html_response = None
@@ -160,7 +161,8 @@ class SeleniumPayment(MainSeleniumPayment):
             data=json.dumps(req_body),
             timeout=10)
         response_json = json.loads(response.text)
-        self.logger.info("Price response: %s", response_json['anahatFiyatHesSonucDVO'])
+        self.logger.info("Price response: %s",
+                         response_json['anahatFiyatHesSonucDVO'])
         self.normal_price = int(
             response_json['anahatFiyatHesSonucDVO']['indirimsizToplamUcret'])
         self.price = int(
@@ -203,7 +205,8 @@ class SeleniumPayment(MainSeleniumPayment):
 
         response_json = json.loads(response.text)
         if response_json['cevapBilgileri']['cevapKodu'] != "000":
-            self.logger.error("Payment failed: %s", response_json['cevapBilgileri'])
+            self.logger.error("Payment failed: %s",
+                              response_json['cevapBilgileri'])
             return
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as temp_file:
@@ -217,25 +220,33 @@ class SeleniumPayment(MainSeleniumPayment):
         pareq = response_json['paymentAuthRequest']['pareq']
         md = response_json['paymentAuthRequest']['md']
         term_url = response_json['paymentAuthRequest']['termUrl']
+        # used in vb_odeme_sorgu to validate payment
         self.enroll_reference = response_json['enrollReference']
+        self.logger.info("response: %s", response_json)
 
         self.logger.info("Enroll reference: %s", self.enroll_reference)
 
+        self.logger.info("ACS URL: %s", acs_url)
         form_data = {
             'PaReq': pareq,
             'MD': md,
             'TermUrl': term_url
         }
-        try:
-            response = session.post(acs_url, data=form_data)
-        except requests.exceptions.RequestException as e:
-            self.logger.error("Payment request failed: %s", e)
-            raise e
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as temp_file:
-            temp_file.write(response.text.encode('utf-8'))
-            temp_file_path = temp_file.name
-            self.html_response = temp_file_path
+        self.logger.info("Sending payment request: %s", form_data)
+        base_url = "https://ebilet.tcddtasimacilik.gov.tr/view/eybis/tnmGenel/tcdd3dsecure/3dsecure.html?url="
+        base_url += acs_url + "&md=" + \
+            md.replace('#', '%23') + "&pareq=" + pareq + "&termurl=" + term_url
+        self.logger.info("Base URL: %s", base_url)
+        self.driver.get(base_url)
+        # try:
+        #     response = session.post(acs_url, data=form_data)
+        # except requests.exceptions.RequestException as e:
+        #     self.logger.error("Payment request failed: %s", e)
+        #     raise e
+        # with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as temp_file:
+        #     temp_file.write(response.text.encode('utf-8'))
+        #     temp_file_path = temp_file.name
+        #     self.html_response = temp_file_path
 
         # Convert the data to a properly formatted string
         # data_str = json.dumps(self.user_data)
@@ -252,10 +263,11 @@ class SeleniumPayment(MainSeleniumPayment):
         #     "return window.localStorage.getItem('enrollees');")
         # print(value)  # This should print your data
 
-        self.driver.get(f"file:///{temp_file_path}")
-        
+        # self.driver.get(f"file:///{temp_file_path}")
+        # time.sleep(40)
         # wait for the page to be loaded
-        WebDriverWait(self.driver, 30).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+        WebDriverWait(self.driver, 30).until(lambda d: d.execute_script(
+            'return document.readyState') == 'complete')
         self.logger.info("Payment Page loaded.")
         self.driver.save_screenshot("payment_page.png")
 
@@ -269,37 +281,35 @@ class SeleniumPayment(MainSeleniumPayment):
             if text_input and btn and btn.text:
                 self.logger.info("OTP input field and submit button found.")
                 # TODO: get this from the USER
-                user_input = input("Enter the OTP: ")
-                text_input.send_keys(user_input)
-                btn.click()
+                try:
+                    user_input = input("Enter the OTP: ")
+                    text_input.send_keys(user_input)
+                    btn.click()
+                except selenium.common.exceptions.StaleElementReferenceException as e:
+                    self.logger.error("StaleElementReferenceException: %s", e)
         except selenium.common.exceptions.NoSuchElementException:
             self.logger.error("OTP input field or submit button not found.")
+        # wait a while to process the payment
+        time.sleep(8)
 
-        try:
-            # Wait for the redirection from payment to the main page
-            WebDriverWait(self.driver, 90).until(
-                EC.url_contains("https://bilet.tcdd.gov.tr/"))
-            current_url = self.driver.current_url
-            if "odeme-sonuc" in current_url: # payment success url
+        # wait until url contains 'bilet.tcdd.gov.tr'
+        WebDriverWait(self.driver, 120).until(
+            EC.url_contains('https://bilet.tcdd.gov.tr/'))
+        self.logger.info("Page redirected to bilet.tcdd.gov.tr")
+        # try 3 times
+        self.logger.info("Checking if payment was successfull.")
+        for _ in range(3):
+            if self.set_is_payment_success():
                 self.is_payment_successful = True
-                self.logger.info("Payment successful.")
-                # take a screenshot
-                # wait for url to be loaded completely and dom ready
-                
-                self.driver.save_screenshot("payment_success.png")
-            elif "odeme" in current_url: # payment failure url
-                self.logger.error("Payment failed.")
+                self.logger.info("Payment was successful.")
+                break
+            else:
                 self.is_payment_successful = False
-                #self.driver.save_screenshot("payment_failed.png")
-                # wait until element with some id is found
-                #WebDriverWait(self.driver, 30).until(
-                #    EC.presence_of_element_located(("id", "some_id")))
+                self.logger.error("Payment was not successful. Retrying to be sure.")
+                time.sleep(10)
 
-        except TimeoutException:
-            self.logger.error("Timeout while waiting for payment result.")
-
-    def vb_odeme_sorgu(self):
-        """vb_odeme_sorgu"""
+    def set_is_payment_success(self):
+        """ set_is_payment_success """
         odeme_sorgu = {
             "kanalKodu": "3",
             "dil": 0,
@@ -322,8 +332,11 @@ class SeleniumPayment(MainSeleniumPayment):
         if odeme_sorgu_response_json['cevapBilgileri']['cevapKodu'] != "000":
             self.logger.error("Response: %s", odeme_sorgu_response.text)
         else:
-            self.logger.info("Response: %s", odeme_sorgu_response_json['vposReference'])
+            self.logger.info(
+                "Response: %s", odeme_sorgu_response_json['vposReference'])
             self.vpos_ref = odeme_sorgu_response_json['vposReference']
+            return True
+        return False
 
     def ticket_reservation(self):
         """ticket_reservation"""
@@ -357,9 +370,31 @@ class SeleniumPayment(MainSeleniumPayment):
             'krediKartNo': self.trip.passenger.credit_card_no,
         })
         req_body['koltukLockIdList'] = self.trip.koltuk_lock_id_list
-        
-        with open("ticket_reservation_req.json", "w") as f:
-            f.write(json.dumps(req_body))
+
+        self.logger.info("Ticket reservation request: %s", req_body)
+        # send request
+        if self.is_payment_successful:
+            try:
+                response = requests.post(
+                    api_constants.TICKET_RESERVATION_ENDPOINT,
+                    headers=api_constants.REQUEST_HEADER,
+                    data=json.dumps(req_body),
+                    timeout=10)
+            except requests.exceptions.RequestException as e:
+                self.logger.error("Ticket reservation request failed: %s", e)
+                raise e
+            response_json = json.loads(response.text)
+            if response_json['cevapBilgileri']['cevapKodu'] != "000":
+                self.logger.error("Ticket reservation failed: %s",
+                                  response_json['cevapBilgileri'])
+            else:
+                self.logger.info("Ticket reservation successful.")
+                self.ticket_reservation_info = response_json
+                self.logger.debug(
+                    "Ticket reservation response: %s", response_json)
+                return True
+        return False
+
 
 ######################################################### INTERFACE AUTOMATION ####################################
     # def send_keys(self, element, string, speed=0.000001):
