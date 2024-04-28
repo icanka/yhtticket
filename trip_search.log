@@ -1,0 +1,39 @@
+2024-04-26 14:30:50,821 - trip - find_trip - INFO - seat_type_id: 17002
+2024-04-26 14:30:50,821 - trip - find_trip - INFO - Searching for trips with empty seat.
+2024-04-26 14:30:51,821 - trip - get_trips - INFO - Searching for trips.
+2024-04-26 14:30:53,066 - trip - get_trips - INFO - Total of 1 trips found
+2024-04-26 14:30:56,145 - trip_search - get_empty_seats_trip - INFO - Length of empty seats: 0
+2024-04-26 14:30:57,147 - trip - get_trips - INFO - Searching for trips.
+2024-04-26 14:30:58,246 - trip - get_trips - INFO - Total of 1 trips found
+2024-04-26 14:31:01,210 - trip_search - get_empty_seats_trip - INFO - Length of empty seats: 0
+2024-04-26 14:32:17,644 - trip - get_trips - INFO - Searching for trips.
+2024-04-26 14:32:18,833 - trip - get_trips - INFO - Total of 1 trips found
+2024-04-26 14:34:02,582 - trip - get_trips - INFO - Searching for trips.
+2024-04-26 14:34:04,028 - trip - get_trips - INFO - Total of 1 trips found
+2024-04-26 14:34:24,280 - trip - get_trips - INFO - Searching for trips.
+2024-04-26 14:34:25,425 - trip - get_trips - INFO - Total of 1 trips found
+2024-04-26 14:35:33,666 - trip - get_trips - INFO - Searching for trips.
+2024-04-26 14:35:34,867 - trip - get_trips - INFO - Total of 1 trips found
+2024-04-26 15:07:21,533 - trip - get_trips - INFO - Searching for trips.
+2024-04-26 15:07:22,827 - trip - get_trips - INFO - Total of 1 trips found
+2024-04-26 15:09:53,794 - trip - get_trips - INFO - Searching for trips.
+2024-04-26 15:09:55,142 - trip - get_trips - INFO - Total of 1 trips found
+2024-04-26 15:10:05,232 - trip - get_trips - INFO - Searching for trips.
+2024-04-26 15:10:06,503 - trip - get_trips - INFO - Total of 1 trips found
+2024-04-26 15:10:06,726 - trip - get_trips - INFO - Searching for trips.
+2024-04-26 15:10:07,787 - trip - get_trips - INFO - Total of 1 trips found
+2024-04-26 15:17:01,483 - trip - get_trips - INFO - Searching for trips.
+2024-04-26 15:17:02,684 - trip - get_trips - INFO - Total of 1 trips found
+2024-04-26 15:17:02,932 - trip - get_trips - INFO - Searching for trips.
+2024-04-26 15:17:04,217 - trip - get_trips - INFO - Total of 1 trips found
+2024-04-26 15:27:27,421 - trip - get_trips - INFO - Searching for trips.
+2024-04-26 15:27:28,704 - trip - get_trips - INFO - Total of 1 trips found
+2024-04-26 15:27:28,956 - trip - get_trips - INFO - Searching for trips.
+2024-04-26 15:27:30,039 - trip - get_trips - INFO - Total of 1 trips found
+2024-04-26 15:27:40,143 - trip - get_trips - INFO - Searching for trips.
+2024-04-26 15:27:41,354 - trip - get_trips - INFO - Total of 1 trips found
+2024-04-26 15:27:41,596 - trip - get_trips - INFO - Searching for trips.
+2024-04-26 15:27:42,817 - trip - get_trips - INFO - Total of 1 trips found
+2024-04-26 16:45:32,327 - trip - get_trips - INFO - Searching for trips.
+2024-04-26 16:45:33,534 - trip - get_trips - INFO - Total of 1 trips found
+2024-04-26 16:45:34,149 - trip - get_trips - INFO - Searching for trips.
