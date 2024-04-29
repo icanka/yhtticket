@@ -124,7 +124,7 @@ class Trip:
         )
         # return none if no trips are found
         if len(trips) == 0:
-            self.logger.info("No trips found.")
+            self.logger.info("No trips found. Returning None.")
             return None
         if list_trips:
             for trip in trips:
@@ -143,6 +143,7 @@ class Trip:
                 self.logger.info("trip_details: %s", trip_details)
                 self.logger.info("--------------------------------------------------")
         self.logger.info("Total of %s trips found", len(trips))
+        self.logger.info("returning trips")
         return trips
 
     def find_trip(self):

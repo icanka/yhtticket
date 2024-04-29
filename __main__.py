@@ -7,7 +7,7 @@ import time
 from payment import SeleniumPayment
 from trip import Trip
 from trip import Passenger
-from inline_func import query_trips
+from inline_func import query
 
 
 def main():
@@ -42,12 +42,12 @@ def main():
     from_station = 'İstanbul(Pendik)'
     to_station = 'Ankara Gar'
     from_date = '27 April 16:00'
-    to_date = '27 April 17:00'
+    to_date = None #'27 April 17:00'
     seat_type = 'eco'
     tariff = 'tsk'
     
     
-    query_trips(from_station, to_station, from_date)
+    #query(from_station, to_station, from_date)
     
     my_trip = Trip(from_station, to_station, from_date,
                    to_date, passenger, tariff, seat_type)
@@ -55,9 +55,11 @@ def main():
     # find trip
     #trips = my_trip.find_trip()
     trips = my_trip.get_trips()
+    #pprint(trips)
     pprint(f"Total of {len(trips)} trips found")
     for trip in trips:
-        pprint(trip['empty_seat_count'])
+        pprint(f"eco: {trip['eco_empty_seat_count']} - buss: {trip['buss_empty_seat_count']}")
+
     exit()
     if len(trips) > 0:
         trip = trips[0]

@@ -37,3 +37,78 @@
 2024-04-26 16:45:32,327 - trip - get_trips - INFO - Searching for trips.
 2024-04-26 16:45:33,534 - trip - get_trips - INFO - Total of 1 trips found
 2024-04-26 16:45:34,149 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 01:49:27,138 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 01:49:28,972 - trip - get_trips - INFO - Total of 15 trips found
+2024-04-29 01:49:29,535 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 01:49:31,352 - trip - get_trips - INFO - No trips found.
+2024-04-29 01:50:11,890 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 01:50:13,799 - trip - get_trips - INFO - Total of 15 trips found
+2024-04-29 01:50:14,046 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 01:50:15,850 - trip - get_trips - INFO - No trips found.
+2024-04-29 01:51:26,430 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 01:51:28,788 - trip - get_trips - INFO - Total of 15 trips found
+2024-04-29 01:51:36,376 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 01:51:38,369 - trip - get_trips - INFO - Total of 15 trips found
+2024-04-29 01:51:38,612 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 01:54:25,689 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 01:54:28,152 - trip - get_trips - INFO - Total of 15 trips found
+2024-04-29 01:54:28,152 - trip - get_trips - INFO - returning trips
+2024-04-29 01:54:28,397 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 01:54:30,238 - trip - get_trips - INFO - No trips found. Returning None.
+2024-04-29 01:54:59,448 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 01:55:01,344 - trip - get_trips - INFO - No trips found. Returning None.
+2024-04-29 01:56:40,001 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 01:56:40,001 - trip_search - search_trips - INFO - Searching for trips.
+from_station: İstanbul(Pendik)
+to_station: Ankara Gar
+from_date: 27 April 16:00
+to_date: 27 April 17:00
+2024-04-29 01:56:42,470 - trip - get_trips - INFO - No trips found. Returning None.
+2024-04-29 01:57:49,766 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 01:57:49,766 - trip_search - search_trips - INFO - Searching for trips.
+from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: 27 April 16:00 to_date: None
+2024-04-29 01:57:51,557 - trip - get_trips - INFO - Total of 15 trips found
+2024-04-29 01:57:51,557 - trip - get_trips - INFO - returning trips
+2024-04-29 01:59:19,784 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 01:59:19,784 - trip_search - search_trips - INFO - Searching for trips.
+from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: 27 April 16:00 to_date: None
+2024-04-29 01:59:22,139 - trip - get_trips - INFO - Total of 15 trips found
+2024-04-29 01:59:22,139 - trip - get_trips - INFO - returning trips
+2024-04-29 02:06:48,186 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 02:06:48,186 - trip_search - search_trips - INFO - Searching for trips.
+from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: 27 April 16:00 to_date: None
+2024-04-29 02:06:50,284 - trip - get_trips - INFO - Total of 15 trips found
+2024-04-29 02:06:50,285 - trip - get_trips - INFO - returning trips
+2024-04-29 02:09:55,333 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 02:09:55,333 - trip_search - search_trips - INFO - Searching for trips.
+from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: 27 April 16:00 to_date: None
+2024-04-29 02:09:58,006 - trip - get_trips - INFO - Total of 15 trips found
+2024-04-29 02:09:58,007 - trip - get_trips - INFO - returning trips
+2024-04-29 02:15:46,445 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 02:15:46,445 - trip_search - search_trips - INFO - Searching for trips.
+from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: 27 April 16:00 to_date: None
+2024-04-29 02:15:52,379 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 02:15:52,380 - trip_search - search_trips - INFO - Searching for trips.
+from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: 27 April 16:00 to_date: None
+2024-04-29 02:15:54,360 - trip - get_trips - INFO - Total of 15 trips found
+2024-04-29 02:15:54,360 - trip - get_trips - INFO - returning trips
+2024-04-29 02:16:18,910 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 02:16:18,910 - trip_search - search_trips - INFO - Searching for trips.
+from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: 27 April 16:00 to_date: None
+2024-04-29 02:16:20,953 - trip - get_trips - INFO - Total of 15 trips found
+2024-04-29 02:16:20,953 - trip - get_trips - INFO - returning trips
+2024-04-29 02:16:30,807 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 02:16:30,807 - trip_search - search_trips - INFO - Searching for trips.
+from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: 27 April 16:00 to_date: None
+2024-04-29 02:16:32,825 - trip - get_trips - INFO - Total of 15 trips found
+2024-04-29 02:16:32,825 - trip - get_trips - INFO - returning trips
+2024-04-29 03:11:31,157 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 03:11:31,157 - trip_search - search_trips - INFO - Searching for trips.
+from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: 27 April 16:00 to_date: None
+2024-04-29 03:11:33,856 - trip - get_trips - INFO - Total of 15 trips found
+2024-04-29 03:11:33,856 - trip - get_trips - INFO - returning trips
+2024-04-29 03:12:46,680 - trip - get_trips - INFO - Searching for trips.
+2024-04-29 03:12:46,680 - trip_search - search_trips - INFO - Searching for trips.
+from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: 27 April 16:00 to_date: None
+2024-04-29 03:12:48,627 - trip - get_trips - INFO - Total of 15 trips found
+2024-04-29 03:12:48,627 - trip - get_trips - INFO - returning trips
