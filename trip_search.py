@@ -43,7 +43,8 @@ class TripSearchApi:
         vagon_yerlesim = vagon_json["vagonHaritasiIcerikDVO"]["vagonYerlesim"]
         koltuk_durumlari = vagon_json["vagonHaritasiIcerikDVO"]["koltukDurumlari"]
         # efficient way to merge two lists of dictionaries based on a common key
-        index_dict = {d["koltukNo"]: d for d in koltuk_durumlari if "koltukNo" in d}
+        index_dict = {d["koltukNo"]
+            : d for d in koltuk_durumlari if "koltukNo" in d}
         # pprint(index_dict)
         merged_list = []
         for seat in vagon_yerlesim:
@@ -127,7 +128,8 @@ class TripSearchApi:
                 s_response_json = json.loads(s_response.text)
                 self.logger.debug(s_response_json)
             except requests.exceptions.RequestException as e:
-                self.logger.error("Error occurred while fetching the seat check: %s", e)
+                self.logger.error(
+                    "Error occurred while fetching the seat check: %s", e)
                 raise e
 
             if s_response_json["cevapBilgileri"]["cevapKodu"] != "000":
@@ -276,15 +278,25 @@ class TripSearchApi:
             self.logger.error("%s is not a valid station", to_station)
             raise ValueError(f"{to_station} is not a valid station")
 
-    def search_trips(self, from_station, to_station, from_date=None, to_date=None):
+    def search_trips(
+        self,
+        from_station,
+        to_station,
+        from_date=None,
+        to_date=None,
+        check_satis_durum=True,
+    ):
         """
         Search for trips based on the given parameters.
 
         Args:
             from_station (str): The name of the departure station.
             to_station (str): The name of the destination station.
-            from_date (str): The departure date in an human readable format.
+            from_date (str, optional): The departure date in an human readable format.
             to_date (str, optional): The maximum arrival date in an human readable format. Defaults to None.
+            check_satis_durum (bool, optional): Whether to check the sales status of the trip. Defaults to True.
+                if the trip has no available seats at all, it will be filtered out. For example, if the trip has
+                only disabled seats, it will be filtered out.
 
         Returns:
             list: A list of dictionaries representing the found trips. Each dictionary contains the following keys:
@@ -357,7 +369,8 @@ class TripSearchApi:
 
         sorted_trips = sorted(
             response_json["seferSorgulamaSonucList"],
-            key=lambda trip: datetime.strptime(trip["binisTarih"], self.time_format),
+            key=lambda trip: datetime.strptime(
+                trip["binisTarih"], self.time_format),
         )
 
         # filter trips based on to_date
@@ -369,8 +382,8 @@ class TripSearchApi:
                 if datetime.strptime(trip["binisTarih"], self.time_format) < to_date
             ]
         for trip in sorted_trips:
-            if (
-                trip["vagonHaritasindanKoltukSecimi"] == 1
+            if trip["vagonHaritasindanKoltukSecimi"] == 1 and (
+                trip["satisDurum"] == 1 or not check_satis_durum
             ):  # and trip['satisDurum'] == 1
                 try:
                     t = {}
@@ -379,33 +392,23 @@ class TripSearchApi:
                     )
 
                     # kalansayi seems to be updated a little bit later on server side
-                    # so empty_seat_count can be negative. So instead of commented below
-                    # method, we are using the 'bosYer' field of each vagon in the list
-                    # for both eco and business class
+                    # so empty_seat_count can be negative.
 
-                    # t["eco_empty_seat_count"] = (
-                    #     trip["vagonTipleriBosYerUcret"][0]["kalanSayi"]
-                    #     - trip["vagonTipleriBosYerUcret"][0]["kalanEngelliKoltukSayisi"]
-                    # )
+                    t["eco_empty_seat_count"] = (
+                        trip["vagonTipleriBosYerUcret"][0]["kalanSayi"]
+                        - trip["vagonTipleriBosYerUcret"][0]["kalanEngelliKoltukSayisi"]
+                    )
 
-                    # t["buss_empty_seat_count"] = (
-                    #     trip["vagonTipleriBosYerUcret"][1]["kalanSayi"]
-                    #     - trip["vagonTipleriBosYerUcret"][1]["kalanEngelliKoltukSayisi"]
-                    # )
-
-                    t["eco_empty_seat_count"] = 0
-                    for eco_vagon in trip["vagonTipleriBosYerUcret"][0]["vagonListesi"]:
-                        t["eco_empty_seat_count"] += eco_vagon["bosYer"]
-
-                    t["buss_empty_seat_count"] = 0
-                    for buss_vagon in trip["vagonTipleriBosYerUcret"][1][
-                        "vagonListesi"
-                    ]:
-                        t["buss_empty_seat_count"] += buss_vagon["bosYer"]
+                    t["buss_empty_seat_count"] = (
+                        trip["vagonTipleriBosYerUcret"][1]["kalanSayi"]
+                        - trip["vagonTipleriBosYerUcret"][1]["kalanEngelliKoltukSayisi"]
+                    )
 
                     t["empty_seat_count"] = (
                         t["eco_empty_seat_count"] + t["buss_empty_seat_count"]
                     )
+                    # sanitize the empty seat count
+                    t["empty_seat_count"] = 0 if t["empty_seat_count"] < 0 else t["empty_seat_count"]
 
                     t["binisTarih"] = trip["binisTarih"]
                     t["inisTarih"] = trip["inisTarih"]
@@ -458,9 +461,12 @@ class TripSearchApi:
                     station["station_name"] = find_value(item, "istasyonAdi")
                     station["station_code"] = find_value(item, "istasyonKodu")
                     station["station_id"] = find_value(item, "istasyonId")
-                    station["station_view_name"] = find_value(item, "stationViewName")
-                    station["is_available"] = find_value(item, "istasyonDurumu")
-                    station["is_purchasable"] = find_value(item, "satisSorgudaGelsin")
+                    station["station_view_name"] = find_value(
+                        item, "stationViewName")
+                    station["is_available"] = find_value(
+                        item, "istasyonDurumu")
+                    station["is_purchasable"] = find_value(
+                        item, "satisSorgudaGelsin")
 
                     # Filter out the stations that are not available or not
                     # purchasable
@@ -473,5 +479,6 @@ class TripSearchApi:
             return hst_stations
 
         except requests.exceptions.RequestException as e:
-            self.logger.error("Error occurred while fetching the station list: %s", e)
+            self.logger.error(
+                "Error occurred while fetching the station list: %s", e)
             raise e

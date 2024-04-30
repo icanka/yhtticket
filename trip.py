@@ -57,6 +57,7 @@ class Trip:
         self.seat_type = seat_type
         self.trip_json = None
         self.time_format = "%b %d, %Y %I:%M:%S %p"
+        self.output_time_format = "%b %d, %H:%M"
         self.empty_seat_json = None
         self.seat_lock_response = None
         self.koltuk_lock_id_list = []
@@ -115,12 +116,12 @@ class Trip:
         except trip_search.SeatLockedException as e:
             logging.error("Error while reserving the seat: %s", e)
 
-    def get_trips(self, list_trips=False):
+    def get_trips(self, list_trips=False, **kwargs):
         """Get the trips based on the given parameters."""
         self.logger.info("Searching for trips.")
         trips = []
         trips = self.api.search_trips(
-            self.from_station, self.to_station, self.from_date, self.to_date
+            self.from_station, self.to_station, self.from_date, self.to_date, **kwargs
         )
         # return none if no trips are found
         if len(trips) == 0:

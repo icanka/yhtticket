@@ -41,7 +41,7 @@ def main():
 
     from_station = 'İstanbul(Pendik)'
     to_station = 'Ankara Gar'
-    from_date = '27 April 16:00'
+    from_date = '30 April 06:00'
     to_date = None #'27 April 17:00'
     seat_type = 'eco'
     tariff = 'tsk'
@@ -54,7 +54,7 @@ def main():
     p = SeleniumPayment()
     # find trip
     #trips = my_trip.find_trip()
-    trips = my_trip.get_trips()
+    trips = my_trip.get_trips(check_satis_durum=False)
     #pprint(trips)
     pprint(f"Total of {len(trips)} trips found")
     for trip in trips:

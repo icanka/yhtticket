@@ -18,9 +18,10 @@ import trip
 
 
 def stations():
+    """List all stations."""
     results = []
-    stations = trip.list_stations()
-    for station in stations:
+    station_list = trip.list_stations()
+    for station in station_list:
         results.append(
             InlineQueryResultArticle(
                 id=uuid4(),
@@ -32,15 +33,17 @@ def stations():
 
 
 def query(from_, to_, from_date=None):
-
-    stns = trip.list_stations()
-    from_ = process.extractOne(from_, stns)
-    to_ = process.extractOne(to_, stns)
+    """Search for trips from from_ to to_ on from_date."""
+    station_list = trip.list_stations()
+    # get the most closest station name to the given station name, fuzzy matching
+    from_ = process.extractOne(from_, station_list)
+    to_ = process.extractOne(to_, station_list)
     from_ = from_[0]
     to_ = to_[0]
 
     my_trip = trip.Trip(from_, to_, from_date)
-    trips = my_trip.get_trips()
+    # check_satis_durum=False to get all trips for listing purposes
+    trips = my_trip.get_trips(check_satis_durum=False)
     results = []
 
     if not trips:
@@ -53,12 +56,16 @@ def query(from_, to_, from_date=None):
         ]
     for t in trips:
         message = f"Bussiness: {t['buss_empty_seat_count']} Economy: {t['eco_empty_seat_count']}"
+        time = datetime.strptime(t["binisTarih"], my_trip.time_format)
+
         results.append(
             InlineQueryResultArticle(
                 id=uuid4(),
-                title=t["binisTarih"],
+                title=datetime.strftime(time, my_trip.output_time_format),
                 description=message,
-                input_message_content=InputTextMessageContent(f"{t['binisTarih']} {message}"),
+                input_message_content=InputTextMessageContent(
+                    f"/res {datetime.strftime(time, my_trip.output_time_format)}"
+                ),
             )
         )
     return results
