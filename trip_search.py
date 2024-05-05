@@ -135,8 +135,7 @@ class TripSearchApi:
             if s_response_json["cevapBilgileri"]["cevapKodu"] != "000":
                 self.logger.error("response_json: %s", s_response_json)
                 raise Exception(
-                    "Non zero response code: response_json: %s", s_response_json
-                )
+                    "Non zero response code: response_json: %s", s_response_json)
 
             if not s_response_json["koltukLocked"]:
                 # Send the request to the endpoint
@@ -398,6 +397,7 @@ class TripSearchApi:
                         trip["vagonTipleriBosYerUcret"][0]["kalanSayi"]
                         - trip["vagonTipleriBosYerUcret"][0]["kalanEngelliKoltukSayisi"]
                     )
+                    t["eco_empty_seat_count"] = 0 if t["eco_empty_seat_count"] < 0 else t["eco_empty_seat_count"]
 
                     t["buss_empty_seat_count"] = (
                         trip["vagonTipleriBosYerUcret"][1]["kalanSayi"]
@@ -407,8 +407,6 @@ class TripSearchApi:
                     t["empty_seat_count"] = (
                         t["eco_empty_seat_count"] + t["buss_empty_seat_count"]
                     )
-                    # sanitize the empty seat count
-                    t["empty_seat_count"] = 0 if t["empty_seat_count"] < 0 else t["empty_seat_count"]
 
                     t["binisTarih"] = trip["binisTarih"]
                     t["inisTarih"] = trip["inisTarih"]
