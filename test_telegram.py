@@ -29,6 +29,17 @@ MAIN_CHOOSING, TYPING_REPLY, TYPING_CHOICE = range(3)
 reply_keyboard = [
     ["1", "2"],
     ["Done"],
+    ["Done"],
+    ["Done"],
+    ["Done"],
+    ["Done"],
+    ["Done"],
+    ["Done"],
+    ["Done"],
+    ["Done"],
+    ["Done"],
+    ["Done"],
+    
 ]
 
 second_reply_keyboard = [
