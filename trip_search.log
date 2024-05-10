@@ -138,3 +138,16 @@ from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: 30 April 06:00
 from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: 30 April 06:00 to_date: None
 2024-04-29 03:31:22,115 - trip - get_trips - INFO - Total of 15 trips found
 2024-04-29 03:31:22,115 - trip - get_trips - INFO - returning trips
+2024-05-10 01:01:21,714 - passenger - __init__ - INFO - Passenger object created
+2024-05-10 01:02:34,442 - passenger - __init__ - INFO - Passenger object created
+2024-05-10 01:03:30,981 - passenger - __init__ - INFO - Passenger object created
+2024-05-10 01:03:35,487 - trip_search - is_mernis_correct - ERROR - Mernis verification failed. response_json: {'cevapBilgileri': {'cevapKodu': '936', 'cevapMsj': 'TC Kimlik Numarası MERNİS ten Doğrulanamadı!', 'detay': None}}
+2024-05-10 01:04:26,608 - passenger - __init__ - INFO - Passenger object created
+2024-05-10 01:04:27,161 - trip_search - is_mernis_correct - INFO - Mernis verification succeeded.
+2024-05-10 01:04:30,696 - passenger - __init__ - INFO - Passenger object created
+2024-05-10 01:04:31,290 - trip_search - is_mernis_correct - INFO - Mernis verification succeeded.
+2024-05-10 01:05:05,735 - passenger - __init__ - INFO - Passenger object created
+2024-05-10 01:05:06,293 - trip_search - is_mernis_correct - INFO - Passenger: izzet can karakuş TCKN: 18700774442 Birthday: Jul 14, 1994 12:00:00 AM
+2024-05-10 01:05:06,293 - trip_search - is_mernis_correct - INFO - Mernis verification succeeded.
+2024-05-11 01:16:13,154 - trip_search - is_mernis_correct - INFO - Passenger: izzet can karakuş TCKN: 18700774442 Birthday: Jul 14, 1994 12:00:00 AM
+2024-05-11 01:16:13,154 - trip_search - is_mernis_correct - INFO - Mernis verification succeeded.

@@ -6,36 +6,6 @@ import logging
 import trip_search
 import api_constants
 
-
-class Passenger:
-    """Passenger class to store passenger details."""
-
-    def __init__(
-        self,
-        tckn,
-        name,
-        surname,
-        birthday,
-        email,
-        phone,
-        sex,
-        credit_card_no=None,
-        credit_card_ccv=None,
-        credit_card_exp=None,
-    ):
-        self.tckn = tckn
-        self.name = name
-        self.surname = surname
-        self.birthday = birthday
-        self.email = email
-        self.phone = phone
-        self.sex = sex
-        self.credit_card_no = credit_card_no
-        self.credit_card_ccv = credit_card_ccv
-        self.credit_card_exp = credit_card_exp
-        self.logger = logging.getLogger(__name__)
-
-
 class Trip:
     """Trip class to store trip details."""
 
@@ -89,7 +59,8 @@ class Trip:
                 lock_end_time, self.empty_seat_json, self.seat_lock_response = (
                     self.api.select_first_empty_seat(self.trip_json)
                 )
-                self.lock_end_time = datetime.strptime(lock_end_time, self.time_format)
+                self.lock_end_time = datetime.strptime(
+                    lock_end_time, self.time_format)
                 self.set_seat_lock_id()
                 self.is_seat_reserved = True
                 self.logger.info("lock_end_time: %s", self.lock_end_time)
@@ -132,9 +103,12 @@ class Trip:
                 dep_date_object = datetime.strptime(
                     trip["binisTarih"], self.time_format
                 )
-                dep_formatted_date = dep_date_object.strftime("%b %d, %Y %H:%M")
-                arr_date_object = datetime.strptime(trip["inisTarih"], self.time_format)
-                arr_formatted_date = arr_date_object.strftime("%b %d, %Y %H:%M")
+                dep_formatted_date = dep_date_object.strftime(
+                    "%b %d, %Y %H:%M")
+                arr_date_object = datetime.strptime(
+                    trip["inisTarih"], self.time_format)
+                arr_formatted_date = arr_date_object.strftime(
+                    "%b %d, %Y %H:%M")
                 trip_details = (
                     f"Departure: {dep_formatted_date}\n"
                     f"Arrival  : {arr_formatted_date}\n"
@@ -142,7 +116,8 @@ class Trip:
                     f"Business : {trip['buss_empty_seat_count']}\n"
                 )
                 self.logger.info("trip_details: %s", trip_details)
-                self.logger.info("--------------------------------------------------")
+                self.logger.info(
+                    "--------------------------------------------------")
         self.logger.info("Total of %s trips found", len(trips))
         self.logger.info("returning trips")
         return trips

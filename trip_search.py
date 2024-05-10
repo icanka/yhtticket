@@ -2,13 +2,12 @@
 
 import json
 import logging
-from pprint import pprint
 from datetime import datetime
 import requests
 import dateparser
 import api_constants
 from _utils import find_value
-
+from passenger import Passenger
 
 class SeatLockedException(Exception):
     """Exception raised when a seat is already locked."""
@@ -43,8 +42,7 @@ class TripSearchApi:
         vagon_yerlesim = vagon_json["vagonHaritasiIcerikDVO"]["vagonYerlesim"]
         koltuk_durumlari = vagon_json["vagonHaritasiIcerikDVO"]["koltukDurumlari"]
         # efficient way to merge two lists of dictionaries based on a common key
-        index_dict = {d["koltukNo"]
-            : d for d in koltuk_durumlari if "koltukNo" in d}
+        index_dict = {d["koltukNo"]: d for d in koltuk_durumlari if "koltukNo" in d}
         # pprint(index_dict)
         merged_list = []
         for seat in vagon_yerlesim:
@@ -480,3 +478,44 @@ class TripSearchApi:
             self.logger.error(
                 "Error occurred while fetching the station list: %s", e)
             raise e
+
+    def is_mernis_correct(self, passenger: Passenger, date_format: str = "%d/%m/%Y") -> bool :
+        mernis_req_body = api_constants.mernis_dogrula_req_body.copy()
+        date = datetime.strptime(passenger.birthday, date_format).strftime(self.time_format)
+
+        mernis_req_body["ad"] = passenger.name
+        mernis_req_body["soyad"] = passenger.surname
+        mernis_req_body["tckn"] = passenger.tckn
+        mernis_req_body["dogumTar"] = date
+
+        response = requests.post(
+            api_constants.MERNIS_DOGRULAMA_ENDPOINT,
+            headers=api_constants.REQUEST_HEADER,
+            data=json.dumps(mernis_req_body),
+            timeout=30,
+        )
+        response.raise_for_status()
+
+        response_json = json.loads(response.text)
+        self.logger.debug(response_json)
+        if response_json["cevapBilgileri"]["cevapKodu"] != "000":
+            self.logger.error(
+                "Mernis verification failed. response_json: %s", response_json)
+            self.logger.error(
+                "Passenger: %s %s TCKN: %s Birthday: %s",
+                passenger.name,
+                passenger.surname,
+                passenger.tckn,
+                date,
+            )
+            return False
+        
+        self.logger.info(
+            "Passenger: %s %s TCKN: %s Birthday: %s",
+            passenger.name,
+            passenger.surname,
+            passenger.tckn,
+            date,
+        )
+        self.logger.info("Mernis verification succeeded.")
+        return True

@@ -1,19 +1,38 @@
 SEAT_CHECK_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/koltuk/klCheck"
-STATION_LIST_ENDPOINT = 'https://api-yebsp.tcddtasimacilik.gov.tr/istasyon/istasyonYukle'
+STATION_LIST_ENDPOINT = (
+    "https://api-yebsp.tcddtasimacilik.gov.tr/istasyon/istasyonYukle"
+)
 SELECT_EMPTY_SEAT_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/koltuk/klSec"
 RELEASE_SEAT_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/koltuk/klBirak"
 TRIP_SEARCH_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/sefer/seferSorgula"
-VAGON_SEARCH_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/vagon/vagonBosYerSorgula"
-VAGON_HARITA_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/vagon/vagonHaritasindanYerSecimi"
-VB_ENROLL_CONTROL_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/odeme/vbEnrollControl"
-PRICE_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/fiyatlandirma/anahatFiyatSimple"
+VAGON_SEARCH_ENDPOINT = (
+    "https://api-yebsp.tcddtasimacilik.gov.tr/vagon/vagonBosYerSorgula"
+)
+VAGON_HARITA_ENDPOINT = (
+    "https://api-yebsp.tcddtasimacilik.gov.tr/vagon/vagonHaritasindanYerSecimi"
+)
+VB_ENROLL_CONTROL_ENDPOINT = (
+    "https://api-yebsp.tcddtasimacilik.gov.tr/odeme/vbEnrollControl"
+)
+PRICE_ENDPOINT = (
+    "https://api-yebsp.tcddtasimacilik.gov.tr/fiyatlandirma/anahatFiyatSimple"
+)
 VB_ODEME_SORGU = "https://api-yebsp.tcddtasimacilik.gov.tr/odeme/vbOdemeSorgu"
-TICKET_RESERVATION_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/bilet/biletSatisRezervasyon"
+TICKET_RESERVATION_ENDPOINT = (
+    "https://api-yebsp.tcddtasimacilik.gov.tr/bilet/biletSatisRezervasyon"
+)
+MERNIS_DOGRULAMA_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/yebsp/tcNoMernisDogrula"
 
-DISABLED_SEAT_IDS = [13485128303, 13029825502,
-                     13485128302, 13371669503, 15196333600, 27948604352]
-TARIFFS = {'TSK': 11750067704, 'TAM': 1}
-VAGON_TYPES = {'ECO': 17002, 'BUSS': 17001}
+DISABLED_SEAT_IDS = [
+    13485128303,
+    13029825502,
+    13485128302,
+    13371669503,
+    15196333600,
+    27948604352,
+]
+TARIFFS = {"TSK": 11750067704, "TAM": 1}
+VAGON_TYPES = {"ECO": 17002, "BUSS": 17001}
 REQUEST_HEADER = {
     "Host": "api-yebsp.tcddtasimacilik.gov.tr",
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/119.0",
@@ -27,9 +46,12 @@ REQUEST_HEADER = {
     "Referer": "https://bilet.tcdd.gov.tr/",
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "cors",
-    "Sec-Fetch-Site": "cross-site"}
+    "Sec-Fetch-Site": "cross-site",
+}
 
-STATION_LIST_REQUEST_BODY = '{"kanalKodu":"3","dil":1,"tarih":"Nov 10, 2011 12:00:00 AM","satisSorgu":true}'
+STATION_LIST_REQUEST_BODY = (
+    '{"kanalKodu":"3","dil":1,"tarih":"Nov 10, 2011 12:00:00 AM","satisSorgu":true}'
+)
 
 vagon_harita_req_body = {
     "kanalKodu": "3",
@@ -45,7 +67,7 @@ vagon_req_body = {
     "dil": 0,
     "seferBaslikId": None,
     "binisIstId": None,
-    "inisIstId": None
+    "inisIstId": None,
 }
 
 
@@ -66,7 +88,7 @@ koltuk_sec_req_body = {
     "binisIst": None,
     "inisIst": None,
     "dakika": 1,
-    "huawei": False
+    "huawei": False,
 }
 
 trip_search_req_body = {
@@ -75,26 +97,23 @@ trip_search_req_body = {
     "seferSorgulamaKriterWSDVO": {
         "satisKanali": 3,
         "binisIstasyonu": None,
-        "binisIstasyonu_isHaritaGosterimi": 'false',
+        "binisIstasyonu_isHaritaGosterimi": "false",
         "inisIstasyonu": None,
-        "inisIstasyonu_isHaritaGosterimi": 'false',
+        "inisIstasyonu_isHaritaGosterimi": "false",
         "seyahatTuru": 1,
         "gidisTarih": None,  # "Dec 10, 2023 12:10:00 PM"
-        "bolgeselGelsin": 'false',
+        "bolgeselGelsin": "false",
         "islemTipi": 0,
         "yolcuSayisi": 1,
-        "aktarmalarGelsin": 'true',
+        "aktarmalarGelsin": "true",
         "binisIstasyonId": None,
-        "inisIstasyonId": None
-    }
+        "inisIstasyonId": None,
+    },
 }
 
 
 price_req_body = {
-    "anahatFiyatHesKriterWSDVO": {
-        "islemTipi": 0,
-        "seyahatSorgulamaTuru": 1
-    },
+    "anahatFiyatHesKriterWSDVO": {"islemTipi": 0, "seyahatSorgulamaTuru": 1},
     "yolcuList": [
         {
             "siraNo": 1,
@@ -111,13 +130,13 @@ price_req_body = {
                     "binisTarihi": None,  # "Dec 10, 2023 12:10:00 PM"
                     "vagonSiraNo": None,
                     "vagonTipi": None,  # 0 economy, 1 business
-                    "koltukNo": None
+                    "koltukNo": None,
                 }
-            ]
+            ],
         }
     ],
     "kanalKodu": "3",
-    "dil": 0
+    "dil": 0,
 }
 
 vb_enroll_control_req_body = {
@@ -137,9 +156,9 @@ vb_enroll_control_req_body = {
         "acikBiletKuponNoList": [],
         "acikBiletTutar": 0,
         "islemYeri": "7",
-        "milPuan": 0
+        "milPuan": 0,
     },
-    "koltukLockList": []
+    "koltukLockList": [],
 }
 
 ticket_reservation_req_body = {
@@ -175,12 +194,14 @@ ticket_reservation_req_body = {
                 "koltukNo": None,
                 "ucret": None,
                 "statu": 0,
-                "seyahatTur": 2,                 # this looks like 2 for gidis, dunno what it is for gidis-donus
+                # this looks like 2 for gidis, dunno what it is for gidis-donus
+                "seyahatTur": 2,
                 "trenTurTktId": 49549,
-                "vagonTipi": 0,                  # This changes the price even for bussiness class even though it should not
-                "koltukBazUcret": None,          # may not be necessary
-                "indirimsizUcret": None,         # may not be necessary
-                "minimumTasimaUcretiFarki": 0
+                # This changes the price even for bussiness class even though it should not
+                "vagonTipi": 0,
+                "koltukBazUcret": None,  # may not be necessary
+                "indirimsizUcret": None,  # may not be necessary
+                "minimumTasimaUcretiFarki": 0,
             }
         }
     ],
@@ -194,9 +215,9 @@ ticket_reservation_req_body = {
         "acikBiletTutar": 0,
         "islemYeri": "7",
         "milPuan": 0,
-        "permiDetayList": []
+        "permiDetayList": [],
     },
-    "koltukLockIdList": []
+    "koltukLockIdList": [],
 }
 
 # vb_enroll_control_req_body = {
@@ -234,9 +255,6 @@ ticket_reservation_req_body = {
                 "inisIstasyonId": None,
                 "hareketTarihi": None,
                 "varisTarihi": None,
-
-
-
                 "biletTipi": 1,
                 "maliyeNo": 0,
                 "grupMu": False,
@@ -249,8 +267,6 @@ ticket_reservation_req_body = {
                 "vagonSiraNo": None,
                 "koltukNo": None,
                 "ucret": None,
-                
-                
                 "tckn": None,
                 "ad": None,
                 "soyad": None,
@@ -264,8 +280,7 @@ ticket_reservation_req_body = {
                 "statu": 0,
                 "seyahatTur": 2,
                 "vagonTipi": 0,
-
-                "minimumTasimaUcretiFarki": 0
+                "minimumTasimaUcretiFarki": 0,
             }
         }
     ],
@@ -279,7 +294,7 @@ ticket_reservation_req_body = {
         "acikBiletTutar": 0,
         "islemYeri": "7",
         "milPuan": 0,
-        "permiDetayList": []
+        "permiDetayList": [],
     },
     "koltukLockIdList": [
         43502967424,
@@ -290,6 +305,16 @@ ticket_reservation_req_body = {
         43502967429,
         43502967430,
         43502967431,
-        43502967432
-    ]
+        43502967432,
+    ],
+}
+
+
+mernis_dogrula_req_body = {
+    "kanalKodu": "3",
+    "dil": 1,
+    "ad": None,
+    "soyad": None,
+    "dogumTar": "Jul 14, 1994 00:00:00 AM",
+    "tckn": None,
 }

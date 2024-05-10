@@ -64,7 +64,7 @@ def query(from_, to_, from_date=None):
                 title=datetime.strftime(time, my_trip.output_time_format),
                 description=message,
                 input_message_content=InputTextMessageContent(
-                    f"/res {datetime.strftime(time, my_trip.output_time_format)}"
+                    f"/res {my_trip.from_station} - {my_trip.to_station} - {datetime.strftime(time, my_trip.output_time_format)}"
                 ),
             )
         )

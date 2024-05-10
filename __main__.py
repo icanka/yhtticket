@@ -6,7 +6,7 @@ import api_constants
 import time
 from payment import SeleniumPayment
 from trip import Trip
-from trip import Passenger
+from passenger import Passenger
 from inline_func import query
 
 
@@ -25,7 +25,8 @@ def main():
     tckn = "18700774442"
     name = "izzet can"
     surname = "karakuş"
-    birthday = "Jul 14, 1994 03:00:00 AM"
+    #birthday = "Jul 14, 1994 03:00:00 AM"
+    birthday = "14/07/1994"
     email = "izzetcankarakus@gmail.com"
     phone = "05340771521"
     sex = "E"
@@ -46,11 +47,19 @@ def main():
     seat_type = 'eco'
     tariff = 'tsk'
     
-    
+
     #query(from_station, to_station, from_date)
     
     my_trip = Trip(from_station, to_station, from_date,
                    to_date, passenger, tariff, seat_type)
+    
+    
+    my_trip.api.is_mernis_correct(passenger)
+    
+    exit()
+    
+    
+    
     p = SeleniumPayment()
     # find trip
     #trips = my_trip.find_trip()
