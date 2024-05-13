@@ -83,7 +83,10 @@ class SeleniumPayment(MainSeleniumPayment):
         self.logger = logging.getLogger(__name__)
 
         self.price = None
+        self.normal_price = None
         self.trip = trip
+        self.base_payment_url = "https://ebilet.tcddtasimacilik.gov.tr/view/eybis/tnmGenel/tcdd3dsecure/3dsecure.html?url="
+        self.current_payment_url = None
         # self.reserved_seat_data = reserved_seat_data
 
         self.vb_enroll_control_req = api_constants.vb_enroll_control_req_body.copy()
@@ -140,19 +143,18 @@ class SeleniumPayment(MainSeleniumPayment):
         Returns:
             float: The price of the trip for the empty seat.
         """
-
         req_body = api_constants.price_req_body.copy()
         req_body['yolcuList'][0]['tarifeId'] = self.trip.tariff
         seat_info = req_body['yolcuList'][0]['seferKoltuk'][0]
         seat_info.update({
             'seferBaslikId': self.trip.trip_json['seferId'],
             'binisTarihi': self.trip.trip_json['binisTarih'],
-            'vagonSiraNo': self.trip.reserve_seat_data['vagonSiraNo'],
-            'koltukNo': self.trip.reserve_seat_data['koltukNo'],
+            'vagonSiraNo': self.trip.empty_seat_json['vagonSiraNo'],
+            'koltukNo': self.trip.empty_seat_json['koltukNo'],
             'binisIstasyonId': self.trip.trip_json['binisIstasyonId'],
             'inisIstasyonId': self.trip.trip_json['inisIstasyonId'],
-            # This should '0' maybe, vuejs code sends '0' always
-            'vagonTipi': self.trip.reserve_seat_data['vagonTipId']
+            # This should  be'0' maybe, vuejs code sends '0' always for vagonTipId
+            'vagonTipi': self.trip.empty_seat_json['vagonTipId']
         })
         # send request
         response = requests.post(
@@ -168,7 +170,7 @@ class SeleniumPayment(MainSeleniumPayment):
         self.price = int(
             response_json['anahatFiyatHesSonucDVO']['indirimliToplamUcret'])
 
-    def process_payment(self):
+    def set_payment_url(self):
         """
         Process the payment for the trip.
 
@@ -178,6 +180,7 @@ class SeleniumPayment(MainSeleniumPayment):
         Returns:
             None
         """
+        self.current_payment_url = None
         print(f"Price: {self.price}")
 
         self.vb_enroll_control_req['biletRezOdemeBilgileri'].update({
@@ -189,6 +192,7 @@ class SeleniumPayment(MainSeleniumPayment):
             'krediKartiTutari': self. price
         })
 
+        self.vb_enroll_control_req['koltukLockList'].clear()
         for seat in self.trip.seat_lock_response['koltuklarimListesi']:
             self.vb_enroll_control_req['koltukLockList'].append(
                 seat['koltukLockId'])
@@ -209,12 +213,12 @@ class SeleniumPayment(MainSeleniumPayment):
                               response_json['cevapBilgileri'])
             return
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as temp_file:
-            temp_file.write(response.text.encode('utf-8'))
-            temp_file_path = temp_file.name
-            self.vb_enroll_control_response = temp_file_path
+        # with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as temp_file:
+        #     temp_file.write(response.text.encode('utf-8'))
+        #     temp_file_path = temp_file.name
+        #     self.vb_enroll_control_response = temp_file_path
         #  Payment request
-        session = requests.Session()
+        # session = requests.Session()
 
         acs_url = response_json['paymentAuthRequest']['acsUrl']
         pareq = response_json['paymentAuthRequest']['pareq']
@@ -222,65 +226,63 @@ class SeleniumPayment(MainSeleniumPayment):
         term_url = response_json['paymentAuthRequest']['termUrl']
         # used in vb_odeme_sorgu to validate payment
         self.enroll_reference = response_json['enrollReference']
-        self.logger.info("response: %s", response_json)
+        # self.logger.info("response: %s", response_json)
 
         self.logger.info("Enroll reference: %s", self.enroll_reference)
+        # self.logger.info("ACS URL: %s", acs_url)
 
-        self.logger.info("ACS URL: %s", acs_url)
-        form_data = {
-            'PaReq': pareq,
-            'MD': md,
-            'TermUrl': term_url
-        }
-        self.logger.info("Sending payment request: %s", form_data)
-        base_url = "https://ebilet.tcddtasimacilik.gov.tr/view/eybis/tnmGenel/tcdd3dsecure/3dsecure.html?url="
-        base_url += acs_url + "&md=" + \
+        # form_data = {
+        #     'PaReq': pareq,
+        #     'MD': md,
+        #     'TermUrl': term_url
+        # }
+
+        self.current_payment_url = self.base_payment_url + acs_url + "&md=" + \
             md.replace('#', '%23') + "&pareq=" + pareq + "&termurl=" + term_url
-        self.logger.info("Base URL: %s", base_url)
-        self.driver.get(base_url)
 
-        WebDriverWait(self.driver, 30).until(lambda d: d.execute_script(
-            'return document.readyState') == 'complete')
-        self.logger.info("Payment Page loaded.")
-        self.driver.save_screenshot("payment_page.png")
+        # self.driver.get(base_url)
+        # WebDriverWait(self.driver, 30).until(lambda d: d.execute_script(
+        #     'return document.readyState') == 'complete')
+        # self.logger.info("Payment Page loaded.")
+        # self.driver.save_screenshot("payment_page.png")
 
-        # Find the OTP input field and submit button
-        try:
-            # For OTP input field and submit button
-            text_input = self.driver.find_element(
-                By.CSS_SELECTOR, "input[type='number'], input[type='text']")
-            btn = self.driver.find_element(
-                By.CSS_SELECTOR, "button[type='submit']")
-            if text_input and btn and btn.text:
-                self.logger.info("OTP input field and submit button found.")
-                # TODO: get this from the USER
-                try:
-                    user_input = input("Enter the OTP: ")
-                    text_input.send_keys(user_input)
-                    btn.click()
-                except selenium.common.exceptions.StaleElementReferenceException as e:
-                    self.logger.error("StaleElementReferenceException: %s", e)
-        except selenium.common.exceptions.NoSuchElementException:
-            self.logger.warning("OTP input field or submit button not found.")
-        # wait a while to process the payment
-        time.sleep(8)
+        # # Find the OTP input field and submit button
+        # try:
+        #     # For OTP input field and submit button
+        #     text_input = self.driver.find_element(
+        #         By.CSS_SELECTOR, "input[type='number'], input[type='text']")
+        #     btn = self.driver.find_element(
+        #         By.CSS_SELECTOR, "button[type='submit']")
+        #     if text_input and btn and btn.text:
+        #         self.logger.info("OTP input field and submit button found.")
+        #         # TODO: get this from the USER
+        #         try:
+        #             user_input = input("Enter the OTP: ")
+        #             text_input.send_keys(user_input)
+        #             btn.click()
+        #         except selenium.common.exceptions.StaleElementReferenceException as e:
+        #             self.logger.error("StaleElementReferenceException: %s", e)
+        # except selenium.common.exceptions.NoSuchElementException:
+        #     self.logger.warning("OTP input field or submit button not found.")
+        # # wait a while to process the payment
+        # time.sleep(8)
 
-        # wait until user approves payment and we are redirected to 'bilet.tcdd.gov.tr'
-        WebDriverWait(self.driver, 120).until(
-            EC.url_contains('https://bilet.tcdd.gov.tr/'))
-        self.logger.info("Page redirected to bilet.tcdd.gov.tr")
-        # try 3 times
-        self.logger.info("Checking if payment was successfull.")
-        for _ in range(3):
-            if self.set_is_payment_success():
-                self.is_payment_successful = True
-                self.logger.info("Payment was successful.")
-                break
-            else:
-                self.is_payment_successful = False
-                self.logger.error(
-                    "Payment was not successful. Retrying to be sure.")
-                time.sleep(10)
+        # # wait until user approves payment and we are redirected to 'bilet.tcdd.gov.tr'
+        # WebDriverWait(self.driver, 120).until(
+        #     EC.url_contains('https://bilet.tcdd.gov.tr/'))
+        # self.logger.info("Page redirected to bilet.tcdd.gov.tr")
+        # # try 3 times
+        # self.logger.info("Checking if payment was successfull.")
+        # for _ in range(3):
+        #     if self.set_is_payment_success():
+        #         self.is_payment_successful = True
+        #         self.logger.info("Payment was successful.")
+        #         break
+        #     else:
+        #         self.is_payment_successful = False
+        #         self.logger.error(
+        #             "Payment was not successful. Retrying to be sure.")
+        #         time.sleep(10)
 
     def set_is_payment_success(self):
         """ set_is_payment_success """
@@ -330,8 +332,8 @@ class SeleniumPayment(MainSeleniumPayment):
             'iletisimCepTel': self.trip.passenger.phone,
             'cinsiyet': self.trip.passenger.sex,
             'tarifeId': self.trip.tariff,
-            'vagonSiraNo': self.trip.reserve_seat_data['vagonSiraNo'],
-            'koltukNo': self.trip.reserve_seat_data['koltukNo'],
+            'vagonSiraNo': self.trip.empty_seat_json['vagonSiraNo'],
+            'koltukNo': self.trip.empty_seat_json['koltukNo'],
             'ucret': self.price,
             'koltukBazUcret': self.normal_price,
             'indirimsizUcret': self.normal_price,

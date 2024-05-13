@@ -1,10 +1,12 @@
 """This script is used to automate the ticket purchase process from TCDD website."""
 
+from dataclasses import dataclass
 import time
 from datetime import datetime
 import logging
 import trip_search
 import api_constants
+
 
 class Trip:
     """Trip class to store trip details."""
@@ -59,8 +61,7 @@ class Trip:
                 lock_end_time, self.empty_seat_json, self.seat_lock_response = (
                     self.api.select_first_empty_seat(self.trip_json)
                 )
-                self.lock_end_time = datetime.strptime(
-                    lock_end_time, self.time_format)
+                self.lock_end_time = datetime.strptime(lock_end_time, self.time_format)
                 self.set_seat_lock_id()
                 self.is_seat_reserved = True
                 self.logger.info("lock_end_time: %s", self.lock_end_time)
@@ -89,7 +90,6 @@ class Trip:
 
     def get_trips(self, list_trips=False, **kwargs):
         """Get the trips based on the given parameters."""
-        self.logger.info("Searching for trips.")
         trips = []
         trips = self.api.search_trips(
             self.from_station, self.to_station, self.from_date, self.to_date, **kwargs
@@ -98,26 +98,22 @@ class Trip:
         if len(trips) == 0:
             self.logger.info("No trips found. Returning None.")
             return None
-        if list_trips:
-            for trip in trips:
-                dep_date_object = datetime.strptime(
-                    trip["binisTarih"], self.time_format
-                )
-                dep_formatted_date = dep_date_object.strftime(
-                    "%b %d, %Y %H:%M")
-                arr_date_object = datetime.strptime(
-                    trip["inisTarih"], self.time_format)
-                arr_formatted_date = arr_date_object.strftime(
-                    "%b %d, %Y %H:%M")
-                trip_details = (
-                    f"Departure: {dep_formatted_date}\n"
-                    f"Arrival  : {arr_formatted_date}\n"
-                    f"Economy  : {trip['eco_empty_seat_count']}\n"
-                    f"Business : {trip['buss_empty_seat_count']}\n"
-                )
-                self.logger.info("trip_details: %s", trip_details)
-                self.logger.info(
-                    "--------------------------------------------------")
+        # if list_trips:
+        #     for trip in trips:
+        #         dep_date_object = datetime.strptime(
+        #             trip["binisTarih"], self.time_format
+        #         )
+        #         dep_formatted_date = dep_date_object.strftime("%b %d, %Y %H:%M")
+        #         arr_date_object = datetime.strptime(trip["inisTarih"], self.time_format)
+        #         arr_formatted_date = arr_date_object.strftime("%b %d, %Y %H:%M")
+        #         trip_details = (
+        #             f"Departure: {dep_formatted_date}\n"
+        #             f"Arrival  : {arr_formatted_date}\n"
+        #             f"Economy  : {trip['eco_empty_seat_count']}\n"
+        #             f"Business : {trip['buss_empty_seat_count']}\n"
+        #         )
+        #         self.logger.info("trip_details: %s", trip_details)
+        #         self.logger.info("--------------------------------------------------")
         self.logger.info("Total of %s trips found", len(trips))
         self.logger.info("returning trips")
         return trips
@@ -126,13 +122,14 @@ class Trip:
         """Find a trip based on the given parameters.
         This function will keep searching for trips until it finds a trip with empty seats.
         """
-
-        # get the seaty_type key from value given to this method
-        seat_type_id = api_constants.VAGON_TYPES[self.seat_type.upper()]
-        self.logger.info("seat_type_id: %s", seat_type_id)
         trips_with_empty_seats = []
+        seat_type_id = api_constants.VAGON_TYPES[self.seat_type.upper()]
+        
+        self.logger.info("seat_type_id: %s", seat_type_id)
         self.logger.info("Searching for trips with empty seat.")
+        
         while len(trips_with_empty_seats) == 0:
+            
             time.sleep(1)
             if datetime.now().second % 60 == 0:
                 # log method parameters
@@ -149,22 +146,32 @@ class Trip:
                     self.to_date,
                     seat_type_id,
                 )
+                
             trips = self.get_trips()
             try:
                 for trip in trips:
+                        
+                    logging.info("Checking trip for empty seats: %s", trip.get("binisTarih"))
                     trip = self.api.get_empty_seats_trip(
                         trip, self.from_station, self.to_station, seat_type_id
                     )
+                        
                     if self.seat_type:
                         empty_seat_count = trip[
                             f"{self.seat_type.lower()}_empty_seat_count"
                         ]
                     else:
                         empty_seat_count = trip["empty_seat_count"]
+                        
                     if empty_seat_count > 0:
+                        logging.info("Found trip with empty seats.")
                         trips_with_empty_seats.append(trip)
+                        
+                    logging.info("empty_seat_count: %s", empty_seat_count)
+                    
             except TypeError as e:
                 self.logger.error("Error while finding trip: %s", e)
+                
         return trips_with_empty_seats
 
 

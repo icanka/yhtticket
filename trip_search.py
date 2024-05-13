@@ -9,6 +9,7 @@ import api_constants
 from _utils import find_value
 from passenger import Passenger
 
+
 class SeatLockedException(Exception):
     """Exception raised when a seat is already locked."""
 
@@ -42,7 +43,8 @@ class TripSearchApi:
         vagon_yerlesim = vagon_json["vagonHaritasiIcerikDVO"]["vagonYerlesim"]
         koltuk_durumlari = vagon_json["vagonHaritasiIcerikDVO"]["koltukDurumlari"]
         # efficient way to merge two lists of dictionaries based on a common key
-        index_dict = {d["koltukNo"]: d for d in koltuk_durumlari if "koltukNo" in d}
+        index_dict = {d["koltukNo"]
+            : d for d in koltuk_durumlari if "koltukNo" in d}
         # pprint(index_dict)
         merged_list = []
         for seat in vagon_yerlesim:
@@ -105,7 +107,7 @@ class TripSearchApi:
         s_check = api_constants.seat_check.copy()
         if trip["empty_seats"]:
             empty_seat = trip["empty_seats"][0] if empty_seat is None else empty_seat
-            self.logger.info("Selecting the first empty seat: %s", empty_seat)
+            self.logger.info("Selecting the first empty seat: koltukNo: %s", empty_seat["koltukNo"])
 
             seat_select_req["seferId"] = trip["seferId"]
             seat_select_req["vagonSiraNo"] = empty_seat["vagonSiraNo"]
@@ -195,7 +197,7 @@ class TripSearchApi:
             )
             empty_seats.append(empty_seat)
 
-        self.logger.debug(empty_seats)
+        self.logger.debug("empty_seats: %s", empty_seats)
         return empty_seats
 
     def get_empty_seats_trip(self, trip, from_station, to_station, seat_type=None):
@@ -211,36 +213,35 @@ class TripSearchApi:
         """
         # clone trip object
         trip_with_seats = trip.copy()
-        vagon_req = api_constants.vagon_req_body.copy()
         vagon_map_req = api_constants.vagon_harita_req_body.copy()
 
-        vagon_req["seferBaslikId"] = trip_with_seats["seferId"]
-        vagon_req["binisIstId"] = trip_with_seats["binisIstasyonId"]
-        vagon_req["inisIstId"] = trip_with_seats["inisIstasyonId"]
+        # vagon_req = api_constants.vagon_req_body.copy()
+        # vagon_req["seferBaslikId"] = trip_with_seats["seferId"]
+        # vagon_req["binisIstId"] = trip_with_seats["binisIstasyonId"]
+        # vagon_req["inisIstId"] = trip_with_seats["inisIstasyonId"]
 
         # get the vagons' seat status for the trip
-        self.logger.debug(vagon_req)
-        response = requests.post(
-            api_constants.VAGON_SEARCH_ENDPOINT,
-            headers=api_constants.REQUEST_HEADER,
-            data=json.dumps(vagon_req),
-            timeout=10,
-        )
-        response_json = json.loads(response.text)
-        self.logger.debug(response_json)
+        # self.logger.debug(vagon_req)
+        # response = requests.post(
+        #     api_constants.VAGON_SEARCH_ENDPOINT,
+        #     headers=api_constants.REQUEST_HEADER,
+        #     data=json.dumps(vagon_req),
+        #     timeout=10,
+        # )
+        # response_json = json.loads(response.text)
+        # self.logger.debug(response_json)
         trip_with_seats["empty_seats"] = list()
-        for vagon in response_json["vagonBosYerList"]:
+
+        for vagon in trip["vagons"]:
             vagon_map_req["vagonSiraNo"] = vagon["vagonSiraNo"]
-            vagon_map_req["seferBaslikId"] = vagon_req["seferBaslikId"]
+            vagon_map_req["seferBaslikId"] = trip_with_seats["seferId"]
             vagon_map_req["binisIst"] = from_station
             vagon_map_req["InisIst"] = to_station
             if seat_type is not None:
-                vagon_type = next(
-                    vagon_["vagonTipId"]
-                    for vagon_ in trip["vagons"]
-                    if vagon_["vagonSiraNo"] == vagon["vagonSiraNo"]
-                )
+                vagon_type = vagon["vagonTipId"]
                 if seat_type != vagon_type:
+                    self.logger.debug(
+                        "seat_type: %s, vagon_type: %s", seat_type, vagon_type)
                     continue
             empty_seats = self.get_detailed_vagon_info_empty_seats(
                 vagon_map_req, trip["vagons"]
@@ -250,6 +251,42 @@ class TripSearchApi:
         self.logger.info(
             "Length of empty seats: %s", len(trip_with_seats["empty_seats"])
         )
+
+        # for vagon in response_json["vagonBosYerList"]:
+        #     try:
+        #         vagon_map_req["vagonSiraNo"] = vagon["vagonSiraNo"]
+        #         vagon_map_req["seferBaslikId"] = vagon_req["seferBaslikId"]
+        #         vagon_map_req["binisIst"] = from_station
+        #         vagon_map_req["InisIst"] = to_station
+        #         if seat_type is not None:
+        #             #self.logger.info("Seat type: %s, vagon_sira_no: %s",
+        #             #                seat_type, vagon["vagonSiraNo"])
+        #             items = [vagon_ for vagon_ in trip["vagons"]
+        #                     if vagon_["vagonSiraNo"] == vagon["vagonSiraNo"]]
+        #             #self.logger.info("items: %s", items)
+        #             vagon_type = next(
+        #                 vagon_["vagonTipId"]
+        #                 for vagon_ in trip["vagons"]
+        #                 if vagon_["vagonSiraNo"] == vagon["vagonSiraNo"]
+        #             )
+        #             #self.logger.info("vagon_type: %s", vagon_type)
+        #             if seat_type != vagon_type:
+        #                 continue
+        #     except StopIteration:
+        #         self.logger.error(
+        #             # this happens with anahat trips because
+        #             "No vagon type found for vagon_sira_no: %s", vagon["vagonSiraNo"]
+        #         )
+        #         continue
+        #     empty_seats = self.get_detailed_vagon_info_empty_seats(
+        #         vagon_map_req, trip["vagons"]
+        #     )
+        #     self.logger.debug(empty_seats)
+        #     trip_with_seats["empty_seats"].extend(empty_seats)
+        # self.logger.info(
+        #     "Length of empty seats: %s", len(trip_with_seats["empty_seats"])
+        # )
+
         return trip_with_seats
 
     def check_stations(self, stations, from_station, to_station):
@@ -311,7 +348,7 @@ class TripSearchApi:
         """
         # log the method parameters
         self.logger.info(
-            "Searching for trips.\nfrom_station: %s to_station: %s from_date: %s to_date: %s",
+            "Searching for trips. from_station: %s to_station: %s from_date: %s to_date: %s",
             from_station,
             to_station,
             from_date,
@@ -370,6 +407,13 @@ class TripSearchApi:
                 trip["binisTarih"], self.time_format),
         )
 
+        # trips only with trip['trenTipi'] == 'YHT'
+        # sorted_trips = [
+        #     trip
+        #     for trip in sorted_trips
+        #     if trip["trenTipi"] == "YHT"
+        # ]
+
         # filter trips based on to_date
         if to_date:
             to_date = dateparser.parse(to_date)
@@ -378,33 +422,59 @@ class TripSearchApi:
                 for trip in sorted_trips
                 if datetime.strptime(trip["binisTarih"], self.time_format) < to_date
             ]
+
         for trip in sorted_trips:
             if trip["vagonHaritasindanKoltukSecimi"] == 1 and (
                 trip["satisDurum"] == 1 or not check_satis_durum
             ):  # and trip['satisDurum'] == 1
                 try:
                     t = {}
+                    t["eco_empty_seat_count"], t["buss_empty_seat_count"] = 0, 0
+
                     t["vagons"] = self.get_active_vagons(
                         trip["vagonTipleriBosYerUcret"]
                     )
 
                     # kalansayi seems to be updated a little bit later on server side
-                    # so empty_seat_count can be negative.
+                    # so empty_seat_count can be negative after calculation.
 
-                    t["eco_empty_seat_count"] = (
-                        trip["vagonTipleriBosYerUcret"][0]["kalanSayi"]
-                        - trip["vagonTipleriBosYerUcret"][0]["kalanEngelliKoltukSayisi"]
-                    )
-                    t["eco_empty_seat_count"] = 0 if t["eco_empty_seat_count"] < 0 else t["eco_empty_seat_count"]
+                    # this does not kinda work with 'Anahat' trips because [0] is not economy class
+                    # with open("trip1111.json", "w") as file:
+                    #    file.write(str(trip))
 
-                    t["buss_empty_seat_count"] = (
-                        trip["vagonTipleriBosYerUcret"][1]["kalanSayi"]
-                        - trip["vagonTipleriBosYerUcret"][1]["kalanEngelliKoltukSayisi"]
-                    )
+                    for vagon_type in trip["vagonTipleriBosYerUcret"]:
+                        # 17002 is the vagonTipId for economy class
+                        if vagon_type["vagonTipId"] == 17002:
+                            t["eco_empty_seat_count"] = (
+                                vagon_type["kalanSayi"]
+                                - vagon_type["kalanEngelliKoltukSayisi"]
+                            )
+                            t["eco_empty_seat_count"] = 0 if t["eco_empty_seat_count"] < 0 else t["eco_empty_seat_count"]
+                        # 17001 is the vagonTipId for business class
+                        if vagon_type["vagonTipId"] == 17001:
+                            t["buss_empty_seat_count"] = (
+                                vagon_type["kalanSayi"]
+                                - vagon_type["kalanEngelliKoltukSayisi"]
+                            )
 
-                    t["empty_seat_count"] = (
-                        t["eco_empty_seat_count"] + t["buss_empty_seat_count"]
-                    )
+                        # 11750035651 is the vagonTipId for 'anahat' trips' bed seat
+                        if vagon_type["vagonTipId"] == 11750035651:
+                            pass
+                        self.logger.info("vagonTipId: %s",
+                                         vagon_type["vagonTipId"])
+                    # t["eco_empty_seat_count"] = (
+                    #     trip["vagonTipleriBosYerUcret"][0]["kalanSayi"]
+                    #     - trip["vagonTipleriBosYerUcret"][0]["kalanEngelliKoltukSayisi"]
+                    # )
+                    # t["eco_empty_seat_count"] = 0 if t["eco_empty_seat_count"] < 0 else t["eco_empty_seat_count"]
+
+                    # t["buss_empty_seat_count"] = (
+                    #     trip["vagonTipleriBosYerUcret"][1]["kalanSayi"]
+                    #     - trip["vagonTipleriBosYerUcret"][1]["kalanEngelliKoltukSayisi"]
+                    # )
+
+                    t["empty_seat_count"] = t.get(
+                        "eco_empty_seat_count", 0) + t.get("buss_empty_seat_count", 0)
 
                     t["binisTarih"] = trip["binisTarih"]
                     t["inisTarih"] = trip["inisTarih"]
@@ -422,7 +492,8 @@ class TripSearchApi:
                     trips.append(t)
                 except IndexError as e:  # no business class, just ignore
                     self.logger.error("IndexError: %s", e)
-                    self.logger.error("No business class for trip: %s", trip)
+                    self.logger.error(
+                        "No business class for trip: %s", trip['seferId'])
         return trips
 
     def get_station_list(self):
@@ -479,9 +550,10 @@ class TripSearchApi:
                 "Error occurred while fetching the station list: %s", e)
             raise e
 
-    def is_mernis_correct(self, passenger: Passenger, date_format: str = "%d/%m/%Y") -> bool :
+    def is_mernis_correct(self, passenger: Passenger, date_format: str = "%d/%m/%Y") -> bool:
         mernis_req_body = api_constants.mernis_dogrula_req_body.copy()
-        date = datetime.strptime(passenger.birthday, date_format).strftime(self.time_format)
+        date = datetime.strptime(
+            passenger.birthday, date_format).strftime(self.time_format)
 
         mernis_req_body["ad"] = passenger.name
         mernis_req_body["soyad"] = passenger.surname
@@ -509,7 +581,7 @@ class TripSearchApi:
                 date,
             )
             return False
-        
+
         self.logger.info(
             "Passenger: %s %s TCKN: %s Birthday: %s",
             passenger.name,

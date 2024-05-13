@@ -3,6 +3,7 @@ import logging
 import regex
 from pprint import pprint
 from uuid import uuid4
+import requests
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -27,6 +28,8 @@ import inline_func
 from trip_search import TripSearchApi
 from trip import list_stations, Trip
 from passenger import Passenger
+from celery import Celery
+
 
 # set httpx logger to warning
 logging.basicConfig(
@@ -135,8 +138,15 @@ async def inline_funcs(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # states
-SELECTING_MAIN_ACTION, ADDING_PERSONAL_INFO, ADDING_CREDIT_CARD_INFO, SELECTING_TARIFF, SHOWING_INFO, BACK, TYPING_REPLY = range(
-    0, 7)
+(
+    SELECTING_MAIN_ACTION,
+    ADDING_PERSONAL_INFO,
+    ADDING_CREDIT_CARD_INFO,
+    SELECTING_TARIFF,
+    SHOWING_INFO,
+    BACK,
+    TYPING_REPLY,
+) = range(0, 7)
 END = ConversationHandler.END
 
 
@@ -178,10 +188,10 @@ FEATURE_HELP_MESSAGES = {
 
 MAIN_MENU_BUTTONS = [
     [
+        InlineKeyboardButton("Personal Info", callback_data=str(ADDING_PERSONAL_INFO)),
         InlineKeyboardButton(
-            "Personal Info", callback_data=str(ADDING_PERSONAL_INFO)),
-        InlineKeyboardButton("Credit Card Info",
-                             callback_data=str(ADDING_CREDIT_CARD_INFO))
+            "Credit Card Info", callback_data=str(ADDING_CREDIT_CARD_INFO)
+        ),
     ],
     [
         InlineKeyboardButton("Show Info", callback_data=str(SHOWING_INFO)),
@@ -196,15 +206,17 @@ PERSON_MENU_BUTTONS = [
         InlineKeyboardButton("Surname", callback_data="surname"),
         InlineKeyboardButton("T.C", callback_data="tckn"),
         InlineKeyboardButton("Birthday", callback_data="birthday"),
-
     ],
     [
-        InlineKeyboardButton("Tariff", callback_data="tariff",),
+        InlineKeyboardButton(
+            "Tariff",
+            callback_data="tariff",
+        ),
         InlineKeyboardButton("Phone", callback_data="phone"),
         InlineKeyboardButton("Email", callback_data="email"),
         InlineKeyboardButton("Sex", callback_data="sex"),
         InlineKeyboardButton("Back", callback_data=str(BACK)),
-    ]
+    ],
 ]
 
 TARIFF_MENU_BUTTONS = [
@@ -214,7 +226,7 @@ TARIFF_MENU_BUTTONS = [
     ],
     [
         InlineKeyboardButton("Back", callback_data=str(BACK)),
-    ]
+    ],
 ]
 
 CREDIT_CARD_MENU_BUTTONS = [
@@ -225,7 +237,7 @@ CREDIT_CARD_MENU_BUTTONS = [
     [
         InlineKeyboardButton("Exp", callback_data="credit_card_exp"),
         InlineKeyboardButton("Back", callback_data=str(BACK)),
-    ]
+    ],
 ]
 
 
@@ -243,7 +255,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if context.user_data.get(IN_PROGRESS):
         try:
             await update.callback_query.answer()
-            await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
+            await update.callback_query.edit_message_text(
+                text=text, reply_markup=keyboard
+            )
         except AttributeError:
             await update.message.reply_text(text=text, reply_markup=keyboard)
     else:
@@ -263,17 +277,19 @@ async def show_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     button = [[InlineKeyboardButton("Back", callback_data=str(BACK))]]
     keyboard = InlineKeyboardMarkup(button)
     user_data = context.user_data
-    text = f"Name: {user_data.get('name', 'Not Provided')}\n" \
-        f"Surname: {user_data.get('surname', 'Not Provided')}\n" \
-        f"T.C.: {user_data.get('tckn', 'Not Provided')}\n" \
-        f"Birthday: {user_data.get('birthday', 'Not Provided')}\n" \
-        f"Sex: {user_data.get('sex', 'Not Provided')}\n" \
-        f"Phone: {user_data.get('phone', 'Not Provided')}\n" \
-        f"Email: {user_data.get('email', 'Not Provided')}\n" \
-        f"Tariff: {user_data.get('tariff', 'Not Provided')}\n" \
-        f"Credit Card No: {user_data.get('credit_card_no', 'Not Provided')}\n" \
-        f"Credit Card CCV: {user_data.get('credit_card_ccv', 'Not Provided')}\n" \
+    text = (
+        f"Name: {user_data.get('name', 'Not Provided')}\n"
+        f"Surname: {user_data.get('surname', 'Not Provided')}\n"
+        f"T.C.: {user_data.get('tckn', 'Not Provided')}\n"
+        f"Birthday: {user_data.get('birthday', 'Not Provided')}\n"
+        f"Sex: {user_data.get('sex', 'Not Provided')}\n"
+        f"Phone: {user_data.get('phone', 'Not Provided')}\n"
+        f"Email: {user_data.get('email', 'Not Provided')}\n"
+        f"Tariff: {user_data.get('tariff', 'Not Provided')}\n"
+        f"Credit Card No: {user_data.get('credit_card_no', 'Not Provided')}\n"
+        f"Credit Card CCV: {user_data.get('credit_card_ccv', 'Not Provided')}\n"
         f"Credit Card Exp: {user_data.get('credit_card_exp', 'Not provided')}\n"
+    )
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     user_data[IN_PROGRESS] = True
@@ -298,7 +314,9 @@ async def adding_self(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         except AttributeError:
             # we are coming from tariff maybe
             await update.callback_query.answer()
-            await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
+            await update.callback_query.edit_message_text(
+                text=text, reply_markup=keyboard
+            )
 
     user_data[IN_PROGRESS] = False
     logging.info("returning ADDING_PERSONAL_INFO")
@@ -331,8 +349,7 @@ async def ask_for_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     text = FEATURE_HELP_MESSAGES[update.callback_query.data]
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text)
-    logging.info("setting previous state to: %s",
-                 context.user_data[CURRENT_STATE])
+    logging.info("setting previous state to: %s", context.user_data[CURRENT_STATE])
     context.user_data[PREVIOUS_STATE] = context.user_data[CURRENT_STATE]
     context.user_data[CURRENT_STATE] = TYPING_REPLY
     return TYPING_REPLY
@@ -360,7 +377,7 @@ async def save_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 re = r"^[E|K|e|k]$"
                 input_text = input_text.upper()
             case "email":
-                re = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
+                re = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b"
             case "credit_card_no":
                 re = r"^\d{16}$"
             case "credit_card_ccv":
@@ -427,8 +444,7 @@ async def unimplemented(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     """Return END to end the conversation."""
     text = "This feature is not implemented yet."
 
-    buttons = [[InlineKeyboardButton(
-        text="Back", callback_data=str(BACK))]]
+    buttons = [[InlineKeyboardButton(text="Back", callback_data=str(BACK))]]
     keyboard = InlineKeyboardMarkup(buttons)
 
     await update.callback_query.answer()
@@ -463,55 +479,102 @@ async def res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         logging.info("init_passenger")
         init_passenger(update, context)
         passenger = context.user_data[PASSENGER]
-        logging.info("mernis_dogrula: %s, %s, %s, %s",
-                     passenger.tckn, passenger.name, passenger.surname, passenger.birthday)
+        logging.info(
+            "mernis_dogrula: %s, %s, %s, %s",
+            passenger.tckn,
+            passenger.name,
+            passenger.surname,
+            passenger.birthday,
+        )
         if not api.is_mernis_correct(passenger):
             raise ValueError("Mernis verification failed.")
-
+        
     except KeyError as feature:
         logging.error("KeyError: %s", feature)
-        await update.message.reply_text(f"{feature} is required, please update your information first.")
+        await update.message.reply_text(
+            f"{feature} is required, please update your information first."
+        )
         return context.user_data.get(CURRENT_STATE, END)
     except ValueError as exc:
         logging.error("ValueError: %s", exc)
-        await update.message.reply_text("Mernis verification failed. Please update your information first.")
+        await update.message.reply_text(
+            "Mernis verification failed. Please update your information first.",
+        )
+        return context.user_data.get(CURRENT_STATE, END)
+    except requests.exceptions.HTTPError as exc:
+        logging.error("HTTPError: %s", "test")
+        await update.message.reply_text(f"HTTPError {exc.errno}: Mernis verification failed.")
         return context.user_data.get(CURRENT_STATE, END)
 
     arg_string = update.message.text.partition(" ")[2]
-    args = [arg.strip() for arg in arg_string.split('-')]
+    args = [arg.strip() for arg in arg_string.split("-")]
     from_, to_, from_date = args
 
     my_trip = Trip(from_, to_, from_date)
+    logging.info("my_trip: from_date: %s,", my_trip.from_date)
+    context.user_data[TRIP] = my_trip
 
     trips = my_trip.get_trips(check_satis_durum=False)
 
-    reply_keyboard = []
-    for trip in trips:
-        time = datetime.strptime(trip["binisTarih"], my_trip.time_format)
-        reply_keyboard.append(
-            [datetime.strftime(time, my_trip.output_time_format)])
+    #reply_keyboard = []
+    inline_keyboard = []
 
-    reply_keyboard_markup = ReplyKeyboardMarkup(
-        reply_keyboard, one_time_keyboard=True,
-        input_field_placeholder="Select the end range from date range to search for.")
+    try:
+        for trip in trips:
+            time = datetime.strptime(trip["binisTarih"], my_trip.time_format)
+
+            #reply_keyboard.append([datetime.strftime(time, my_trip.output_time_format)])
+            #logging.info("time: %s", type(time))
+            inline_keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        text=datetime.strftime(time, my_trip.output_time_format),
+                        callback_data=time,
+                    )
+                ]
+            )
+    except TypeError as exc:
+        logging.error("TypeError: %s", exc)
+        await update.message.reply_text("No trips found.")
+        return context.user_data[CURRENT_STATE]
+
+    # reply_keyboard_markup = ReplyKeyboardMarkup(
+    #     reply_keyboard, one_time_keyboard=True,
+    #     input_field_placeholder="Select the end range from date range to search for.")
+
+    inline_keyboard_markup = InlineKeyboardMarkup(inline_keyboard)
 
     await update.message.reply_text(
-        "Okay lets get you started.",
+        f"Okay lets get you started. I am going to search between {from_date} and your selected below date.",
         do_quote=True,
-        reply_markup=reply_keyboard_markup,
+        reply_markup=inline_keyboard_markup,
     )
-
-    pprint(f"Total of {len(trips)} trips found")
-    logging.info("args: %s", args)
+    logging.info("returning context.user_data[CURRENT_STATE]: %s", context.user_data[CURRENT_STATE])
     return context.user_data[CURRENT_STATE]
 
 
-async def second_date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """handle the query result from inline query."""
-    # get the message coming from command
-    logging.info("context.args: %s", context.args)
-    # context.args as one string
-    arg_string = update.message.text.partition(" ")[2]
+async def handle_datetime_type(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    """Handle the datetime type."""
+
+    logging.info("handle_datetime_type")
+    logging.info("context.args: %s", update.callback_query.data)
+    my_trip = context.user_data[TRIP]
+    my_trip.to_date = update.callback_query.data
+    logging.info("my_trip: from_date %s, to_date: %s", my_trip.from_date, my_trip.to_date)
+
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text(text="Okay!.")
+    return context.user_data[CURRENT_STATE]
+
+
+# async def second_date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+#     """handle the query result from inline query."""
+#     # get the message coming from command
+#     logging.info("context.args: %s", context.args)
+#     # context.args as one string
+#     arg_string = update.message.text.partition(" ")[2]
 
 
 def init_passenger(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -553,6 +616,14 @@ async def delete_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return context.user_data[CURRENT_STATE]
 
 
+
+async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Start the reservation process."""
+    await update.message.reply_text("I'm starting to search.")
+    logging.info("started searching reservation.")
+    
+    return context.user_data.get(CURRENT_STATE, END)
+
 # async def test_method(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 #     """Return END to end the conversation."""
 #     text = "You are in the test method."
@@ -591,6 +662,7 @@ def main() -> None:
     app = (
         ApplicationBuilder()
         .token("***REMOVED***")
+        .arbitrary_callback_data(True)
         .persistence(persistence=my_persistance)
         .build()
     )
@@ -599,13 +671,12 @@ def main() -> None:
         CommandHandler("stop", stop),
         CommandHandler("res", res),
         CommandHandler("print_state", print_state),
-        MessageHandler(filters.TEXT & (~filters.COMMAND), second_date),
+        CallbackQueryHandler(handle_datetime_type, pattern=datetime),
         MessageHandler(filters.COMMAND, unknown_command),
     ]
 
     tariff_conv_handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(
-            selecting_tariff, pattern="^tariff$")],
+        entry_points=[CallbackQueryHandler(selecting_tariff, pattern="^tariff$")],
         states={
             SELECTING_TARIFF: [
                 CallbackQueryHandler(back, pattern=f"^{BACK}$"),
@@ -624,8 +695,9 @@ def main() -> None:
     )
 
     adding_self_conv_handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(
-            adding_self, pattern=f"^{ADDING_PERSONAL_INFO}$")],
+        entry_points=[
+            CallbackQueryHandler(adding_self, pattern=f"^{ADDING_PERSONAL_INFO}$")
+        ],
         states={
             ADDING_PERSONAL_INFO: [
                 tariff_conv_handler,
@@ -652,16 +724,16 @@ def main() -> None:
     )
 
     adding_credit_card_conv_handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(
-            adding_credit_card, pattern=f"^{ADDING_CREDIT_CARD_INFO}$")],
+        entry_points=[
+            CallbackQueryHandler(
+                adding_credit_card, pattern=f"^{ADDING_CREDIT_CARD_INFO}$"
+            )
+        ],
         states={
             ADDING_CREDIT_CARD_INFO: [
-                CallbackQueryHandler(
-                    ask_for_input, pattern="^credit_card_no$"),
-                CallbackQueryHandler(
-                    ask_for_input, pattern="^credit_card_ccv$"),
-                CallbackQueryHandler(
-                    ask_for_input, pattern="^credit_card_exp$"),
+                CallbackQueryHandler(ask_for_input, pattern="^credit_card_no$"),
+                CallbackQueryHandler(ask_for_input, pattern="^credit_card_ccv$"),
+                CallbackQueryHandler(ask_for_input, pattern="^credit_card_exp$"),
                 CallbackQueryHandler(back, pattern=f"^{BACK}$"),
             ],
             TYPING_REPLY: [
@@ -685,7 +757,8 @@ def main() -> None:
                 adding_credit_card_conv_handler,
                 # CallbackQueryHandler(adding_self, pattern=f"^{ADDING_PERSONAL_INFO}$"),
                 CallbackQueryHandler(
-                    unimplemented, pattern=f"^{ADDING_CREDIT_CARD_INFO}$"),
+                    unimplemented, pattern=f"^{ADDING_CREDIT_CARD_INFO}$"
+                ),
                 CallbackQueryHandler(show_info, pattern=f"^{SHOWING_INFO}$"),
                 CallbackQueryHandler(end, pattern=f"^{END}$"),
             ],
@@ -695,7 +768,6 @@ def main() -> None:
             UNIMPLEMENTED: [
                 CallbackQueryHandler(start, pattern=f"^{BACK}$"),
             ],
-
         },
         fallbacks=fallback_handlers,
     )
@@ -718,6 +790,13 @@ def main() -> None:
 
     print_state_handler = CommandHandler("print_state", print_state)
     app.add_handler(print_state_handler)
+
+    datetime_type_handler = CallbackQueryHandler(handle_datetime_type, pattern=datetime)
+    app.add_handler(datetime_type_handler)
+
+    start_reservation_handler = CommandHandler("start_res", start_res)
+    app.add_handler(start_reservation_handler)
+    
 
     # app.add_handler(CommandHandler("put", put))
     # pprint(app.user_data)
