@@ -8,7 +8,8 @@ from payment import SeleniumPayment
 from trip import Trip
 from passenger import Passenger
 from inline_func import query
-
+from tasks import tripp
+import pickle
 
 def main():
     """Main function to run the script."""
@@ -52,33 +53,64 @@ def main():
     my_trip = Trip(from_station, to_station, from_date,
                    to_date, passenger, tariff, seat_type)
 
-    # my_trip.api.is_mernis_correct(passenger)
+    my_trip_ = pickle.dumps(my_trip)
+    task = tripp.delay(my_trip_)
+    
+    while not task.ready():
+        time.sleep(1)
+        print("Waiting for task to complete")
+        print(task.id)
+         
+    trip = pickle.loads(task.result)
+    my_trip.trip_json = trip
 
+    # check if trip is json
+    if not isinstance(trip, dict):
+        print("Trip is not a dict")
+    else:
+        print("Trip is a dict")
+    logging.info("Reserving: %s", trip.get('binisTarih'))
+    
     p = SeleniumPayment()
+    my_trip.reserve_seat() 
+    time.sleep(5)
+    my_trip.reserve_seat()
+    
+    
+    trip_str = my_trip.trip_json['binisTarih']
+    seat_str = my_trip.empty_seat_json['koltukNo']
+    vagon_str = my_trip.empty_seat_json['vagonSiraNo']
+    end_time = my_trip.lock_end_time
+
+    #pprint(f"Lock will end at {end_time}")
+    pprint(
+        f"Seat {seat_str} in vagon {vagon_str} is reserved for trip {trip_str}")
+
     # find trip
-    trips = my_trip.find_trip()
+    #trips = my_trip.find_trip()
     #trips = my_trip.get_trips(check_satis_durum=False)
     # pprint(trips)
-    pprint(f"Total of {len(trips)} trips found")
-    for trip in trips:
-        pprint(
-            f"eco: {trip['eco_empty_seat_count']} - buss: {trip['buss_empty_seat_count']}")
+    # pprint(f"Total of {len(trips)} trips found")
+    # #for trip in trips:
+    # #    pprint(
+    # #        f"eco: {trip['eco_empty_seat_count']} - buss: {trip['buss_empty_seat_count']}")
 
-    if len(trips) > 0:
-        trip = trips[0]
-        my_trip.trip_json = trip
-        logging.info("Reserving: %s", trip.get('binisTarih'))
-        my_trip.reserve_seat()
-        p.trip = my_trip
+    
+    # if len(trips) > 0:
+    #     trip = trips[0]
+    #     my_trip.trip_json = trip
+    #     logging.info("Reserving: %s", trip.get('binisTarih'))
+    #     my_trip.reserve_seat()
+    #     p.trip = my_trip
 
-        while True:
-            payment_url: str = ''
-            time.sleep(10)
-            p.trip.reserve_seat()
-            p.set_price()
-            p.set_payment_url()
-            logging.info("Payment URL: %s", p.current_payment_url)
-            # compare urls
+    #     while True:
+    #         payment_url: str = ''
+    #         time.sleep(10)
+    #         p.trip.reserve_seat()
+    #         p.set_price()
+    #         p.set_payment_url()
+    #         logging.info("Payment URL: %s", p.current_payment_url)
+    #         # compare urls
             
             
             # p.ticket_reservation()
@@ -93,15 +125,9 @@ def main():
         #    file.write(json.dumps(my_trip.reserve_seat_data))
 
         # ready the page with selenium
-        trip_str = my_trip.trip_json['binisTarih']
-        seat_str = my_trip.empty_seat_json['koltukNo']
-        vagon_str = my_trip.empty_seat_json['vagonSiraNo']
-        end_time = my_trip.lock_end_time
 
-        pprint(f"Lock will end at {end_time}")
-        # pprint(trip)
-        pprint(
-            f"Seat {seat_str} in vagon {vagon_str} is reserved for trip {trip_str}")
+
+
 
 
 

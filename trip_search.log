@@ -374,3 +374,90 @@
 2024-05-14 00:52:15,073 - trip_search - select_first_empty_seat - INFO - Selecting the first empty seat: koltukNo: 14a
 2024-05-14 00:52:15,850 - trip - set_seat_lock_id - INFO - koltuk_lock_id_list: [44298642275, 44298642276, 44298642277, 44298642278]
 2024-05-14 00:52:15,851 - trip - reserve_seat - INFO - lock_end_time: 2024-05-14 01:02:15
+2024-05-14 02:54:29,422 - trip - find_trip - INFO - seat_type_id: 17001
+2024-05-14 02:54:29,423 - trip - find_trip - INFO - Searching for trips with empty seat.
+2024-05-14 02:54:30,424 - trip_search - search_trips - INFO - Searching for trips. from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: 30 May 20:00 to_date: None
+2024-05-14 02:54:31,427 - trip_search - search_trips - INFO - vagonTipId: 17002
+2024-05-14 02:54:31,427 - trip_search - search_trips - INFO - vagonTipId: 17001
+2024-05-14 02:54:31,427 - trip_search - search_trips - INFO - vagonTipId: 17001
+2024-05-14 02:54:31,427 - trip_search - search_trips - INFO - vagonTipId: 11750035651
+2024-05-14 02:54:31,428 - trip - get_trips - INFO - Total of 2 trips found
+2024-05-14 02:54:31,428 - trip - get_trips - INFO - returning trips
+2024-05-14 02:54:31,428 - root - find_trip - INFO - Checking trip for empty seats: May 30, 2024 08:03:00 PM
+2024-05-14 02:54:31,888 - trip_search - get_empty_seats_trip - INFO - Length of empty seats: 35
+2024-05-14 02:54:31,888 - root - find_trip - INFO - Found trip with empty seats.
+2024-05-14 02:54:31,888 - root - find_trip - INFO - empty_seat_count: 35
+2024-05-14 02:54:31,888 - root - find_trip - INFO - Checking trip for empty seats: May 30, 2024 11:41:00 PM
+2024-05-14 02:54:33,964 - trip_search - get_empty_seats_trip - INFO - Length of empty seats: 265
+2024-05-14 02:54:33,964 - root - find_trip - INFO - Found trip with empty seats.
+2024-05-14 02:54:33,964 - root - find_trip - INFO - empty_seat_count: 265
+2024-05-14 03:19:32,973 - trip - find_trip - INFO - seat_type_id: 17001
+2024-05-14 03:19:32,973 - trip - find_trip - INFO - Searching for trips with empty seat.
+2024-05-14 03:19:33,974 - trip_search - search_trips - INFO - Searching for trips. from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: 30 May 20:00 to_date: None
+2024-05-14 03:19:34,875 - trip_search - search_trips - INFO - vagonTipId: 17002
+2024-05-14 03:19:34,875 - trip_search - search_trips - INFO - vagonTipId: 17001
+2024-05-14 03:19:34,875 - trip_search - search_trips - INFO - vagonTipId: 17001
+2024-05-14 03:19:34,876 - trip_search - search_trips - INFO - vagonTipId: 11750035651
+2024-05-14 03:19:34,876 - trip - get_trips - INFO - Total of 2 trips found
+2024-05-14 03:19:34,877 - trip - get_trips - INFO - returning trips
+2024-05-14 03:19:34,877 - root - find_trip - INFO - Checking trip for empty seats: May 30, 2024 08:03:00 PM
+2024-05-14 03:19:54,582 - trip - find_trip - INFO - seat_type_id: 17001
+2024-05-14 03:19:54,582 - trip - find_trip - INFO - Searching for trips with empty seat.
+2024-05-14 03:19:55,582 - trip_search - search_trips - INFO - Searching for trips. from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: 30 May 20:00 to_date: None
+2024-05-14 03:19:56,371 - trip_search - search_trips - INFO - vagonTipId: 17002
+2024-05-14 03:19:56,371 - trip_search - search_trips - INFO - vagonTipId: 17001
+2024-05-14 03:19:56,371 - trip_search - search_trips - INFO - vagonTipId: 17001
+2024-05-14 03:19:56,371 - trip_search - search_trips - INFO - vagonTipId: 11750035651
+2024-05-14 03:19:56,372 - trip - get_trips - INFO - Total of 2 trips found
+2024-05-14 03:19:56,372 - trip - get_trips - INFO - returning trips
+2024-05-14 03:19:56,372 - root - find_trip - INFO - Checking trip for empty seats: May 30, 2024 08:03:00 PM
+2024-05-14 03:19:56,840 - trip_search - get_empty_seats_trip - INFO - Length of empty seats: 35
+2024-05-14 03:19:56,840 - root - find_trip - INFO - Found trip with empty seats.
+2024-05-14 03:19:56,841 - root - find_trip - INFO - empty_seat_count: 35
+2024-05-14 03:19:56,841 - root - find_trip - INFO - Checking trip for empty seats: May 30, 2024 11:41:00 PM
+2024-05-14 03:19:59,914 - trip_search - get_empty_seats_trip - INFO - Length of empty seats: 265
+2024-05-14 03:19:59,914 - root - find_trip - INFO - Found trip with empty seats.
+2024-05-14 03:19:59,914 - root - find_trip - INFO - empty_seat_count: 265
+2024-05-14 03:19:59,914 - root - main - INFO - Reserving: May 30, 2024 08:03:00 PM
+2024-05-14 03:19:59,914 - trip - reserve_seat - INFO - Reserving the seat.
+2024-05-14 03:19:59,915 - trip_search - select_first_empty_seat - INFO - Selecting the first empty seat: koltukNo: 13c
+2024-05-14 03:20:00,613 - trip - set_seat_lock_id - INFO - koltuk_lock_id_list: [44299223145, 44299223146, 44299223147, 44299223148]
+2024-05-14 03:20:00,613 - trip - reserve_seat - INFO - lock_end_time: 2024-05-14 03:30:00
+2024-05-14 03:20:10,988 - payment - set_price - INFO - Price response: {'indirimsizToplamUcret': 430.0, 'indirimliToplamUcret': 370.0, 'toplamRezUcreti': 0.0, 'toplamIndirim': 64.5, 'hataMesaji': None, 'biletBiletFiyatlar': [{'siraNo': 1, 'seferBaslikId': 43961886882, 'biletYatakList': None, 'indirimsizUcret': 430.0, 'mevkiFarki': 0, 'abonmanKartinYarattigiToplamIndirim': 0, 'extraServingPrice': 0, 'bedPrice': 0, 'couchettePrice': 0, 'blanketPrice': 0, 'ucret': 370.0, 'roadPrice': 430.0, 'minTasUcretiFarki': 0, 'rezervasyonUcreti': 0.0, 'yolcuToplamUcret': 370.0, 'uyelikSorguSonuc': None, 'permiDetayDVO': None}], 'indirimList': None, 'abonmanBiletTranDVOs': None, 'permininKarsiladiğiKisim': 0}
+2024-05-14 03:20:11,718 - payment - set_payment_url - INFO - Enroll reference: qcinjekiphmf92wkxny1ytxmifunsy3n5ttu7kqf
+2024-05-14 03:20:11,720 - root - main - INFO - Payment URL: https://ebilet.tcddtasimacilik.gov.tr/view/eybis/tnmGenel/tcdd3dsecure/3dsecure.html?url=https://3dsecure.vakifbank.com.tr/MPIAPI/Troy_ACS.aspx&md=0015f2e1f840-0c91-485d-826e-7ab8104da846%230015fc7a3bc3-8fb8-4e72-8972-c5b76c28728d%23eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIwMDAwMDAwMDAxMjg5MzQiLCJ0aW1lb3V0U2Vjb25kcyI6NDMyMDAwMDAsInJvbGVzIjoiIiwiZXhwIjoxNzU4ODQ2MDExfQ.adOwztciTGUynWEAnXmnDwzYx1z857JeQeHGCDaS-6aQiYsfmizfbfMILkLPF6fo2dOAdgV-Cgx11IO6R9vrmQ%23https://goguvenliodeme.bkm.com.tr/troy/approve&pareq=eJyNUk1zgjAQ/SsMd0kIKOCscazOtExb6lQOHW8YomIlaAx+/PsmKLXemkNm3yZ5u+9tYHgut9aRy0NRiYHtOti2uGBVXojVwK7VshPaQwrpWnI+mXFWS07hnR8O2YpbRT6wMXa7SxZk3oJ5nXC5CDs+D0gnjPTGuougx0gYkDC3KUxHn3xP4VaMYgd7gFqkSSVbZ0JRyNj+KU5oFEQEdwHdIJRcxhOK2+WSMPJ8QNc0iKzkNB1PJlY6msXvo3H8Fr8CatLAqlooeaGaEVALoJZbulZq10fodDo5hRDVMXNYVTpKAjKngO5dTWsTHTTbucjpIv2+fDzv6mSTkIS4Ik/nim8SNf+qBoDMDcgzxSnBxMdd17ew1ye477qAmjxkpWmDeoGWojVeEexMkdHD0d8UaP+lHs+FRn6klbQI+HlXCa5vaH2/MaB7z+MX4ytTjYP/m5hxvnlg2AttmFbSa+gNAGQo0W2m6PYldPTwVX4AbSHCEQ==&termurl=https://3dsecure.vakifbank.com.tr/MPIAPI/MPI_PARes.aspx
+2024-05-14 03:20:22,125 - payment - set_price - INFO - Price response: {'indirimsizToplamUcret': 430.0, 'indirimliToplamUcret': 370.0, 'toplamRezUcreti': 0.0, 'toplamIndirim': 64.5, 'hataMesaji': None, 'biletBiletFiyatlar': [{'siraNo': 1, 'seferBaslikId': 43961886882, 'biletYatakList': None, 'indirimsizUcret': 430.0, 'mevkiFarki': 0, 'abonmanKartinYarattigiToplamIndirim': 0, 'extraServingPrice': 0, 'bedPrice': 0, 'couchettePrice': 0, 'blanketPrice': 0, 'ucret': 370.0, 'roadPrice': 430.0, 'minTasUcretiFarki': 0, 'rezervasyonUcreti': 0.0, 'yolcuToplamUcret': 370.0, 'uyelikSorguSonuc': None, 'permiDetayDVO': None}], 'indirimList': None, 'abonmanBiletTranDVOs': None, 'permininKarsiladiğiKisim': 0}
+2024-05-14 03:20:22,903 - payment - set_payment_url - INFO - Enroll reference: fld9yifonsb5tcyenxuxas1sw1bbtiombuhzlc08
+2024-05-14 03:20:22,904 - root - main - INFO - Payment URL: https://ebilet.tcddtasimacilik.gov.tr/view/eybis/tnmGenel/tcdd3dsecure/3dsecure.html?url=https://3dsecure.vakifbank.com.tr/MPIAPI/Troy_ACS.aspx&md=0015fa2fdac3-9c2b-4296-8175-ed9feba425d7%230015bf1b2006-7d3a-453c-a17a-b131d050c22c%23eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiIwMDAwMDAwMDAxMjg5MzQiLCJ0aW1lb3V0U2Vjb25kcyI6NDMyMDAwMDAsInJvbGVzIjoiIiwiZXhwIjoxNzU4ODQ2MDIyfQ.s63Me0G1sx7gE-nkO13dj7KRZ8g2lTNrJVNHkLXgP8f6YfZUDZ94zloWTHNbUbOHivQjxZt0mgFMKuPYzW2EwA%23https://goguvenliodeme.bkm.com.tr/troy/approve&pareq=eJyNUk1zgjAQ/SsMd0gIoOKscaxOp7TVcSqH1lsMUXEkaAA/+uuboNZ6a077djdvd98u9E/51joIVWaF7Nmei21LSF6kmVz17LpaOh27TyFZKyFGM8FrJSiMRVmylbCytGdj7IWLpbcgGLecduozJwh97jCvzZyF53spDjEnhNsUpoMPsadwLUaxi31AN6RJFV8zWVFgfP8UT2jUjggOAV0h5ELFI4pvzyOdyA8AXdwgWS5oMhyNrGQwi8eDYfwevwFq3MCLWlbqTDUjoBuAWm3puqp2XYSOx6ObSVkcmMuL3K0UIBMFdO9qWhur1GynLKXz5PXI5Fby7+dSbCabLzI+jzfz9eSz6AEyGZCySlCCSYBDL7Cw3yW4S3T9xg8sN21Qv61H0TNeEOxMkcFD6K8LtP5Kr+dMoyDSk9wQiNOukEJnaP5fG9C95+GL0ZVXjYL/25hRvvlg2DMtmJ6k1dAbAMhQoutO0fUktPVwKj8/YMH7&termurl=https://3dsecure.vakifbank.com.tr/MPIAPI/MPI_PARes.aspx
+2024-05-14 04:06:02,810 - root - main - INFO - Trip: May 30, 2024 08:03:00 PM
+2024-05-14 04:06:02,810 - root - main - INFO - Empty seat count: 345
+2024-05-14 04:06:02,810 - root - main - INFO - eco empty seat count: 310
+2024-05-14 04:06:02,810 - root - main - INFO - buss empty seat count: 35
+2024-05-14 04:39:46,918 - root - main - INFO - Reserving: May 30, 2024 08:03:00 PM
+2024-05-14 04:39:47,491 - trip - reserve_seat - INFO - Reserving the seat.
+2024-05-14 04:39:47,491 - trip_search - select_first_empty_seat - INFO - Selecting the first empty seat: koltukNo: 13c
+2024-05-14 04:39:48,221 - trip - set_seat_lock_id - INFO - koltuk_lock_id_list: [44299334550, 44299334551, 44299334552, 44299334553]
+2024-05-14 04:39:48,221 - trip - reserve_seat - INFO - lock_end_time: 2024-05-14 04:49:47
+2024-05-14 04:41:31,113 - root - main - INFO - Reserving: May 30, 2024 08:03:00 PM
+2024-05-14 04:41:31,345 - trip - reserve_seat - INFO - Reserving the seat.
+2024-05-14 04:41:31,345 - trip_search - select_first_empty_seat - INFO - Selecting the first empty seat: koltukNo: 14a
+2024-05-14 04:41:32,061 - trip - set_seat_lock_id - INFO - koltuk_lock_id_list: [44299336684, 44299336685, 44299336686, 44299336687]
+2024-05-14 04:41:32,061 - trip - reserve_seat - INFO - lock_end_time: 2024-05-14 04:51:32
+2024-05-14 04:43:17,683 - root - main - INFO - Reserving: May 30, 2024 08:03:00 PM
+2024-05-14 04:43:17,881 - trip - reserve_seat - INFO - Reserving the seat.
+2024-05-14 04:43:17,881 - trip_search - select_first_empty_seat - INFO - Selecting the first empty seat: koltukNo: 11a
+2024-05-14 04:43:18,591 - trip - set_seat_lock_id - INFO - koltuk_lock_id_list: [44299341303, 44299341304, 44299341305, 44299341306]
+2024-05-14 04:43:18,591 - trip - reserve_seat - INFO - lock_end_time: 2024-05-14 04:53:17
+2024-05-14 04:43:23,592 - trip - reserve_seat - INFO - Seat is already reserved.
+2024-05-14 05:07:57,687 - root - main - INFO - Reserving: May 30, 2024 08:03:00 PM
+2024-05-14 05:07:57,896 - trip - reserve_seat - INFO - Reserving the seat.
+2024-05-14 05:07:57,896 - trip_search - select_first_empty_seat - INFO - Selecting the first empty seat: koltukNo: 13c
+2024-05-14 05:07:58,600 - trip - set_seat_lock_id - INFO - koltuk_lock_id_list: [44299370616, 44299370617, 44299370618, 44299370619]
+2024-05-14 05:07:58,600 - trip - reserve_seat - INFO - lock_end_time: 2024-05-14 05:17:58
+2024-05-15 22:56:24,528 - kombu.connection - _info - WARNING - No hostname was supplied. Reverting to default 'localhost'
+2024-05-15 22:59:03,589 - root - main - INFO - Reserving: May 30, 2024 08:03:00 PM
+2024-05-15 22:59:04,630 - trip - reserve_seat - INFO - Reserving the seat.
+2024-05-15 22:59:04,631 - trip_search - select_first_empty_seat - INFO - Selecting the first empty seat: koltukNo: 14a
+2024-05-15 22:59:05,444 - trip - set_seat_lock_id - INFO - koltuk_lock_id_list: [44353585563, 44353585564, 44353585565, 44353585566]
+2024-05-15 22:59:05,444 - trip - reserve_seat - INFO - lock_end_time: 2024-05-15 23:09:05
+2024-05-15 22:59:10,444 - trip - reserve_seat - INFO - Seat is already reserved.

@@ -21,13 +21,16 @@ class SeatLockedException(Exception):
 
 class TripSearchApi:
     """Class for searching for trips and selecting empty seats."""
+    logger = logging.getLogger(__name__)
+    time_format = "%b %d, %Y %I:%M:%S %p"
+    
+    # def __init__(self) -> None:
+    #     # set up class logger
+    #     TripSearchApi.logger = logging.getLogger(__name__)
+    #     self.time_format = "%b %d, %Y %I:%M:%S %p"
 
-    def __init__(self) -> None:
-        # set up class logger
-        self.logger = logging.getLogger(__name__)
-        self.time_format = "%b %d, %Y %I:%M:%S %p"
-
-    def get_empty_vagon_seats(self, vagon_json):
+    @staticmethod
+    def get_empty_vagon_seats(vagon_json):
         """
         Returns a generator that yields empty seats from the given vagon_json.
 
@@ -68,7 +71,8 @@ class TripSearchApi:
 
     # return a list of dictionaries
 
-    def get_active_vagons(self, json_data):
+    @staticmethod
+    def get_active_vagons(json_data):
         """
         Retrieves the list of active wagons from the given JSON data.
 
@@ -91,7 +95,8 @@ class TripSearchApi:
                     active_vagons.append(v)
         return active_vagons
 
-    def select_first_empty_seat(self, trip, empty_seat=None):
+    @staticmethod
+    def select_first_empty_seat(trip, empty_seat=None):
         """
         Selects the first empty seat for a given trip.
 
@@ -107,7 +112,7 @@ class TripSearchApi:
         s_check = api_constants.seat_check.copy()
         if trip["empty_seats"]:
             empty_seat = trip["empty_seats"][0] if empty_seat is None else empty_seat
-            self.logger.info("Selecting the first empty seat: koltukNo: %s", empty_seat["koltukNo"])
+            TripSearchApi.logger.info("Selecting the first empty seat: koltukNo: %s", empty_seat["koltukNo"])
 
             seat_select_req["seferId"] = trip["seferId"]
             seat_select_req["vagonSiraNo"] = empty_seat["vagonSiraNo"]
@@ -126,14 +131,14 @@ class TripSearchApi:
                     timeout=10,
                 )
                 s_response_json = json.loads(s_response.text)
-                self.logger.debug(s_response_json)
+                TripSearchApi.logger.debug(s_response_json)
             except requests.exceptions.RequestException as e:
-                self.logger.error(
+                TripSearchApi.logger.error(
                     "Error occurred while fetching the seat check: %s", e)
                 raise e
 
             if s_response_json["cevapBilgileri"]["cevapKodu"] != "000":
-                self.logger.error("response_json: %s", s_response_json)
+                TripSearchApi.logger.error("response_json: %s", s_response_json)
                 raise Exception(
                     "Non zero response code: response_json: %s", s_response_json)
 
@@ -148,15 +153,15 @@ class TripSearchApi:
                         timeout=10,
                     )
                 except requests.exceptions.RequestException as e:
-                    self.logger.error(
+                    TripSearchApi.logger.error(
                         "Error occurred while fetching the seat lock: %s", e
                     )
                     raise e
 
                 response_json = json.loads(response.text)
-                self.logger.debug(response_json)
+                TripSearchApi.logger.debug(response_json)
                 if response_json["cevapBilgileri"]["cevapKodu"] != "000":
-                    self.logger.error(
+                    TripSearchApi.logger.error(
                         "Non zero response code: response_json: %s", response_json
                     )
                     raise Exception(
@@ -167,7 +172,8 @@ class TripSearchApi:
                 raise SeatLockedException(empty_seat)
             return end_time, empty_seat, response_json
 
-    def get_detailed_vagon_info_empty_seats(self, vagon_map_req, vagons):
+    @staticmethod
+    def get_detailed_vagon_info_empty_seats(vagon_map_req, vagons):
         """
         Retrieves the empty seats for a given vagon.
 
@@ -177,8 +183,8 @@ class TripSearchApi:
         Returns:
             list: The list of dictionaries containing the empty seat information.
         """
-        self.logger.debug(vagon_map_req)
-        self.logger.debug(vagons)
+        TripSearchApi.logger.debug(vagon_map_req)
+        TripSearchApi.logger.debug(vagons)
         empty_seats = list()
         response = requests.post(
             api_constants.VAGON_HARITA_ENDPOINT,
@@ -187,9 +193,9 @@ class TripSearchApi:
             timeout=10,
         )
         response_json = json.loads(response.text)
-        self.logger.debug(response_json)
+        TripSearchApi.logger.debug(response_json)
 
-        for empty_seat in self.get_empty_vagon_seats(response_json):
+        for empty_seat in TripSearchApi.get_empty_vagon_seats(response_json):
             empty_seat["vagonTipId"] = next(
                 vagon["vagonTipId"]
                 for vagon in vagons
@@ -197,10 +203,11 @@ class TripSearchApi:
             )
             empty_seats.append(empty_seat)
 
-        self.logger.debug("empty_seats: %s", empty_seats)
+        TripSearchApi.logger.debug("empty_seats: %s", empty_seats)
         return empty_seats
 
-    def get_empty_seats_trip(self, trip, from_station, to_station, seat_type=None):
+    @staticmethod
+    def get_empty_seats_trip(trip, from_station, to_station, seat_type=None):
         """
         Retrieves the empty seats for a given trip.
 
@@ -221,7 +228,7 @@ class TripSearchApi:
         # vagon_req["inisIstId"] = trip_with_seats["inisIstasyonId"]
 
         # get the vagons' seat status for the trip
-        # self.logger.debug(vagon_req)
+        # TripSearchApi.logger.debug(vagon_req)
         # response = requests.post(
         #     api_constants.VAGON_SEARCH_ENDPOINT,
         #     headers=api_constants.REQUEST_HEADER,
@@ -229,7 +236,7 @@ class TripSearchApi:
         #     timeout=10,
         # )
         # response_json = json.loads(response.text)
-        # self.logger.debug(response_json)
+        # TripSearchApi.logger.debug(response_json)
         trip_with_seats["empty_seats"] = list()
 
         for vagon in trip["vagons"]:
@@ -240,15 +247,15 @@ class TripSearchApi:
             if seat_type is not None:
                 vagon_type = vagon["vagonTipId"]
                 if seat_type != vagon_type:
-                    self.logger.debug(
+                    TripSearchApi.logger.debug(
                         "seat_type: %s, vagon_type: %s", seat_type, vagon_type)
                     continue
-            empty_seats = self.get_detailed_vagon_info_empty_seats(
+            empty_seats = TripSearchApi.get_detailed_vagon_info_empty_seats(
                 vagon_map_req, trip["vagons"]
             )
-            self.logger.debug(empty_seats)
+            TripSearchApi.logger.debug(empty_seats)
             trip_with_seats["empty_seats"].extend(empty_seats)
-        self.logger.info(
+        TripSearchApi.logger.info(
             "Length of empty seats: %s", len(trip_with_seats["empty_seats"])
         )
 
@@ -259,21 +266,21 @@ class TripSearchApi:
         #         vagon_map_req["binisIst"] = from_station
         #         vagon_map_req["InisIst"] = to_station
         #         if seat_type is not None:
-        #             #self.logger.info("Seat type: %s, vagon_sira_no: %s",
+        #             #TripSearchApi.logger.info("Seat type: %s, vagon_sira_no: %s",
         #             #                seat_type, vagon["vagonSiraNo"])
         #             items = [vagon_ for vagon_ in trip["vagons"]
         #                     if vagon_["vagonSiraNo"] == vagon["vagonSiraNo"]]
-        #             #self.logger.info("items: %s", items)
+        #             #TripSearchApi.logger.info("items: %s", items)
         #             vagon_type = next(
         #                 vagon_["vagonTipId"]
         #                 for vagon_ in trip["vagons"]
         #                 if vagon_["vagonSiraNo"] == vagon["vagonSiraNo"]
         #             )
-        #             #self.logger.info("vagon_type: %s", vagon_type)
+        #             #TripSearchApi.logger.info("vagon_type: %s", vagon_type)
         #             if seat_type != vagon_type:
         #                 continue
         #     except StopIteration:
-        #         self.logger.error(
+        #         TripSearchApi.logger.error(
         #             # this happens with anahat trips because
         #             "No vagon type found for vagon_sira_no: %s", vagon["vagonSiraNo"]
         #         )
@@ -281,15 +288,16 @@ class TripSearchApi:
         #     empty_seats = self.get_detailed_vagon_info_empty_seats(
         #         vagon_map_req, trip["vagons"]
         #     )
-        #     self.logger.debug(empty_seats)
+        #     TripSearchApi.logger.debug(empty_seats)
         #     trip_with_seats["empty_seats"].extend(empty_seats)
-        # self.logger.info(
+        # TripSearchApi.logger.info(
         #     "Length of empty seats: %s", len(trip_with_seats["empty_seats"])
         # )
 
         return trip_with_seats
 
-    def check_stations(self, stations, from_station, to_station):
+    @staticmethod
+    def check_stations(stations, from_station, to_station):
         """
         Check if the given from_station and to_station are valid stations.
 
@@ -305,15 +313,16 @@ class TripSearchApi:
         None
         """
         if from_station not in [station["station_name"] for station in stations]:
-            self.logger.error("%s is not a valid station", from_station)
+            TripSearchApi.logger.error("%s is not a valid station", from_station)
             raise ValueError(f"{from_station} is not a valid station")
 
         if to_station not in [station["station_name"] for station in stations]:
-            self.logger.error("%s is not a valid station", to_station)
+            TripSearchApi.logger.error("%s is not a valid station", to_station)
             raise ValueError(f"{to_station} is not a valid station")
-
+        
+        
+    @staticmethod
     def search_trips(
-        self,
         from_station,
         to_station,
         from_date=None,
@@ -347,7 +356,7 @@ class TripSearchApi:
                 - 'inisIstasyonId': The ID of the destination station.
         """
         # log the method parameters
-        self.logger.info(
+        TripSearchApi.logger.info(
             "Searching for trips. from_station: %s to_station: %s from_date: %s to_date: %s",
             from_station,
             to_station,
@@ -356,19 +365,19 @@ class TripSearchApi:
         )
 
         if not from_date:
-            from_date = datetime.now().strftime(self.time_format)
+            TripSearchApi.logger.info("from_date is not provided. Using the current date.")
+            from_date = datetime.now().strftime(TripSearchApi.time_format)
 
         vagon_req_body = api_constants.vagon_req_body.copy()
         trip_req = api_constants.trip_search_req_body.copy()
         trips = list()
         from_date = dateparser.parse(from_date)
 
-        stations = self.get_station_list()
-
+        stations = TripSearchApi.get_station_list()
         try:
-            self.check_stations(stations, from_station, to_station)
+            TripSearchApi.check_stations(stations, from_station, to_station)
         except ValueError as e:
-            self.logger.error(e)
+            TripSearchApi.logger.error(e)
             raise e
 
         # Find the station that matches from_station
@@ -389,7 +398,7 @@ class TripSearchApi:
                 trip_req["seferSorgulamaKriterWSDVO"]["inisIstasyonu"] = to_station
         # Set the date
         trip_req["seferSorgulamaKriterWSDVO"]["gidisTarih"] = datetime.strftime(
-            from_date, self.time_format
+            from_date, TripSearchApi.time_format
         )
 
         response = requests.post(
@@ -404,7 +413,7 @@ class TripSearchApi:
         sorted_trips = sorted(
             response_json["seferSorgulamaSonucList"],
             key=lambda trip: datetime.strptime(
-                trip["binisTarih"], self.time_format),
+                trip["binisTarih"], TripSearchApi.time_format),
         )
 
         # trips only with trip['trenTipi'] == 'YHT'
@@ -420,7 +429,7 @@ class TripSearchApi:
             sorted_trips = [
                 trip
                 for trip in sorted_trips
-                if datetime.strptime(trip["binisTarih"], self.time_format) < to_date
+                if datetime.strptime(trip["binisTarih"], TripSearchApi.time_format) < to_date
             ]
 
         for trip in sorted_trips:
@@ -431,7 +440,7 @@ class TripSearchApi:
                     t = {}
                     t["eco_empty_seat_count"], t["buss_empty_seat_count"] = 0, 0
 
-                    t["vagons"] = self.get_active_vagons(
+                    t["vagons"] = TripSearchApi.get_active_vagons(
                         trip["vagonTipleriBosYerUcret"]
                     )
 
@@ -460,7 +469,7 @@ class TripSearchApi:
                         # 11750035651 is the vagonTipId for 'anahat' trips' bed seat
                         if vagon_type["vagonTipId"] == 11750035651:
                             pass
-                        self.logger.info("vagonTipId: %s",
+                        TripSearchApi.logger.info("vagonTipId: %s",
                                          vagon_type["vagonTipId"])
                     # t["eco_empty_seat_count"] = (
                     #     trip["vagonTipleriBosYerUcret"][0]["kalanSayi"]
@@ -491,12 +500,13 @@ class TripSearchApi:
                     ]
                     trips.append(t)
                 except IndexError as e:  # no business class, just ignore
-                    self.logger.error("IndexError: %s", e)
-                    self.logger.error(
+                    TripSearchApi.logger.error("IndexError: %s", e)
+                    TripSearchApi.logger.error(
                         "No business class for trip: %s", trip['seferId'])
         return trips
 
-    def get_station_list(self):
+    @staticmethod
+    def get_station_list():
         """
         Retrieves the list of stations from the API endpoint and filters out the
         high-speed train stations.
@@ -546,14 +556,15 @@ class TripSearchApi:
             return hst_stations
 
         except requests.exceptions.RequestException as e:
-            self.logger.error(
+            TripSearchApi.logger.error(
                 "Error occurred while fetching the station list: %s", e)
             raise e
 
-    def is_mernis_correct(self, passenger: Passenger, date_format: str = "%d/%m/%Y") -> bool:
+    @staticmethod
+    def is_mernis_correct(passenger: Passenger, date_format: str = "%d/%m/%Y") -> bool:
         mernis_req_body = api_constants.mernis_dogrula_req_body.copy()
         date = datetime.strptime(
-            passenger.birthday, date_format).strftime(self.time_format)
+            passenger.birthday, date_format).strftime(TripSearchApi.time_format)
 
         mernis_req_body["ad"] = passenger.name
         mernis_req_body["soyad"] = passenger.surname
@@ -569,11 +580,11 @@ class TripSearchApi:
         response.raise_for_status()
 
         response_json = json.loads(response.text)
-        self.logger.debug(response_json)
+        TripSearchApi.logger.debug(response_json)
         if response_json["cevapBilgileri"]["cevapKodu"] != "000":
-            self.logger.error(
+            TripSearchApi.logger.error(
                 "Mernis verification failed. response_json: %s", response_json)
-            self.logger.error(
+            TripSearchApi.logger.error(
                 "Passenger: %s %s TCKN: %s Birthday: %s",
                 passenger.name,
                 passenger.surname,
@@ -582,12 +593,12 @@ class TripSearchApi:
             )
             return False
 
-        self.logger.info(
+        TripSearchApi.logger.info(
             "Passenger: %s %s TCKN: %s Birthday: %s",
             passenger.name,
             passenger.surname,
             passenger.tckn,
             date,
         )
-        self.logger.info("Mernis verification succeeded.")
+        TripSearchApi.logger.info("Mernis verification succeeded.")
         return True

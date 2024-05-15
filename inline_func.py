@@ -2,6 +2,7 @@ from datetime import datetime
 import logging
 from pprint import pprint
 from uuid import uuid4
+import requests
 from thefuzz import fuzz
 from thefuzz import process
 from telegram import InlineQueryResultArticle, InputTextMessageContent, Update
@@ -34,12 +35,23 @@ def stations():
 
 def query(from_, to_, from_date=None):
     """Search for trips from from_ to to_ on from_date."""
-    station_list = trip.list_stations()
+    try:
+        station_list = trip.list_stations()
+    except requests.exceptions.HTTPError as e:
+        logging.error("Error while listing stations: %s", e)
+        return [
+            InlineQueryResultArticle(
+                id=uuid4(),
+                title=f"{e.__class__.__name__}",
+                input_message_content=InputTextMessageContent("Error while listing stations"),
+            )
+        ]
     # get the most closest station name to the given station name, fuzzy matching
     from_ = process.extractOne(from_, station_list)
     to_ = process.extractOne(to_, station_list)
     from_ = from_[0]
     to_ = to_[0]
+    logging.info("Searching for trips from %s to %s on %s", from_, to_, from_date)
 
     my_trip = trip.Trip(from_, to_, from_date)
     # check_satis_durum=False to get all trips for listing purposes
