@@ -40,11 +40,11 @@ class Trip:
         self.koltuk_lock_id_list = []
         self.lock_end_time = None
         self.is_seat_reserved = False
-        self.tariff = (
-            api_constants.TARIFFS[tariff.upper()]
-            if tariff
-            else api_constants.TARIFFS["TAM"]
-        )
+        # self.tariff = (
+        #     api_constants.TARIFFS[tariff.upper()]
+        #     if tariff
+        #     else api_constants.TARIFFS["TAM"]
+        # )
         self.seat_type_id = (
             api_constants.VAGON_TYPES[seat_type.upper()]
             if seat_type
@@ -54,6 +54,7 @@ class Trip:
 
     def set_seat_lock_id(self):
         """Get the lock id of the seat."""
+        self.koltuk_lock_id_list.clear()
         seats = self.seat_lock_response["koltuklarimListesi"]
         for seat in seats:
             self.koltuk_lock_id_list.append(seat["koltukLockId"])
@@ -65,7 +66,7 @@ class Trip:
         try:
             # first reserving of the seat
             if not self.is_seat_reserved:
-                self.logger.info("Reserving the seat.")
+                self.logger.info("Seat is not reserved, reserving the seat.")
                 lock_end_time, self.empty_seat_json, self.seat_lock_response = (
                     TripSearchApi.select_first_empty_seat(self.trip_json)
                 )
@@ -74,7 +75,7 @@ class Trip:
                 self.set_seat_lock_id()
                 self.is_seat_reserved = True
                 self.logger.info("lock_end_time: %s", self.lock_end_time)
-
+                
             # we have already reserved the seat check lock_end_time and if it is passed then reserve the seat again
             elif self.is_seat_reserved:
                 self.logger.info("Seat is already reserved.")
@@ -202,7 +203,7 @@ class Trip:
 
                     if empty_seat_count > 0:
                         logging.info(
-                            "Found trip with empty seats. trip: %s", trip.trip_json.get("binisTarih"))
+                            "Found trip with empty seats. trip: %s", trip.get("binisTarih"))
                         trips_with_empty_seats.append(trip)
                         # return the trip as soon as we find a trip with empty seats
                         return trips_with_empty_seats
@@ -224,7 +225,9 @@ def list_stations():
             stations.append(station["station_name"])
         return stations
     except requests.exceptions.HTTPError as e:
-        raise e
+        logger = logging.getLogger(__name__)
+        logger.error("Error while listing stations: %s", e)
+        raise
 
 
 if __name__ == "__main__":

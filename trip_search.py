@@ -112,7 +112,7 @@ class TripSearchApi:
         s_check = api_constants.seat_check.copy()
         if trip["empty_seats"]:
             empty_seat = trip["empty_seats"][0] if empty_seat is None else empty_seat
-            TripSearchApi.logger.info("Selecting the first empty seat: koltukNo: %s", empty_seat["koltukNo"])
+            TripSearchApi.logger.info("Selecting empty seat: koltukNo: %s", empty_seat["koltukNo"])
 
             seat_select_req["seferId"] = trip["seferId"]
             seat_select_req["vagonSiraNo"] = empty_seat["vagonSiraNo"]
@@ -123,40 +123,28 @@ class TripSearchApi:
             s_check["seciliVagonSiraNo"] = empty_seat["vagonSiraNo"]
             s_check["koltukNo"] = empty_seat["koltukNo"]
 
-            try:
-                s_response = requests.post(
-                    api_constants.SEAT_CHECK_ENDPOINT,
-                    headers=api_constants.REQUEST_HEADER,
-                    data=json.dumps(s_check),
-                    timeout=10,
-                )
-                s_response_json = json.loads(s_response.text)
-                TripSearchApi.logger.debug(s_response_json)
-            except requests.exceptions.RequestException as e:
-                TripSearchApi.logger.error(
-                    "Error occurred while fetching the seat check: %s", e)
-                raise e
+            
+            s_response = requests.post(
+                api_constants.SEAT_CHECK_ENDPOINT,
+                headers=api_constants.REQUEST_HEADER,
+                data=json.dumps(s_check),
+                timeout=10,
+            )
+            s_response.raise_for_status()
+            s_response_json = json.loads(s_response.text)
 
             if s_response_json["cevapBilgileri"]["cevapKodu"] != "000":
                 TripSearchApi.logger.error("response_json: %s", s_response_json)
-                raise Exception(
-                    "Non zero response code: response_json: %s", s_response_json)
+                raise ValueError(f"Non zero response code: s_response_json: {s_response_json}")
 
             if not s_response_json["koltukLocked"]:
-                # Send the request to the endpoint
-
-                try:
-                    response = requests.post(
-                        api_constants.SELECT_EMPTY_SEAT_ENDPOINT,
-                        headers=api_constants.REQUEST_HEADER,
-                        data=json.dumps(seat_select_req),
-                        timeout=10,
-                    )
-                except requests.exceptions.RequestException as e:
-                    TripSearchApi.logger.error(
-                        "Error occurred while fetching the seat lock: %s", e
-                    )
-                    raise e
+                response = requests.post(
+                    api_constants.SELECT_EMPTY_SEAT_ENDPOINT,
+                    headers=api_constants.REQUEST_HEADER,
+                    data=json.dumps(seat_select_req),
+                    timeout=10,
+                )
+                response.raise_for_status()
 
                 response_json = json.loads(response.text)
                 TripSearchApi.logger.debug(response_json)
@@ -164,9 +152,7 @@ class TripSearchApi:
                     TripSearchApi.logger.error(
                         "Non zero response code: response_json: %s", response_json
                     )
-                    raise Exception(
-                        "Non zero response code: response_json: %s", response_json
-                    )
+                    raise ValueError(f"Non zero response code: response_json: {response_json}")
                 end_time = response_json["koltuklarimListesi"][0]["bitisZamani"]
             else:
                 raise SeatLockedException(empty_seat)
