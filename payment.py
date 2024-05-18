@@ -99,18 +99,6 @@ class SeleniumPayment(MainSeleniumPayment):
         self.enroll_reference = None
         self.vpos_ref = None
 
-        self.user_data = [{
-            "ad": "izzet can",
-            "soyad": "karakuş",
-            "cinsiyet": 1,
-            "tarifeId": 11750067704,
-            "cep": "0(534) 077-1521",
-            "eposta": "izzetcankarakus@gmail.com",
-            "dogumTarihi": "1994-07-14",
-            "kimlikNo": "18700774442",
-            "tc_degil": False
-        }]
-
         # add kwargs as instance attributes, you can override the default values
         for key, value in kwargs.items():
             setattr(self, key, value)
@@ -124,8 +112,8 @@ class SeleniumPayment(MainSeleniumPayment):
             'hareketTarihi': self.trip.trip_json['binisTarih'],
             'varisTarihi': self.trip.trip_json['varisTarih'],
             'tarifeId': self.trip.tariff,
-            'vagonSiraNo': self.trip.reserved_seat_data['reserved_seat']['vagonSiraNo'],
-            'koltukNo': self.trip.reserved_seat_data['reserved_seat']['koltukNo'],
+            'vagonSiraNo': self.trip.empty_seat_json['vagonSiraNo'],
+            'koltukNo': self.trip.empty_seat_json['koltukNo'],
             'ucret': self.price,
 
         })
@@ -144,7 +132,7 @@ class SeleniumPayment(MainSeleniumPayment):
             float: The price of the trip for the empty seat.
         """
         req_body = api_constants.price_req_body.copy()
-        req_body['yolcuList'][0]['tarifeId'] = self.trip.tariff
+        req_body['yolcuList'][0]['tarifeId'] = self.trip.passenger.tariff
         seat_info = req_body['yolcuList'][0]['seferKoltuk'][0]
         seat_info.update({
             'seferBaslikId': self.trip.trip_json['seferId'],

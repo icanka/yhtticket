@@ -10,7 +10,7 @@ import requests
 import api_constants
 from trip_search import TripSearchApi
 from trip_search import SeatLockedException
-from passenger import Passenger
+from passenger import Passenger, Seat
 
 
 class Trip:
@@ -21,17 +21,14 @@ class Trip:
         from_station,
         to_station,
         from_date,
+        passenger,
         to_date=None,
-        passenger=None,
-        tariff=None,
-        seat_type=None,
     ):
         self.passenger: Passenger = passenger
         self.from_station = from_station
         self.to_station = to_station
         self.from_date = from_date
         self.to_date = to_date
-        self.seat_type = seat_type
         self.trip_json = None
         self.time_format = "%b %d, %Y %I:%M:%S %p"
         self.output_time_format = "%b %d, %H:%M"
@@ -40,16 +37,6 @@ class Trip:
         self.koltuk_lock_id_list = []
         self.lock_end_time = None
         self.is_seat_reserved = False
-        # self.tariff = (
-        #     api_constants.TARIFFS[tariff.upper()]
-        #     if tariff
-        #     else api_constants.TARIFFS["TAM"]
-        # )
-        self.seat_type_id = (
-            api_constants.VAGON_TYPES[seat_type.upper()]
-            if seat_type
-            else None
-        )
         self.logger = logging.getLogger(__name__)
 
     def set_seat_lock_id(self):
@@ -70,12 +57,11 @@ class Trip:
                 lock_end_time, self.empty_seat_json, self.seat_lock_response = (
                     TripSearchApi.select_first_empty_seat(self.trip_json)
                 )
-                self.lock_end_time = datetime.strptime(
-                    lock_end_time, self.time_format)
+                self.lock_end_time = datetime.strptime(lock_end_time, self.time_format)
                 self.set_seat_lock_id()
                 self.is_seat_reserved = True
                 self.logger.info("lock_end_time: %s", self.lock_end_time)
-                
+
             # we have already reserved the seat check lock_end_time and if it is passed then reserve the seat again
             elif self.is_seat_reserved:
                 self.logger.info("Seat is already reserved.")
@@ -114,7 +100,7 @@ class Trip:
             self.to_station,
             self.from_date,
             self.to_date,
-            self.seat_type_id,
+            self.passenger.seat_type,
         )
         trips = TripSearchApi.search_trips(
             self.from_station, self.to_station, self.from_date, self.to_date, **kwargs
@@ -149,7 +135,7 @@ class Trip:
         """
         trips_with_empty_seats = []
 
-        self.logger.info("seat_type_id: %s", self.seat_type_id)
+        self.logger.info("seat_type_id: %s", self.passenger.seat_type)
         self.logger.info("Searching for trips with empty seat.")
 
         while len(trips_with_empty_seats) == 0:
@@ -168,7 +154,7 @@ class Trip:
                     self.to_station,
                     self.from_date,
                     self.to_date,
-                    self.seat_type_id,
+                    self.passenger.seat_type,
                 )
 
             self.logger.info(
@@ -182,28 +168,35 @@ class Trip:
                 self.to_station,
                 self.from_date,
                 self.to_date,
-                self.seat_type_id,
+                self.passenger.seat_type,
             )
             trips = self.get_trips()
             try:
                 for trip in trips:
 
-                    logging.info("Checking trip for empty seats: %s",
-                                 trip.get("binisTarih"))
+                    logging.info(
+                        "Checking trip for empty seats: %s", trip.get("binisTarih")
+                    )
                     trip = TripSearchApi.get_empty_seats_trip(
-                        trip, self.from_station, self.to_station, self.seat_type_id
+                        trip,
+                        self.from_station,
+                        self.to_station,
+                        self.passenger.seat_type,
                     )
 
-                    if self.seat_type:
-                        empty_seat_count = trip[
-                            f"{self.seat_type.lower()}_empty_seat_count"
-                        ]
+                    if self.passenger.seat_type:
+                        if self.passenger.seat_type == Seat.BUSS:
+                            empty_seat_count = trip["buss_empty_seat_count"]
+                        elif self.passenger.seat_type == Seat.ECO:
+                            empty_seat_count = trip["eco_empty_seat_count"]
                     else:
                         empty_seat_count = trip["empty_seat_count"]
 
                     if empty_seat_count > 0:
                         logging.info(
-                            "Found trip with empty seats. trip: %s", trip.get("binisTarih"))
+                            "Found trip with empty seats. trip: %s",
+                            trip.get("binisTarih"),
+                        )
                         trips_with_empty_seats.append(trip)
                         # return the trip as soon as we find a trip with empty seats
                         return trips_with_empty_seats

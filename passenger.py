@@ -6,11 +6,19 @@ from dataclasses import dataclass, field
 logger = logging.getLogger(__name__)
 
 
-def get_tariff(tariff: str) -> int:
-    """Get the tariff value from the given tariff."""
-    return api_constants.TARIFFS[tariff.upper()]
+class Seat:
+    """Seat class to store seat details."""
+    BUSS: int = 17001
+    ECO: int = 17002
+    ANY = None
 
 
+class Tariff:
+    """Tariff class to store tariff details."""
+    TSK: int = 11750067704
+    TAM: int = 1
+
+Seat.__getattribut
 @dataclass(frozen=True)
 class Passenger:
     """Passenger class to store passenger details."""
@@ -24,7 +32,8 @@ class Passenger:
     credit_card_no: Optional[str] = None
     credit_card_ccv: Optional[str] = None
     credit_card_exp: Optional[str] = None
-    tariff: Optional[str] = "1"
+    tariff: Optional[int] = None
+    seat_type: Optional[int] = None
 
 
 # create a passenger object

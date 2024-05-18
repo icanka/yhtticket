@@ -34,7 +34,8 @@ from celery.result import AsyncResult
 
 # set httpx logger to warning
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s", level=logging.INFO
+    format="%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
 )
 logging.getLogger("httpx").setLevel(logging.WARNING)
 # logging.getLogger("telegram.ext.ConversationHandler").setLevel(logging.DEBUG)
@@ -190,8 +191,7 @@ FEATURE_HELP_MESSAGES = {
 
 MAIN_MENU_BUTTONS = [
     [
-        InlineKeyboardButton(
-            "Personal Info", callback_data=str(ADDING_PERSONAL_INFO)),
+        InlineKeyboardButton("Personal Info", callback_data=str(ADDING_PERSONAL_INFO)),
         InlineKeyboardButton(
             "Credit Card Info", callback_data=str(ADDING_CREDIT_CARD_INFO)
         ),
@@ -354,8 +354,7 @@ async def ask_for_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     text = FEATURE_HELP_MESSAGES[update.callback_query.data]
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text)
-    logging.info("setting previous state to: %s",
-                 context.user_data[CURRENT_STATE])
+    logging.info("setting previous state to: %s", context.user_data[CURRENT_STATE])
     context.user_data[PREVIOUS_STATE] = context.user_data[CURRENT_STATE]
     context.user_data[CURRENT_STATE] = TYPING_REPLY
     return TYPING_REPLY
@@ -478,8 +477,6 @@ async def res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """handle the query result from inline query."""
     # get the message coming from command
     logging.info("context.args: %s", context.args)
-
-    api = TripSearchApi()
     # check if the required information is provided
     try:
         logging.info("init_passenger")
@@ -492,8 +489,6 @@ async def res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             passenger.surname,
             passenger.birthday,
         )
-        if not api.is_mernis_correct(passenger):
-            raise ValueError("Mernis verification failed.")
 
     except KeyError as feature:
         logging.error("KeyError: %s", feature)
@@ -501,22 +496,25 @@ async def res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             f"{feature} is required, please update your information first."
         )
         return context.user_data.get(CURRENT_STATE, END)
+
     except ValueError as exc:
         logging.error("ValueError: %s", exc)
         await update.message.reply_text(
             "Mernis verification failed. Please update your information first.",
         )
         return context.user_data.get(CURRENT_STATE, END)
+
     except requests.exceptions.HTTPError as exc:
         logging.error("HTTPError: %s", "test")
-        await update.message.reply_text(f"HTTPError {exc.errno}: Mernis verification failed.")
+        await update.message.reply_text(
+            f"HTTPError {exc.errno}: Mernis verification failed."
+        )
         return context.user_data.get(CURRENT_STATE, END)
 
     arg_string = update.message.text.partition(" ")[2]
     args = [arg.strip() for arg in arg_string.split("-")]
     from_, to_, from_date = args
 
-    # TODO passenger=passenger
     my_trip = Trip(from_, to_, from_date, passenger=passenger)
     logging.info("my_trip: from_date: %s,", my_trip.from_date)
     context.user_data[TRIP] = my_trip
@@ -535,8 +533,7 @@ async def res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             inline_keyboard.append(
                 [
                     InlineKeyboardButton(
-                        text=datetime.strftime(
-                            time, my_trip.output_time_format),
+                        text=datetime.strftime(time, my_trip.output_time_format),
                         callback_data=time,
                     )
                 ]
@@ -559,7 +556,9 @@ async def res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         reply_markup=inline_keyboard_markup,
     )
     logging.info(
-        "returning context.user_data[CURRENT_STATE]: %s", context.user_data[CURRENT_STATE])
+        "returning context.user_data[CURRENT_STATE]: %s",
+        context.user_data[CURRENT_STATE],
+    )
     return context.user_data[CURRENT_STATE]
 
 
@@ -571,11 +570,11 @@ async def handle_datetime_type(
     logging.info("handle_datetime_type")
     logging.info("context.args: %s", update.callback_query.data)
     my_trip = context.user_data[TRIP]
-    time = datetime.strftime(update.callback_query.data,
-                             my_trip.output_time_format)
+    time = datetime.strftime(update.callback_query.data, my_trip.output_time_format)
     my_trip.to_date = time
-    logging.info("my_trip: from_date %s, to_date: %s",
-                 my_trip.from_date, my_trip.to_date)
+    logging.info(
+        "my_trip: from_date %s, to_date: %s", my_trip.from_date, my_trip.to_date
+    )
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text="Okay!.")
@@ -599,9 +598,8 @@ def init_passenger(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if context.user_data.get(feature) is None:
             logging.info("KeyError: %s", feature)
             raise KeyError(feature)
-
     # create a passenger object
-    context.user_data[PASSENGER] = Passenger(
+    passenger = Passenger(
         tckn=context.user_data["tckn"],
         name=context.user_data["name"],
         surname=context.user_data["surname"],
@@ -614,6 +612,11 @@ def init_passenger(update: Update, context: ContextTypes.DEFAULT_TYPE):
         credit_card_ccv=context.user_data["credit_card_ccv"],
         credit_card_exp=context.user_data["credit_card_exp"],
     )
+
+    if not TripSearchApi.is_mernis_correct(passenger):
+        raise ValueError("Mernis verification failed for passenger.")
+
+    context.user_data[PASSENGER] = passenger
     logging.info("Passenger: %s.", context.user_data[PASSENGER])
 
 
@@ -633,6 +636,16 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Start the reservation process."""
 
     trip = context.user_data.get(TRIP)
+    # maybe user directly calls this method, so trip passenger is None
+    passenger = context.user_data.get(PASSENGER)
+    if passenger is not None and trip.passenger is None:
+        trip.passenger = passenger
+    else:
+        await update.message.reply_text(
+            "Please use /res first with inline 'query' method."
+        )
+        return context.user_data.get(CURRENT_STATE, END)
+
     if trip is None:
         await update.message.reply_text("Please search for a trip first.")
         return context.user_data.get(CURRENT_STATE, END)
@@ -645,17 +658,16 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text(text=text)
         return context.user_data.get(CURRENT_STATE, END)
 
-    user_trip = context.user_data.get(TRIP)
-    logging.info("user_trip: %s", user_trip)
+    logging.info("user_trip: %s", trip)
     chat_id = update.message.chat_id
     # run the callback_1 function after 3 seconds once
 
-    context.job_queue.run_once(
-        start_search, 3, data=context.user_data, chat_id=chat_id)
+    context.job_queue.run_once(start_search, 3, data=context.user_data, chat_id=chat_id)
 
     # runa job every 10 seconds
     context.job_queue.run_repeating(
-        check_task_status, 10, data=context.user_data, chat_id=chat_id)
+        check_task_status, 10, data=context.user_data, chat_id=chat_id
+    )
 
     # if user_trip is not None:
     #     user_trip_bytes = pickle.dumps(user_trip)
@@ -674,12 +686,15 @@ async def start_search(context: ContextTypes.DEFAULT_TYPE) -> int:
     # serialize the trip object
     trip_ = pickle.dumps(trip)
     # start the celery task
-    task = tripp.delay(trip_)
+    task = find_trip_and_reserve.delay(trip_)
     # save the task id to the context
     context.job.data["task_id"] = task.id
-    context.job.data["task_name"] = "find_trip"
+    context.job.data["task_name"] = "find_trip_and_reserve"
 
-    await context.bot.send_message(chat_id=context.job.chat_id, text=f"BEEEP, starting to search for trip with id {trip.from_station} to {trip.to_station} on {trip.from_date}.")
+    await context.bot.send_message(
+        chat_id=context.job.chat_id,
+        text=f"BEEEP, starting to search for trip with id {trip.from_station} to {trip.to_station} on {trip.from_date}.",
+    )
     return context.job.data.get(CURRENT_STATE, END)
 
 
@@ -687,7 +702,9 @@ async def check_task_status(context: ContextTypes.DEFAULT_TYPE) -> int:
     """Check the status of the task."""
 
     if context.job.data.get("task_id") is None:
-        await context.bot.send_message(chat_id=context.job.chat_id, text="No in progress task.")
+        await context.bot.send_message(
+            chat_id=context.job.chat_id, text="No in progress task."
+        )
         return context.job.data.get(CURRENT_STATE, END)
 
     task_id = context.job.data.get("task_id")
@@ -699,21 +716,28 @@ async def check_task_status(context: ContextTypes.DEFAULT_TYPE) -> int:
         my_trip = pickle.loads(result)
         context.job.data[TRIP] = my_trip
 
-        time = datetime.strptime(
-            my_trip.trip_json["binisTarih"], my_trip.time_format)
+        time = datetime.strptime(my_trip.trip_json["binisTarih"], my_trip.time_format)
         time = datetime.strftime(time, my_trip.output_time_format)
 
-        await context.bot.send_message(chat_id=context.job.chat_id, text=f"Seat {my_trip.empty_seat_json['koltukNo']} in vagon {my_trip.empty_seat_json['vagonSiraNo']} is reserved for trip {time}")
-        await context.bot.send_message(chat_id=context.job.chat_id, text="Keeping the seat lock until you progress to payment.")
+        await context.bot.send_message(
+            chat_id=context.job.chat_id,
+            text=f"Seat {my_trip.empty_seat_json['koltukNo']} in vagon {my_trip.empty_seat_json['vagonSiraNo']} is reserved for trip {time}",
+        )
+        await context.bot.send_message(
+            chat_id=context.job.chat_id,
+            text="Keeping the seat lock until you progress to payment.",
+        )
         logger.info("Setting task_id to None.")
         context.job.data["task_id"], context.job.data["task_name"] = None, None
         logger.info("Revoking task with id: %s", task.id)
         task.revoke()
         logger.info("Starting job keep_seat_lock.")
         context.job_queue.run_once(
-            keep_seat_lock, 3, data=context.job.data, chat_id=context.job.chat_id)
+            keep_seat_lock, 3, data=context.job.data, chat_id=context.job.chat_id
+        )
 
         logger.info("Removing job with name: %s", context.job.name)
+        # remove this job
         context.job.schedule_removal()
 
         jobs = context.job_queue.jobs()
@@ -725,22 +749,16 @@ async def check_task_status(context: ContextTypes.DEFAULT_TYPE) -> int:
 async def keep_seat_lock(context: ContextTypes.DEFAULT_TYPE) -> int:
     """Keep the seat lock until the user progresses to payment."""
 
-    # unset redis flag
+    # unset redis flag in case it is set
     logger.info("Unsetting stop_reserve_seat_flag")
     redis_client.delete("stop_reserve_seat_flag")
 
     logger.info("Keeping the seat lock.")
 
-    job = context.job_queue.jobs()
-    logger.info("Job count: %s", len(job))
-
-    logger.info("No job in progress. Starting a new one.")
     trip = context.job.data.get(TRIP)
-    task = reserve_seat.delay(pickle.dumps(trip))
+    task = keep_reserving_seat.delay(pickle.dumps(trip))
     context.job.data["task_id"] = task.id
-    context.job.data["task_name"] = "reserve_seat"
-    # logger.info("Setting stop_reserve_seat_flag to 0")
-
+    context.job.data["task_name"] = "keep_reserving_seat"
     return context.job.data.get(CURRENT_STATE, END)
 
 
@@ -767,8 +785,7 @@ async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         logger.info("Revoking task with id: %s", task_id)
         task = AsyncResult(task_id)
         task.revoke(terminate=True)
-        context.user_data["task_id"] = None
-        context.user_data["task_name"] = None
+        context.user_data["task_id"], context.user_data["task_name"] = None, None
 
     await update.message.reply_text("Search is reset. You can start a new search.")
     return context.user_data.get(CURRENT_STATE, END)
@@ -780,7 +797,6 @@ async def check_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if task_id is not None:
         task = AsyncResult(task_id)
         task_name = context.user_data.get("task_name")
-        trip = context.user_data.get(TRIP)
         text = f"You have currently running a task: {task_name}, status: {task.status}."
     else:
         text = "You have no running task."
@@ -825,17 +841,17 @@ async def print_state(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 async def print_trip(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Print the current state."""
     trip = context.user_data.get(TRIP)
+
     if trip is not None:
-        text = f"""
-        from_station = {trip.from_station}
-        to_station = {trip.to_station}
-        from_date = {trip.from_date}
-        to_date = {trip.to_date}
-        seat_type = {trip.seat_type}
-        tariff = {trip.tariff}
-        passenger = {trip.passenger}
-        """
-        await update.message.reply_text(text=text)
+        reply_text = (
+            f"From: {trip.from_station}\n"
+            f"To: {trip.to_station}\n"
+            f"From Date: {trip.from_date}\n"
+            f"To Date: {trip.to_date}\n"
+            f"Tariff: {trip.passenger.tariff}\n"
+            f"Seat Type: {str(trip.seat_type)}\n"
+        )
+        await update.message.reply_text(text=reply_text)
     return context.user_data.get(CURRENT_STATE, END)
 
 
@@ -860,8 +876,7 @@ def main() -> None:
     ]
 
     tariff_conv_handler = ConversationHandler(
-        entry_points=[CallbackQueryHandler(
-            selecting_tariff, pattern="^tariff$")],
+        entry_points=[CallbackQueryHandler(selecting_tariff, pattern="^tariff$")],
         states={
             SELECTING_TARIFF: [
                 CallbackQueryHandler(back, pattern=f"^{BACK}$"),
@@ -881,8 +896,11 @@ def main() -> None:
 
     adding_self_conv_handler = ConversationHandler(
         entry_points=[
-            CallbackQueryHandler(adding_self, pattern=f"^{
-                                 ADDING_PERSONAL_INFO}$")
+            CallbackQueryHandler(
+                adding_self,
+                pattern=f"^{
+                                 ADDING_PERSONAL_INFO}$",
+            )
         ],
         states={
             ADDING_PERSONAL_INFO: [
@@ -917,12 +935,9 @@ def main() -> None:
         ],
         states={
             ADDING_CREDIT_CARD_INFO: [
-                CallbackQueryHandler(
-                    ask_for_input, pattern="^credit_card_no$"),
-                CallbackQueryHandler(
-                    ask_for_input, pattern="^credit_card_ccv$"),
-                CallbackQueryHandler(
-                    ask_for_input, pattern="^credit_card_exp$"),
+                CallbackQueryHandler(ask_for_input, pattern="^credit_card_no$"),
+                CallbackQueryHandler(ask_for_input, pattern="^credit_card_ccv$"),
+                CallbackQueryHandler(ask_for_input, pattern="^credit_card_exp$"),
                 CallbackQueryHandler(back, pattern=f"^{BACK}$"),
             ],
             TYPING_REPLY: [
@@ -980,8 +995,7 @@ def main() -> None:
     print_state_handler = CommandHandler("print_state", print_state)
     app.add_handler(print_state_handler)
 
-    datetime_type_handler = CallbackQueryHandler(
-        handle_datetime_type, pattern=datetime)
+    datetime_type_handler = CallbackQueryHandler(handle_datetime_type, pattern=datetime)
     app.add_handler(datetime_type_handler)
 
     start_reservation_handler = CommandHandler("start_res", start_res)

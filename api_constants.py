@@ -31,8 +31,6 @@ DISABLED_SEAT_IDS = [
     15196333600,
     27948604352,
 ]
-TARIFFS = {"TSK": 11750067704, "TAM": 1}
-VAGON_TYPES = {"ECO": 17002, "BUSS": 17001}
 REQUEST_HEADER = {
     "Host": "api-yebsp.tcddtasimacilik.gov.tr",
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/119.0",

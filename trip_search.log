@@ -461,3 +461,4 @@
 2024-05-15 22:59:05,444 - trip - set_seat_lock_id - INFO - koltuk_lock_id_list: [44353585563, 44353585564, 44353585565, 44353585566]
 2024-05-15 22:59:05,444 - trip - reserve_seat - INFO - lock_end_time: 2024-05-15 23:09:05
 2024-05-15 22:59:10,444 - trip - reserve_seat - INFO - Seat is already reserved.
+2024-05-18 06:15:05,641 - trip - reserve_seat - INFO - Seat is not reserved, reserving the seat.
