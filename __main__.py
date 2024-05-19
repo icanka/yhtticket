@@ -6,7 +6,7 @@ import api_constants
 import time
 from payment import SeleniumPayment
 from trip import Trip
-from passenger import Passenger
+from passenger import Passenger, Seat, Tariff
 from inline_func import query
 from tasks import find_trip_and_reserve
 import pickle
@@ -47,6 +47,8 @@ def main():
         credit_card_no,
         credit_card_ccv,
         credit_card_exp,
+        Tariff.TSK,
+        Seat.ANY,
     )
 
     from_station = "İstanbul(Pendik)"
@@ -58,7 +60,7 @@ def main():
     # query(from_station, to_station, from_date)
 
     my_trip = Trip(
-        from_station, to_station, from_date, to_date, passenger, seat_type
+        from_station, to_station, from_date, passenger,to_date
     )
 
     my_trip_ = pickle.dumps(my_trip)
@@ -79,6 +81,11 @@ def main():
     p = SeleniumPayment()
     p.trip = trip
     p.set_price()
+    p.set_payment_url()
+    pprint(p.current_payment_url)
+    for i in range(10):
+        time.sleep(5)
+        p.is_payment_success()
     
     
     # trip_str = my_trip.trip_json["binisTarih"]

@@ -18,7 +18,6 @@ class Tariff:
     TSK: int = 11750067704
     TAM: int = 1
 
-Seat.__getattribut
 @dataclass(frozen=True)
 class Passenger:
     """Passenger class to store passenger details."""
@@ -32,7 +31,7 @@ class Passenger:
     credit_card_no: Optional[str] = None
     credit_card_ccv: Optional[str] = None
     credit_card_exp: Optional[str] = None
-    tariff: Optional[int] = None
+    tariff: Optional[int] = Tariff.TAM
     seat_type: Optional[int] = None
 
 

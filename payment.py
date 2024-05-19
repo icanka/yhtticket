@@ -199,7 +199,7 @@ class SeleniumPayment(MainSeleniumPayment):
         if response_json['cevapBilgileri']['cevapKodu'] != "000":
             self.logger.error("Payment failed: %s",
                               response_json['cevapBilgileri'])
-            return
+            raise ValueError(f"{response_json['cevapBilgileri']['cevapMsj']} {response_json['cevapBilgileri']['detay']}")
 
         # with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as temp_file:
         #     temp_file.write(response.text.encode('utf-8'))
@@ -272,7 +272,7 @@ class SeleniumPayment(MainSeleniumPayment):
         #             "Payment was not successful. Retrying to be sure.")
         #         time.sleep(10)
 
-    def set_is_payment_success(self):
+    def is_payment_success(self):
         """ set_is_payment_success """
         odeme_sorgu = {
             "kanalKodu": "3",
@@ -301,7 +301,8 @@ class SeleniumPayment(MainSeleniumPayment):
             self.vpos_ref = odeme_sorgu_response_json['vposReference']
             return True
         return False
-
+        
+    
     def ticket_reservation(self):
         """ticket_reservation"""
         req_body = api_constants.ticket_reservation_req_body.copy()
@@ -337,7 +338,7 @@ class SeleniumPayment(MainSeleniumPayment):
 
         self.logger.info("Ticket reservation request: %s", req_body)
         # send request
-        if self.is_payment_successful:
+        if self.is_payment_success():
             try:
                 response = requests.post(
                     api_constants.TICKET_RESERVATION_ENDPOINT,

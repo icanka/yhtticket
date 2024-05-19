@@ -2,7 +2,7 @@
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 import dateparser
 import api_constants
@@ -410,14 +410,18 @@ class TripSearchApi:
         # ]
 
         # filter trips based on to_date
+        logging.info("trip count: %s", len(sorted_trips))
         if to_date:
             to_date = dateparser.parse(to_date)
+            # add one minute to the to_date in case the trip is at the same time
+            to_date += timedelta(minutes=1)
             sorted_trips = [
                 trip
                 for trip in sorted_trips
                 if datetime.strptime(trip["binisTarih"], TripSearchApi.time_format) < to_date
             ]
 
+        logging.info("trip count after sort: %s", len(sorted_trips))
         for trip in sorted_trips:
             if trip["vagonHaritasindanKoltukSecimi"] == 1 and (
                 trip["satisDurum"] == 1 or not check_satis_durum
