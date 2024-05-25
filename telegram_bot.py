@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta
 import logging
 import pickle
@@ -32,6 +33,7 @@ from trip import list_stations, Trip
 from passenger import Passenger, Seat, Tariff
 from tasks import redis_client, find_trip_and_reserve, keep_reserving_seat, app
 from celery.result import AsyncResult
+import time
 
 # set httpx logger to warning
 logging.basicConfig(
@@ -159,6 +161,7 @@ END = ConversationHandler.END
 (
     SELF,
     TRIP,
+    PAYMENT,
     PASSENGER,
     NAME,
     SURNAME,
@@ -173,20 +176,21 @@ END = ConversationHandler.END
     CURRENT_STATE,
     PREVIOUS_STATE,
     UNIMPLEMENTED,
-) = range(10, 26)
+    PAYMENT_IN_PROGRESS,
+) = range(10, 28)
 
 
 FEATURE_HELP_MESSAGES = {
     "birthday": "Please enter your birthday in the format dd/mm/yyyy.",
-    "tckn": "Please enter your T.C. number correctly.",
-    "name": "Please enter your name correctly.",
-    "surname": "Please enter your surname correctly.",
+    "tckn": "Please enter your T.C. number.",
+    "name": "Please enter your name.",
+    "surname": "Please enter your surname.",
     "phone": "Please enter your phone number in the format 05xxxxxxxxx.",
-    "email": "This looks like an invalid email adress.",
+    "email": "Please enter a valid email address.",
     "sex": "Please enter your sex as 'E' or 'K'.",
-    "credit_card_no": "Please enter your credit card number correctly.",
-    "credit_card_ccv": "Please enter your credit card CCV correctly.",
-    "credit_card_exp": "Expiration formet: MMYY .",
+    "credit_card_no": "Please enter your credit card number.",
+    "credit_card_ccv": "Please enter your credit card CCV.",
+    "credit_card_exp": "Expiration format: MMYY .",
     "tariff": "Select your tariff",
     "seat_type": "Select your seat type",
 }
@@ -240,7 +244,7 @@ SEAT_TYPE_MENU_BUTTONS = [
     ],
 ]
 
-TARIFF_MENU_BUTTONS= [
+TARIFF_MENU_BUTTONS = [
     [
         InlineKeyboardButton("Tam", callback_data="Tam"),
         InlineKeyboardButton("Tsk", callback_data="Tsk"),
@@ -250,7 +254,7 @@ TARIFF_MENU_BUTTONS= [
     ],
 ]
 
-CREDIT_CARD_MENU_BUTTONS= [
+CREDIT_CARD_MENU_BUTTONS = [
     [
         InlineKeyboardButton("Credit Card No", callback_data="credit_card_no"),
         InlineKeyboardButton("CCV", callback_data="credit_card_ccv"),
@@ -265,8 +269,8 @@ CREDIT_CARD_MENU_BUTTONS= [
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Start the conversation and ask the user about their"""
 
-    text= "Add, update or show your information. To abort, simply type /stop"
-    keyboard= InlineKeyboardMarkup(MAIN_MENU_BUTTONS)
+    text = "Add, update or show your information. To abort, simply type /stop"
+    keyboard = InlineKeyboardMarkup(MAIN_MENU_BUTTONS)
 
     # try:
     #     init_passenger(update, context)
@@ -288,17 +292,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             "purchases. But first, I need some information from you.",
         )
         await update.message.reply_text(text=text, reply_markup=keyboard)
-    context.user_data[IN_PROGRESS]= False
-    context.user_data[CURRENT_STATE]= SELECTING_MAIN_ACTION
+    context.user_data[IN_PROGRESS] = False
+    context.user_data[CURRENT_STATE] = SELECTING_MAIN_ACTION
     return SELECTING_MAIN_ACTION
 
 
 async def show_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Show the information of the user."""
-    button= [[InlineKeyboardButton("Back", callback_data=str(BACK))]]
-    keyboard= InlineKeyboardMarkup(button)
-    user_data= context.user_data
-    text= (
+    button = [[InlineKeyboardButton("Back", callback_data=str(BACK))]]
+    keyboard = InlineKeyboardMarkup(button)
+    user_data = context.user_data
+    text = (
         f"Name: {user_data.get('name', 'Not Provided')}\n"
         f"Surname: {user_data.get('surname', 'Not Provided')}\n"
         f"T.C.: {user_data.get('tckn', 'Not Provided')}\n"
@@ -316,23 +320,23 @@ async def show_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-    user_data[IN_PROGRESS]= True
-    user_data[CURRENT_STATE]= SHOWING_INFO
+    user_data[IN_PROGRESS] = True
+    user_data[CURRENT_STATE] = SHOWING_INFO
     logging.info("state: SHOWING_INFO")
     return SHOWING_INFO
 
 
 async def adding_self(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Add information about the user."""
-    text= "Please provide me with your information."
+    text = "Please provide me with your information."
 
-    keyboard= InlineKeyboardMarkup(PERSON_MENU_BUTTONS)
-    user_data= context.user_data
+    keyboard = InlineKeyboardMarkup(PERSON_MENU_BUTTONS)
+    user_data = context.user_data
     if not user_data.get(IN_PROGRESS):
         await update.callback_query.answer()
         await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     else:
-        text= "Got it! What's next?"
+        text = "Got it! What's next?"
         try:
             await update.message.reply_text(text=text, reply_markup=keyboard)
         except AttributeError:
@@ -342,90 +346,92 @@ async def adding_self(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
                 text=text, reply_markup=keyboard
             )
 
-    user_data[IN_PROGRESS]= False
+    user_data[IN_PROGRESS] = False
     logging.info("returning ADDING_PERSONAL_INFO")
-    user_data[CURRENT_STATE]= ADDING_PERSONAL_INFO
+    user_data[CURRENT_STATE] = ADDING_PERSONAL_INFO
     return ADDING_PERSONAL_INFO
 
 
 async def adding_credit_card(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Add credit card information about the user."""
-    text= "Please provide me with your credit card information."
+    text = "Please provide me with your credit card information."
 
-    keyboard= InlineKeyboardMarkup(CREDIT_CARD_MENU_BUTTONS)
-    user_data= context.user_data
+    keyboard = InlineKeyboardMarkup(CREDIT_CARD_MENU_BUTTONS)
+    user_data = context.user_data
     if not user_data.get(IN_PROGRESS):
         await update.callback_query.answer()
         await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     else:
-        text= "Got it! What's next?"
+        text = "Got it! What's next?"
         await update.message.reply_text(text=text, reply_markup=keyboard)
 
-    user_data[IN_PROGRESS]= False
+    user_data[IN_PROGRESS] = False
     logging.info("returning ADDING_CREDIT_CARD_INFO")
-    user_data[CURRENT_STATE]= ADDING_CREDIT_CARD_INFO
+    user_data[CURRENT_STATE] = ADDING_CREDIT_CARD_INFO
     return ADDING_CREDIT_CARD_INFO
 
 
 async def ask_for_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Ask the user for the information."""
-    context.user_data[CURRENT_FEATURE]= update.callback_query.data
-    text= FEATURE_HELP_MESSAGES[update.callback_query.data]
+    context.user_data[CURRENT_FEATURE] = update.callback_query.data
+    logging.info("current_feature: %s", context.user_data[CURRENT_FEATURE])
+    text = FEATURE_HELP_MESSAGES[update.callback_query.data]
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text)
     logging.info("setting previous state to: %s",
                  context.user_data[CURRENT_STATE])
-    context.user_data[PREVIOUS_STATE]= context.user_data[CURRENT_STATE]
-    context.user_data[CURRENT_STATE]= TYPING_REPLY
+    context.user_data[PREVIOUS_STATE] = context.user_data[CURRENT_STATE]
+    context.user_data[CURRENT_STATE] = TYPING_REPLY
     return TYPING_REPLY
 
 
 async def save_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Save the user input."""
-    feature= context.user_data[CURRENT_FEATURE]
-    prev_state= context.user_data[PREVIOUS_STATE]
+    feature = context.user_data[CURRENT_FEATURE]
+    prev_state = context.user_data[PREVIOUS_STATE]
     logging.info("feature: %s", feature)
     try:
         re: str
-        input_text= update.message.text
+        input_text = update.message.text
         match feature:
             case "birthday":
-                re= r"^(\d{2})/(\d{2})/(\d{4})$"
+                re = r"^(\d{2})/(\d{2})/(\d{4})$"
                 datetime.strptime(update.message.text, "%d/%m/%Y")
             case "tckn":
-                re= r"^\d{11}$"
+                re = r"^\d{11}$"
             case "name" | "surname":
-                re= r"^[\p{L}\u0020]+$"
+                re = r"^[\p{L}\u0020]+$"
             case "phone":
-                re= r"^0\d{10}$"
+                re = r"^0\d{10}$"
             case "sex":
-                re= r"^[E|K|e|k]$"
-                input_text= input_text.upper()
+                re = r"^[E|K|e|k]$"
+                input_text = input_text.upper()
             case "email":
-                re= r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b"
+                re = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b"
             case "credit_card_no":
-                re= r"^\d{16}$"
+                re = r"^\d{16}$"
             case "credit_card_ccv":
-                re= r"^\d{3}$"
+                re = r"^\d{3}$"
             case "credit_card_exp":
-                re= r"^\d{4}$"
+                re = r"^\d{4}$"
                 # MMYY to YYMM
-                input_text= input_text[2:] + input_text[:2]
+                input_text = input_text[2:] + input_text[:2]
         if not regex.fullmatch(re, update.message.text):
+            logging.error("ValueError: %s", update.message.text)
             raise ValueError
     except ValueError:
-        text= FEATURE_HELP_MESSAGES[feature]
+        text = FEATURE_HELP_MESSAGES[feature]
         await update.message.reply_text(text=text)
         return TYPING_REPLY
     except AttributeError:
         # no update.message.text get callback_query.data
-        input_text= update.callback_query.data
+        input_text = update.callback_query.data
         logging.info("input_text: %s", input_text)
 
-    input_text= input_text.strip()
-    user_data= context.user_data
-    user_data[user_data[CURRENT_FEATURE]]= input_text
-    user_data[IN_PROGRESS]= True
+    input_text = input_text.strip()
+    user_data = context.user_data
+    user_data[user_data[CURRENT_FEATURE]] = input_text
+    user_data[IN_PROGRESS] = True
 
     logging.info("prev_state: %s", prev_state)
     if prev_state == ADDING_PERSONAL_INFO:
@@ -438,11 +444,11 @@ async def end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """End conversation from InlineKeyboardButton."""
     # logging.info("End conversation from InlineKeyboardButton. callbackquery_data: %s",
     #             update.callback_query.data)
-    text= "See you next time!"
+    text = "See you next time!"
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text)
 
-    context.user_data[CURRENT_STATE]= None
+    context.user_data[CURRENT_STATE] = None
     return END
 
 
@@ -454,12 +460,14 @@ async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Return to the previous state."""
-    context.user_data[IN_PROGRESS]= True
-    level= context.user_data[CURRENT_STATE]
+    context.user_data[IN_PROGRESS] = True
+    level = context.user_data[CURRENT_STATE]
     logging.info("level: %s", level)
     if level == ADDING_PERSONAL_INFO or level == ADDING_CREDIT_CARD_INFO:
+        logger.info("ADDING_PERSONAL_INFO or ADDING_CREDIT_CARD_INFO")
         await start(update, context)
-    elif level == SELECTING_TARIFF:
+    elif level == SELECTING_TARIFF or level == SELECTING_SEAT_TYPE:
+        logger.info("SELECTING_TARIFF or SELECTING_SEAT_TYPE")
         await adding_self(update, context)
     logging.info("state: BACK")
     return BACK
@@ -467,25 +475,25 @@ async def back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def unimplemented(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Return END to end the conversation."""
-    text= "This feature is not implemented yet."
+    text = "This feature is not implemented yet."
 
-    buttons= [[InlineKeyboardButton(text="Back", callback_data=str(BACK))]]
-    keyboard= InlineKeyboardMarkup(buttons)
+    buttons = [[InlineKeyboardButton(text="Back", callback_data=str(BACK))]]
+    keyboard = InlineKeyboardMarkup(buttons)
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-    context.user_data[IN_PROGRESS]= True
-    context.user_data[CURRENT_STATE]= UNIMPLEMENTED
+    context.user_data[IN_PROGRESS] = True
+    context.user_data[CURRENT_STATE] = UNIMPLEMENTED
     logging.info("state: UNIMPLEMENTED")
     return UNIMPLEMENTED
 
 
 async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Return END to end the conversation."""
-    text= "Sorry, I didn't understand that command."
+    text = "Sorry, I didn't understand that command."
     # if context.user_data.get(CURRENT_FEATURE):
     #     text = FEATURE_HELP_MESSAGES[context.user_data[CURRENT_FEATURE]]
-    state= context.user_data[CURRENT_STATE]
+    state = context.user_data.get(CURRENT_STATE)
     logging.info("unknown command: current_state: %s", state)
     await update.message.reply_text(text=text)
     if state is not None:
@@ -498,51 +506,28 @@ async def res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     # get the message coming from command
     logging.info("context.args: %s", context.args)
     # check if the required information is provided
-    try:
-        logging.info("init_passenger")
-        init_passenger(update, context)
-        passenger= context.user_data[PASSENGER]
-
-    except KeyError as feature:
-        logging.error("KeyError: %s", feature)
+    await set_passenger(update, context)
+    passenger = context.user_data.get(PASSENGER, None)
+    if passenger is None:
         await update.message.reply_text(
-            f"{feature} is required, please update your information first."
+            "Need passenger."
         )
         return context.user_data.get(CURRENT_STATE, END)
 
-    except ValueError as exc:
-        logging.error("ValueError: %s", exc)
-        await update.message.reply_text(
-            "Mernis verification failed. Please update your information first.",
-        )
-        return context.user_data.get(CURRENT_STATE, END)
+    arg_string = update.message.text.partition(" ")[2]
+    args = [arg.strip() for arg in arg_string.split("-")]
+    from_, to_, from_date = args
 
-    except requests.exceptions.HTTPError as exc:
-        logging.error("HTTPError: %s", "test")
-        await update.message.reply_text(
-            f"HTTPError {exc.errno}: Mernis verification failed."
-        )
-        return context.user_data.get(CURRENT_STATE, END)
-
-    arg_string= update.message.text.partition(" ")[2]
-    args= [arg.strip() for arg in arg_string.split("-")]
-    from_, to_, from_date= args
-
-    my_trip= Trip(from_, to_, from_date, passenger=passenger)
+    my_trip = Trip(from_, to_, from_date, passenger=passenger)
     logging.info("my_trip: from_date: %s,", my_trip.from_date)
-    context.user_data[TRIP]= my_trip
+    context.user_data[TRIP] = my_trip
 
-    trips= my_trip.get_trips(check_satis_durum=False)
-
-    # reply_keyboard = []
-    inline_keyboard= []
+    trips = my_trip.get_trips(check_satis_durum=False)
+    inline_keyboard = []
 
     try:
         for trip in trips:
-            time= datetime.strptime(trip["binisTarih"], my_trip.time_format)
-
-            # reply_keyboard.append([datetime.strftime(time, my_trip.output_time_format)])
-            # logging.info("time: %s", type(time))
+            time = datetime.strptime(trip["binisTarih"], my_trip.time_format)
             inline_keyboard.append(
                 [
                     InlineKeyboardButton(
@@ -557,11 +542,7 @@ async def res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text("No trips found.")
         return context.user_data[CURRENT_STATE]
 
-    # reply_keyboard_markup = ReplyKeyboardMarkup(
-    #     reply_keyboard, one_time_keyboard=True,
-    #     input_field_placeholder="Select the end range from date range to search for.")
-
-    inline_keyboard_markup= InlineKeyboardMarkup(inline_keyboard)
+    inline_keyboard_markup = InlineKeyboardMarkup(inline_keyboard)
 
     await update.message.reply_text(
         f"Okay lets get you started. I am going to search between {
@@ -583,9 +564,10 @@ async def handle_datetime_type(
 
     logging.info("handle_datetime_type")
     logging.info("context.args: %s", update.callback_query.data)
-    my_trip= context.user_data[TRIP]
-    time= datetime.strftime(update.callback_query.data, my_trip.output_time_format)
-    my_trip.to_date= time
+    my_trip = context.user_data[TRIP]
+    time = datetime.strftime(update.callback_query.data,
+                             my_trip.output_time_format)
+    my_trip.to_date = time
     logging.info(
         "my_trip: from_date %s, to_date: %s", my_trip.from_date, my_trip.to_date
     )
@@ -602,9 +584,36 @@ async def handle_datetime_type(
 #     # context.args as one string
 #     arg_string = update.message.text.partition(" ")[2]
 
+async def set_passenger(update: Update, context: ContextTypes.DEFAULT_TYPE, mernis_check=True) -> Passenger:
+    """Wrapper for init_passenger. Handles exceptions. See: init_passenger()"""
+    try:
+        logging.info("init_passenger")
+        init_passenger(update, context, mernis_check)
 
-def init_passenger(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle the /init_passenger command."""
+    except KeyError as feature:
+        logging.error("KeyError: %s", feature)
+        await update.message.reply_text(
+            f"{feature} is required, please update your information first."
+        )
+        return context.user_data.get(CURRENT_STATE, END)
+
+    except ValueError as exc:
+        logging.error("ValueError: %s", exc)
+        await update.message.reply_text(
+            "Mernis verification failed. Please update your information first.",
+        )
+        return context.user_data.get(CURRENT_STATE, END)
+
+    except requests.exceptions.HTTPError as exc:
+        logging.error("HTTPError: %s", exc)
+        await update.message.reply_text(
+            "Mernis verification failed. Please update your information first.",
+        )
+        return context.user_data.get(CURRENT_STATE, END)
+
+
+def init_passenger(update: Update, context: ContextTypes.DEFAULT_TYPE, mernis_check=True):
+    """Handle the /init_passenger command. Sets user_data[PASSENGER]."""
     # get the message coming from command
 
     # make sure all the required information is provided
@@ -612,27 +621,27 @@ def init_passenger(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if context.user_data.get(feature) is None:
             logging.info("KeyError: %s", feature)
             raise KeyError(feature)
-        
+
     match context.user_data.get("seat_type"):
         case "Business":
-            seat_type= Seat.BUSS
+            seat_type = Seat.BUSS
         case "Economy":
-            seat_type= Seat.ECO
+            seat_type = Seat.ECO
         case "Any":
-            seat_type= Seat.ANY
+            seat_type = Seat.ANY
         case _:
-            seat_type= Seat.ANY
-            
+            seat_type = Seat.ANY
+
     match context.user_data.get("tariff"):
         case "Tam":
-            tariff= Tariff.TAM
+            tariff = Tariff.TAM
         case "Tsk":
-            tariff= Tariff.TSK
+            tariff = Tariff.TSK
         case _:
-            tariff= Tariff.TAM
-        
+            tariff = Tariff.TAM
+
     # create a passenger object
-    passenger= Passenger(
+    passenger = Passenger(
         tckn=context.user_data["tckn"],
         name=context.user_data["name"],
         surname=context.user_data["surname"],
@@ -646,72 +655,86 @@ def init_passenger(update: Update, context: ContextTypes.DEFAULT_TYPE):
         credit_card_ccv=context.user_data["credit_card_ccv"],
         credit_card_exp=context.user_data["credit_card_exp"],
     )
-    logging.info(
-        "mernis_dogrula: %s, %s, %s, %s",
-        passenger.tckn,
-        passenger.name,
-        passenger.surname,
-        passenger.birthday,
-    )
-    if not TripSearchApi.is_mernis_correct(passenger):
-        raise ValueError("Mernis verification failed for passenger.")
 
-    context.user_data[PASSENGER]= passenger
-    logging.info("Passenger: %s.", context.user_data[PASSENGER])
+    # sometimes mernis check fails, so we need to retry
+    if mernis_check:
+        for _ in range(10):
+            try:
+                TripSearchApi.is_mernis_correct(passenger)
+                logger.info("Mernis check is succesfull.")
+                break
+            except ValueError as exc:
+                logging.error("ValueError: %s", exc)
+                time.sleep(5)
+                # last iteration and mernis check failed
+                if _ == 4:
+                    raise ValueError(exc) from exc
+                continue
+            except requests.exceptions.HTTPError as exc:
+                logging.error("HTTPError: %s", exc)
+                time.sleep(5)
+                # last iteration and mernis check failed
+                if _ == 4:
+                    raise requests.exceptions.HTTPError(exc) from exc
+                continue
+
+    context.user_data[PASSENGER] = passenger
+    logger.info("passenger object set to context.user_data[PASSENGER].")
+    logging.info("passenger: %s.", context.user_data[PASSENGER])
 
 
 async def delete_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Delete the key from the user_data."""
-    key= context.args[0]
+    key = context.args[0]
     if key in context.user_data:
         del context.user_data[key]
-        text= f"Key {key} deleted."
+        text = f"Key {key} deleted."
     else:
-        text= f"Key {key} not found."
+        text = f"Key {key} not found."
     await update.message.reply_text(text=text)
     return context.user_data[CURRENT_STATE]
 
 
 async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Start the reservation process."""
-    trip= context.user_data.get(TRIP)
-    passenger= context.user_data.get(PASSENGER)
-    
+    await set_passenger(update, context)
 
+    task_id = context.user_data.get("task_id")
+    passenger = context.user_data.get(PASSENGER)
+    trip = context.user_data.get(TRIP)
 
     if trip is None:
         await update.message.reply_text("Please search for a trip first.")
         return context.user_data.get(CURRENT_STATE, END)
-    elif passenger is None:
-        await update.message.reply_text("Please provide your personal information first.")
-        return context.user_data.get(CURRENT_STATE, END)
-    elif context.user_data.get("task_id") is not None:
-        logger.info("getting active tasks")
+    elif task_id is not None:
+        logger.info("chechking task with task_id: %s", task_id)
         i = app.control.inspect()
-        active_tasks = i.active()
-        logger.info("active_tasks: %s", active_tasks)
-        for task in active_tasks.values():
-            pprint(task)
-            for t in task:
-                if task[0]["id"] == context.user_data["task_id"]:
-                    await update.message.reply_text("You already have already have a task in progress: %s", task[0]["name"])
-                    return context.user_data.get(CURRENT_STATE, END)
-                else:
-                # stale task_id
-                    logger.info("No active task with id: %s", context.user_data["task_id"])
-    elif trip.koltuk_lock_id_list:
-        text= f"{trip.empty_seat_json['koltukNo']} in vagon {trip.empty_seat_json['vagonSiraNo']
+        tasks = [t for task in i.active().values()
+                 for t in task if t["id"] == task_id]
+
+        for task in tasks:
+            if task["id"] == task_id:
+                logger.info("found celery task with task_id: %s", task_id)
+                await update.message.reply_text(f"You already have already have a task in progress: {task['name']}")
+                return context.user_data.get(CURRENT_STATE, END)
+            else:
+                # just stale task_id
+                logger.info("No active task with id: %s",
+                            context.user_data["task_id"])
+    # if trip.koltuk_lock_id_list is not empty and lock time is not passed
+    elif trip.koltuk_lock_id_list and trip.lock_end_time > datetime.now() - timedelta(seconds=120):
+        text = f"{trip.empty_seat_json['koltukNo']} in vagon {trip.empty_seat_json['vagonSiraNo']
                                                               } is already reserved. Issue command /res or /reset_search to start over. lock_end_time: {trip.lock_end_time}"
         await update.message.reply_text(text=text)
         return context.user_data.get(CURRENT_STATE, END)
-    
+
     # maybe user directly calls this method, so trip passenger is None
-    if passenger is not None and trip.passenger is None:
+    if passenger is not None:
         logger.info("Setting trip.passenger")
-        trip.passenger= passenger
+        trip.passenger = passenger
 
     logging.info("user_trip: %s", trip)
-    chat_id= update.message.chat_id
+    chat_id = update.message.chat_id
     # run the callback_1 function after 3 seconds once
 
     context.job_queue.run_once(
@@ -719,7 +742,7 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     # runa job every 10 seconds
     context.job_queue.run_repeating(
-        check_task_status, 10, data=context.user_data, chat_id=chat_id
+        check_search_status, 10, data=context.user_data, chat_id=chat_id
     )
 
     # if user_trip is not None:
@@ -734,15 +757,29 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def start_search(context: ContextTypes.DEFAULT_TYPE) -> int:
     """Callback for the reservation process."""
-    trip= context.job.data.get(TRIP)
-    logging.info("trip: %s", trip)
+    task_id = context.job.data.get("task_id")
+    if task_id is not None:
+        # get active tasks
+        i = app.control.inspect()
+        tasks = [t for task in i.active().values()
+                 for t in task if t["id"] == task_id]
+        for task in tasks:
+            if task["id"] == task_id:
+                logger.info("Found celery task with id: %s", task_id)
+                await context.bot.send_message(
+                    chat_id=context.job.chat_id, text=f"You already have a running task in progress: {task['name']}")
+                return context.job.data.get(CURRENT_STATE, END)
+
+    trip = context.job.data.get(TRIP)
+    logging.info("trip: %s, type: %s", trip, type(trip))
     logger.info("trip.passenger: %s", trip.passenger)
     # serialize the trip object
-    trip_= pickle.dumps(trip)
+    trip_ = pickle.dumps(trip)
     # start the celery task
-    task= find_trip_and_reserve.delay(trip_)
+    task = find_trip_and_reserve.delay(trip_)
+
     # save the task id to the context
-    context.job.data["task_id"]= task.id
+    context.job.data["task_id"] = task.id
 
     await context.bot.send_message(
         chat_id=context.job.chat_id,
@@ -752,43 +789,72 @@ async def start_search(context: ContextTypes.DEFAULT_TYPE) -> int:
     return context.job.data.get(CURRENT_STATE, END)
 
 
-async def check_task_status(context: ContextTypes.DEFAULT_TYPE) -> int:
+async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
     """Check the status of the task."""
-
-
-
-    
-    if context.job.data.get("task_id") is None:
+    task_id = context.job.data.get("task_id")
+    task_ = None
+    if task_id is None:
         await context.bot.send_message(
-            chat_id=context.job.chat_id, text="No in progress task."
+            chat_id=context.job.chat_id, text="No task in progress."
         )
+        context.job.schedule_removal()
         return context.job.data.get(CURRENT_STATE, END)
 
-    task_id= context.job.data.get("task_id")
-    task= AsyncResult(task_id)
+    # async sleep
+    await asyncio.sleep(10)
+    # try active tasks first
+    i = app.control.inspect()
+    active_tasks = i.active()
+    logger.info("active_tasks: %s", active_tasks)
+    for task in active_tasks.values():
+        for t in task:
+            logger.info("task_name : %s", t['name'])
+            if t['name'] != 'tasks.find_trip_and_reserve':
+                await context.bot.send_message(
+                    chat_id=context.job.chat_id, text="No search task in progress.")
+                context.job.schedule_removal()
+                return context.job.data.get(CURRENT_STATE, END)
+            elif t['id'] == task_id:
+                logger.info("Found celery task with id: %s", task_id)
+                task_ = AsyncResult(task_id)
 
-    if task.ready():
+    # maybe task finished before we checked active tasks
+    if task_ is None:
+        logger.info("task is None.")
+        task_ = AsyncResult(task_id)
+
+    if task_.ready():
         logging.info("Task is ready")
-        result= task.get()
-        my_trip= pickle.loads(result)
-        context.job.data[TRIP]= my_trip
+        if not task_.successful():
+            # get the exception
+            logger.info("Task failed.")
+            await context.bot.send_message(
+                chat_id=context.job.chat_id, text="Search task failed. Please try again.")
+            context.job.schedule_removal()
+            
+        result = task_.get()
 
-        time= datetime.strptime(my_trip.trip_json["binisTarih"], my_trip.time_format)
-        time= datetime.strftime(time, my_trip.output_time_format)
+        my_trip = pickle.loads(result)
+        logger.info("settin context.job.data[TRIP] to my_trip")
+        context.job.data[TRIP] = my_trip
+
+        dtime = datetime.strptime(
+            my_trip.trip_json["binisTarih"], my_trip.time_format)
+        dtime = datetime.strftime(dtime, my_trip.output_time_format)
 
         await context.bot.send_message(
             chat_id=context.job.chat_id,
             text=f"Seat {my_trip.empty_seat_json['koltukNo']} in vagon {
-                my_trip.empty_seat_json['vagonSiraNo']} is reserved for trip {time}",
+                my_trip.empty_seat_json['vagonSiraNo']} is reserved for trip {dtime}",
         )
         await context.bot.send_message(
             chat_id=context.job.chat_id,
             text="Keeping the seat lock until you progress to payment.",
         )
         logger.info("Setting task_id to None.")
-        context.job.data["task_id"]= None
-        logger.info("Revoking task with id: %s", task.id)
-        task.revoke()
+        context.job.data["task_id"] = None
+        logger.info("Revoking task with id: %s", task_id)
+        task_.revoke()
         logger.info("Starting job keep_seat_lock.")
         context.job_queue.run_once(
             keep_seat_lock, 3, data=context.job.data, chat_id=context.job.chat_id
@@ -798,17 +864,11 @@ async def check_task_status(context: ContextTypes.DEFAULT_TYPE) -> int:
         # remove this job
         context.job.schedule_removal()
 
-        jobs= context.job_queue.jobs()
+        jobs = context.job_queue.jobs()
         logger.info("Job queue: %s", jobs)
 
     return context.job.data.get(CURRENT_STATE, END)
 
-async def stop_keep_seat_lock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Stop the seat lock."""
-    logger.info("Setting stop_reserve_seat_flag")
-    redis_client.set("stop_reserve_seat_flag", 1)
-    context.user_data['task_id']= None
-    return context.user_data.get(CURRENT_STATE, END)    
 
 async def keep_seat_lock(context: ContextTypes.DEFAULT_TYPE) -> int:
     """Keep the seat lock until the user progresses to payment."""
@@ -819,86 +879,187 @@ async def keep_seat_lock(context: ContextTypes.DEFAULT_TYPE) -> int:
 
     logger.info("Keeping the seat lock.")
 
-    trip= context.job.data.get(TRIP)
-    task= keep_reserving_seat.delay(pickle.dumps(trip))
-    context.job.data["task_id"]= task.id
+    trip = context.job.data.get(TRIP)
+    task = keep_reserving_seat.delay(pickle.dumps(trip))
+    logger.info("setting task_id to context.user_data")
+    # save the task id to the context
+    logger.info("setting task_id: %s", task.id)
+    context.job.data["task_id"] = task.id
     return context.job.data.get(CURRENT_STATE, END)
+async def get_set_current_trip(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # get task from task and set it to context.user_data
+    logger.info("get_set_current_trip")
+    i = app.control.inspect()
+    active_tasks = i.active()
 
+    tasks = [t for task in active_tasks.values()
+            for t in task]
+    logger.info("tasks: %s", tasks)
+    for task in tasks:
+        task_ = AsyncResult(task["id"])
+        redis_client.set("stop_reserve_seat_flag", 1)
+        result = task_.get()
+        trip = pickle.loads(result)
+        context.user_data[TRIP] = trip
+        logger.info("starting keep_seat_lock.")
+        context.job_queue.run_once(
+            keep_seat_lock, 3, data=context.user_data, chat_id=update.message.chat_id)
+        return context.user_data.get(CURRENT_STATE, END)
+    return context.user_data.get(CURRENT_STATE, END)
 
 async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Proceed to payment."""
-    #get currently running tasks
+    # set the passenger object, for if the user has changed some information
+    await update.message.reply_text("started.")
+    await asyncio.sleep(2)
+    await set_passenger(update, context)
+    # get currently running tasks
     i = app.control.inspect()
     active_tasks = i.active()
+
     task_id = context.user_data.get("task_id")
-    
-    tasks = [t for task in active_tasks.values() for t in task if t["id"] == task_id]
-    
+    logger.info("task_id: %s", task_id)
+
+    tasks = [t for task in active_tasks.values()
+            for t in task if t["id"] == task_id]
+
+    logger.info("tasks: %s", tasks)
     for task in tasks:
-        logger.info("task %s", task)
         if task["id"] == task_id:
             task_ = AsyncResult(task_id)
-            task_name = task["name"].split(".")[1]
-                
-            if task_name == "keep_reserving_seat":
+
+            if task['name'] == "tasks.keep_reserving_seat":
+
+                # stop the keep_seat_lock job to get the trip object
+                # then start it again to keep the seat lock in case payment fails
                 redis_client.set("stop_reserve_seat_flag", 1)
-                 # wait for the task to finish but also with a timeout
+                logger.info("stop_reserve_seat_flag is set.")
+                # wait for the task to finish but also with a timeout
                 trip_ = task_.get(timeout=10)
                 trip = pickle.loads(trip_)
+
                 logger.info("loaded trip: %s", trip)
+                logger.info("setting trip to context.user_data.")
+
                 context.user_data[TRIP] = trip
-                
+                # keep the seat lock
+                context.job_queue.run_once(
+                    keep_seat_lock, 3, data=context.user_data, chat_id=update.message.chat_id)
+
+
     trip = context.user_data.get(TRIP)
-    
+    # set the passenger object for trip
+    trip.passenger = context.user_data.get(PASSENGER)
+
     logger.info("trip.is_seat_reserved: %s", trip.is_seat_reserved)
     logger.info("trip.lock_end_time: %s", trip.lock_end_time)
-    logger.info("trip.lock_end_time: %s", type(trip.lock_end_time))
+    logger.info("passenger: %s", trip.passenger)
     # if trip is reserved and lock_end_time is ahead of now
-    
+
     if trip is None:
-        logger.info("No trip is found.")
+        text = "No trip is found."
+        logger.info(text)
+        await update.message.reply_text(text=text)
         return context.user_data.get(CURRENT_STATE, END)
+
     elif not trip.is_seat_reserved:
-        logger.info("We cannot proceed to payment. No seat is currently reserved")
+        text = "We cannot proceed to payment. No seat is currently reserved"
+        logger.info(text)
+        await update.message.reply_text(text=text)
         return context.user_data.get(CURRENT_STATE, END)
-    elif trip.is_seat_reserved and datetime.now() < trip.lock_end_time - timedelta(seconds=90):
+
+    # dont allow to proceed to payment if the seat lock time is too close to current time
+    elif trip.is_seat_reserved and datetime.now() < trip.lock_end_time - timedelta(seconds=120):
         logger.info("We can proceed to payment. Everything looks fine.")
         p = SeleniumPayment()
+        logger.info("setting payment object to context.user_data.")
+        context.user_data[PAYMENT] = p
         p.trip = trip
+        logger.info("passenger: %s", trip.passenger)
         try:
             p.set_price()
             p.set_payment_url()
         except ValueError as exc:
+            # propably credit card information is not correct
             await update.message.reply_text(f"{exc}")
             return context.user_data.get(CURRENT_STATE, END)
-        
-        await update.message.reply_text(f'<a href="{p.current_payment_url}">Payment Link</a>', parse_mode='HTML')     
+
+        await update.message.reply_text(f'<a href="{p.current_payment_url}">Payment Link</a>', parse_mode='HTML')
+        # we have succesfully created the payment url, now we can check the payment status
+        # But first stop any other check_payment jobs
+        for job in context.job_queue.jobs():
+            if job.name == "check_payment":
+                logger.info("Removing job with name: %s, before starting a new one", job.name)
+                job.schedule_removal()
+        # now start checking payment run every 10 seconds until 3 minutes have passed
+        context.job_queue.run_repeating(check_payment, data=context.user_data,
+                                        chat_id=update.message.chat_id, interval=20, first=30, last=300)
+
     else:
-        logger.info("We cannot proceed to payment. Seat lock has timed out.")
+        text = "We cannot proceed to payment. Seat lock has timed out. Please reserve a seat again."
+        await update.message.reply_text(text=text)
+        logger.info(text)
         return context.user_data.get(CURRENT_STATE, END)
-                
-async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+
+
+
+async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
     """Check the payment status."""
-    trip = context.user_data.get(TRIP)
-    p = SeleniumPayment()
-    p.trip = trip
-    p.set_price()
-    p.set_payment_url()
-    p.check_payment_status()
-    return context.user_data.get(CURRENT_STATE, END)
+    logger.info("Checking payment status.")
+    p = context.job.data.get(PAYMENT)
+    # get active tasks
+    logger.info("task_id: %s", context.job.data.get("task_id"))
+    task_id = context.job.data.get("task_id")
+    i = app.control.inspect()
+    tasks = [t for task in i.active().values()
+             for t in task if t["id"] == task_id]
+    logger.info("p.trip: %s", p.trip)
+    logger.info("p.trip.passenger: %s", p.trip.passenger)
+    try:
+        if p.is_payment_success():
+            text = "Payment is successful. Creating ticket."
+            await context.bot.send_message(chat_id=context.job.chat_id, text=text)
+            logger.info(text)
+            if p.ticket_reservation():
+                logger.info("ticket: %s", p.ticket_reservation_info)
+                logger.info("Stop keep_seat_lock.")
+                logger.info(
+                    "Stopping keep_seat_lock. Set stop_reserve_seat_flag to 1.")
+                redis_client.set("stop_reserve_seat_flag", 1)
+                task = AsyncResult(task_id)
+                task.revoke()
+                logger.info("Removing job with name: %s", context.job.name)
+                context.job.schedule_removal()
+                logger.info("TICKET RESERVATION IS SUCCESSFUL.")
+                logger.info("TICKET: %s", p.ticket_reservation_info)
+                await context.bot.send_message(chat_id=context.job.chat_id, text=f"Ticket is created. {p.ticket_reservation_info}")
+                return context.job.data.get(CURRENT_STATE, END)
+
+    except ValueError as exc:
+        logger.info("%s", exc)
+        if 'hata' in exc.args[0]:
+            logger.info("Sending error message to user.")
+            await context.bot.send_message(chat_id=context.job.chat_id, text=exc.args[0])
+            context.job.schedule_removal()   
+        return context.job.data.get(CURRENT_STATE, END)
+    except requests.exceptions.RequestException as rexc:
+        logger.info("%s", rexc)
+        return context.user_data.get(CURRENT_STATE, END)
+    return context.job.data.get(CURRENT_STATE, END)
+
 
 async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Reset the search task."""
-    trip= context.user_data.get(TRIP)
+    trip = context.user_data.get(TRIP)
 
     # reset the fields
     if trip:
-        trip.trip_json= None
-        trip.empty_seat_json= None
-        trip.seat_lock_response= None
-        trip.lock_end_time= None
-        trip.is_seat_reserved= False
-        trip.koltuk_lock_id_list= []
+        trip.trip_json = None
+        trip.empty_seat_json = None
+        trip.seat_lock_response = None
+        trip.lock_end_time = None
+        trip.is_seat_reserved = False
+        trip.koltuk_lock_id_list = []
 
     # remove all jobs
     for job in context.job_queue.jobs():
@@ -906,11 +1067,11 @@ async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
     # revoke the user task
     if context.user_data.get("task_id") is not None:
-        task_id= context.user_data.get("task_id")
+        task_id = context.user_data.get("task_id")
         logger.info("Revoking task with id: %s", task_id)
-        task= AsyncResult(task_id)
+        task = AsyncResult(task_id)
         task.revoke(terminate=True)
-        context.user_data["task_id"]= None
+        context.user_data["task_id"] = None
 
     await update.message.reply_text("Search is reset. You can start a new search.")
     return context.user_data.get(CURRENT_STATE, END)
@@ -920,16 +1081,23 @@ async def check_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Check the status of the task."""
     i = app.control.inspect()
     text = "You have no running task."
-    task_id= context.user_data.get("task_id")
+    task_id = context.user_data.get("task_id")
+    # log job queue
+    jobs = context.job_queue.jobs()
+    logger.info("Job queue: %s, len: %s", jobs, len(jobs))
+    logger.info("task_id: %s", task_id)
     if task_id is not None:
-        active_tasks= i.active()
+        active_tasks = i.active()
         for task in active_tasks.values():
-            logging.info("task_id: %s", task_id)
+
             for t in task:
+                logger.info("active_task name: %s", t['name'])
+                logger.info("active_task id: %s", t['id'])
                 if t["id"] == task_id:
-                    task_= AsyncResult(task_id)
+                    task_ = AsyncResult(task_id)
                     task_name = t["name"].split(".")[1]
-                    text= f"You have currently running a task: {task_name}, status: {task_.status}."
+                    text = f"You have currently running a task: {
+                        task_name}, status: {task_.status}."
                     break
     await update.message.reply_text(text=text)
     return context.user_data.get(CURRENT_STATE, END)
@@ -949,47 +1117,57 @@ async def selecting_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     """Select the tariff."""
     logging.info("Selecting tariff.")
     # set this to ADDING_PERSONAL_INFO to return to the previous state
-    context.user_data[PREVIOUS_STATE]= ADDING_PERSONAL_INFO
-    context.user_data[CURRENT_STATE]= SELECTING_TARIFF
-    context.user_data[CURRENT_FEATURE]= update.callback_query.data
-    text= "Select your tariff."
-    keyboard= InlineKeyboardMarkup(TARIFF_MENU_BUTTONS)
+    context.user_data[PREVIOUS_STATE] = ADDING_PERSONAL_INFO
+    context.user_data[CURRENT_STATE] = SELECTING_TARIFF
+    context.user_data[CURRENT_FEATURE] = update.callback_query.data
+    text = "Select your tariff."
+    keyboard = InlineKeyboardMarkup(TARIFF_MENU_BUTTONS)
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     return SELECTING_TARIFF
+
 
 async def selecting_seat_type(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Select the seat type."""
     logging.info("Selecting seat type.")
     # set this to ADDING_PERSONAL_INFO to return to the previous state
-    context.user_data[PREVIOUS_STATE]= ADDING_PERSONAL_INFO
-    context.user_data[CURRENT_STATE]= SELECTING_SEAT_TYPE
-    context.user_data[CURRENT_FEATURE]= update.callback_query.data
-    text= "Select your seat type."
-    keyboard= InlineKeyboardMarkup(SEAT_TYPE_MENU_BUTTONS)
+    context.user_data[PREVIOUS_STATE] = ADDING_PERSONAL_INFO
+    context.user_data[CURRENT_STATE] = SELECTING_SEAT_TYPE
+    context.user_data[CURRENT_FEATURE] = update.callback_query.data
+    text = "Select your seat type."
+    keyboard = InlineKeyboardMarkup(SEAT_TYPE_MENU_BUTTONS)
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     return SELECTING_SEAT_TYPE
 
+
 async def print_state(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Print the current state."""
-    logging.info("current_state: %s", context.user_data[CURRENT_STATE])
-    logging.info("previous_State: %s", context.user_data[PREVIOUS_STATE])
-    trip= context.user_data.get(TRIP)
-    text= f"{trip.lock_end_time}"
+
+    # p = SeleniumPayment()
+    # context.user_data[PAYMENT] = p
+
+    logging.info("current_state: %s", context.user_data.get(CURRENT_STATE))
+    logging.info("previous_State: %s", context.user_data.get(PREVIOUS_STATE))
+    trip = context.user_data.get(TRIP)
+    payment = context.user_data.get(PAYMENT, None)
+
+    text = f"{trip.lock_end_time if trip else None}"
+    logger.info("payment: %s", payment)
+    logger.info("trip: %s", trip)
     logger.info("lock_end_time: %s", text)
-    return context.user_data[CURRENT_STATE]
+    return context.user_data.get(CURRENT_STATE, END)
 
 
 async def print_trip(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Print the current state."""
-    trip= context.user_data.get(TRIP)
-    passenger= context.user_data.get(PASSENGER)
+    trip = context.user_data.get(TRIP)
+    passenger = context.user_data.get(PASSENGER)
     logger.info("trip: %s", trip)
     logger.info("trip.passenger: %s", trip.passenger)
     logger.info("passenger: %s", passenger)
     if trip is not None:
-        reply_text= (
+        reply_text = (
             f"From: {trip.from_station}\n"
             f"To: {trip.to_station}\n"
             f"From Date: {trip.from_date}\n"
@@ -1002,16 +1180,16 @@ async def print_trip(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 def main() -> None:
     """Run the bot."""
-    my_persistance= PicklePersistence(filepath="my_persistence")
+    my_persistance = PicklePersistence(filepath="my_persistence")
 
-    app= (
+    app = (
         ApplicationBuilder()
         .token("***REMOVED***")
         .arbitrary_callback_data(True)
         .persistence(persistence=my_persistance)
         .build()
     )
-    fallback_handlers= [
+    fallback_handlers = [
         CommandHandler("stop", stop),
         CommandHandler("res", res),
         CommandHandler("print_state", print_state),
@@ -1019,7 +1197,7 @@ def main() -> None:
         MessageHandler(filters.COMMAND, unknown_command),
     ]
 
-    seat_type_conv_handler= ConversationHandler(
+    seat_type_conv_handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(
             selecting_seat_type, pattern="^seat_type$")],
         states={
@@ -1039,7 +1217,7 @@ def main() -> None:
         },
     )
 
-    tariff_conv_handler= ConversationHandler(
+    tariff_conv_handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(
             selecting_tariff, pattern="^tariff$")],
         states={
@@ -1059,12 +1237,12 @@ def main() -> None:
         },
     )
 
-    adding_self_conv_handler= ConversationHandler(
+    adding_self_conv_handler = ConversationHandler(
         entry_points=[
             CallbackQueryHandler(
                 adding_self,
                 pattern=f"^{
-                                 ADDING_PERSONAL_INFO}$",
+                    ADDING_PERSONAL_INFO}$",
             )
         ],
         states={
@@ -1093,7 +1271,7 @@ def main() -> None:
         },
     )
 
-    adding_credit_card_conv_handler= ConversationHandler(
+    adding_credit_card_conv_handler = ConversationHandler(
         entry_points=[
             CallbackQueryHandler(
                 adding_credit_card, pattern=f"^{ADDING_CREDIT_CARD_INFO}$"
@@ -1122,7 +1300,7 @@ def main() -> None:
         },
     )
 
-    main_conv_handler= ConversationHandler(
+    main_conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
             SELECTING_MAIN_ACTION: [
@@ -1144,7 +1322,7 @@ def main() -> None:
         },
         fallbacks=fallback_handlers,
     )
-    inline_caps_handler= InlineQueryHandler(inline_funcs)
+    inline_caps_handler = InlineQueryHandler(inline_funcs)
 
     app.add_handler(main_conv_handler)
     app.add_handler(inline_caps_handler)
@@ -1152,44 +1330,51 @@ def main() -> None:
     # echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
     # app.add_handler(echo_handler)
 
-    res_handler= CommandHandler("res", res)
+    res_handler = CommandHandler("res", res)
     app.add_handler(res_handler)
 
-    init_handler= CommandHandler("init_passenger", init_passenger)
+    init_handler = CommandHandler("init_passenger", init_passenger)
     app.add_handler(init_handler)
-    delete_key_handler= CommandHandler("delete_key", delete_key)
+    delete_key_handler = CommandHandler("delete_key", delete_key)
     app.add_handler(delete_key_handler)
     # app.add_handler(inline_caps_handler)
 
-    print_state_handler= CommandHandler("print_state", print_state)
+    print_state_handler = CommandHandler("print_state", print_state)
     app.add_handler(print_state_handler)
 
-    datetime_type_handler= CallbackQueryHandler(handle_datetime_type, pattern=datetime)
+    datetime_type_handler = CallbackQueryHandler(
+        handle_datetime_type, pattern=datetime)
     app.add_handler(datetime_type_handler)
 
-    start_reservation_handler= CommandHandler("start_res", start_res)
+    start_reservation_handler = CommandHandler("start_res", start_res)
     app.add_handler(start_reservation_handler)
 
-    reset_search_handler= CommandHandler("reset_search", reset_search)
+    reset_search_handler = CommandHandler("reset_search", reset_search)
     app.add_handler(reset_search_handler)
 
-    check_task_handler= CommandHandler("check_task", check_task)
+    check_task_handler = CommandHandler("check_task", check_task)
     app.add_handler(check_task_handler)
 
-    print_trip_handler= CommandHandler("print_trip", print_trip)
+    print_trip_handler = CommandHandler("print_trip", print_trip)
     app.add_handler(print_trip_handler)
-    
-    stop_keep_seat_lock_handler= CommandHandler("stop_keep_seat_lock", stop_keep_seat_lock)
-    app.add_handler(stop_keep_seat_lock_handler)
-    
-    proceed_to_payment_handler= CommandHandler("proceed_to_payment", proceed_to_payment)
-    app.add_handler(proceed_to_payment_handler)
-    
-    unknown_command_handler= MessageHandler(filters.COMMAND, unknown_command)
-    app.add_handler(unknown_command_handler)
-    
 
+    proceed_to_payment_handler = CommandHandler(
+        "proceed_to_payment", proceed_to_payment)
+    app.add_handler(proceed_to_payment_handler)
+
+    set_passenger_handler = CommandHandler("set_passenger", set_passenger)
+    app.add_handler(set_passenger_handler)
+
+    check_search_status_handler = CommandHandler(
+        "check_search_status", check_search_status)
+    app.add_handler(check_search_status_handler)
     
+    get_set_current_trip_handler = CommandHandler(
+        "get_set_current_trip", get_set_current_trip)
+    app.add_handler(get_set_current_trip_handler)
+
+    unknown_command_handler = MessageHandler(filters.COMMAND, unknown_command)
+    app.add_handler(unknown_command_handler)
 
     # app.add_handler(CommandHandler("put", put))
     # pprint(app.user_data)

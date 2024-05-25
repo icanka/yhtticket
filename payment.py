@@ -1,4 +1,5 @@
 """ This module contains the SeleniumPayment class for handling Selenium-based payment operations."""
+from datetime import datetime
 import tempfile
 import time
 import requests
@@ -14,6 +15,8 @@ import api_constants
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 import logging
+
+from trip_search import TripSearchApi
 
 
 # create a class which will be inherited from the SeleniumPayment class
@@ -131,6 +134,11 @@ class SeleniumPayment(MainSeleniumPayment):
         Returns:
             float: The price of the trip for the empty seat.
         """
+        
+        vagon_tip_id = self.trip.empty_seat_json['vagonTipId']
+        # 17001 is the id for the economy class, 17002 is the id for the business class appere
+        vagon_tip_id = 1 if vagon_tip_id == 17001 else 0
+        
         req_body = api_constants.price_req_body.copy()
         req_body['yolcuList'][0]['tarifeId'] = self.trip.passenger.tariff
         seat_info = req_body['yolcuList'][0]['seferKoltuk'][0]
@@ -142,8 +150,9 @@ class SeleniumPayment(MainSeleniumPayment):
             'binisIstasyonId': self.trip.trip_json['binisIstasyonId'],
             'inisIstasyonId': self.trip.trip_json['inisIstasyonId'],
             # This should  be'0' maybe, vuejs code sends '0' always for vagonTipId
-            'vagonTipi': self.trip.empty_seat_json['vagonTipId']
+            'vagonTipi': vagon_tip_id
         })
+        self.logger.info("Price request: %s", json.dumps(req_body))
         # send request
         response = requests.post(
             api_constants.PRICE_ENDPOINT,
@@ -281,29 +290,26 @@ class SeleniumPayment(MainSeleniumPayment):
         }
         self.logger.info("Sending odeme sorgu request: %s", odeme_sorgu)
 
-        try:
-            odeme_sorgu_response = requests.post(api_constants.VB_ODEME_SORGU,
-                                                 headers=api_constants.REQUEST_HEADER,
-                                                 data=json.dumps(odeme_sorgu),
-                                                 timeout=10)
+        
+        odeme_sorgu_response = requests.post(api_constants.VB_ODEME_SORGU,
+                                                headers=api_constants.REQUEST_HEADER,
+                                                data=json.dumps(odeme_sorgu),
+                                                timeout=10)
 
-        except requests.exceptions.RequestException as e:
-            self.logger.error("odeme sorgu request failed: %s", e)
-            raise e
-
+        odeme_sorgu_response.raise_for_status()
         odeme_sorgu_response_json = json.loads(odeme_sorgu_response.text)
 
         if odeme_sorgu_response_json['cevapBilgileri']['cevapKodu'] != "000":
             self.logger.error("Response: %s", odeme_sorgu_response.text)
+            raise ValueError(f"{odeme_sorgu_response_json['cevapBilgileri']['cevapMsj']} {odeme_sorgu_response_json['cevapBilgileri']['detay']}")
         else:
             self.logger.info(
                 "Response: %s", odeme_sorgu_response_json['vposReference'])
             self.vpos_ref = odeme_sorgu_response_json['vposReference']
             return True
-        return False
         
     
-    def ticket_reservation(self):
+    def ticket_reservation(self, date_format="%d/%m/%Y"):
         """ticket_reservation"""
         req_body = api_constants.ticket_reservation_req_body.copy()
         req_body['biletRezYerBilgileri'][0]['biletWSDVO'].update({
@@ -316,11 +322,11 @@ class SeleniumPayment(MainSeleniumPayment):
             'tckn': self.trip.passenger.tckn,
             'ad': self.trip.passenger.name,
             'soyad': self.trip.passenger.surname,
-            'dogumTar': self.trip.passenger.birthday,
+            'dogumTar': datetime.strptime(self.trip.passenger.birthday, date_format).strftime(TripSearchApi.time_format),
             'iletisimEposta': self.trip.passenger.email,
             'iletisimCepTel': self.trip.passenger.phone,
             'cinsiyet': self.trip.passenger.sex,
-            'tarifeId': self.trip.tariff,
+            'tarifeId': self.trip.passenger.tariff,
             'vagonSiraNo': self.trip.empty_seat_json['vagonSiraNo'],
             'koltukNo': self.trip.empty_seat_json['koltukNo'],
             'ucret': self.price,
@@ -338,28 +344,31 @@ class SeleniumPayment(MainSeleniumPayment):
 
         self.logger.info("Ticket reservation request: %s", req_body)
         # send request
-        if self.is_payment_success():
-            try:
-                response = requests.post(
-                    api_constants.TICKET_RESERVATION_ENDPOINT,
-                    headers=api_constants.REQUEST_HEADER,
-                    data=json.dumps(req_body),
-                    timeout=10)
-            except requests.exceptions.RequestException as e:
-                self.logger.error("Ticket reservation request failed: %s", e)
-                raise e
-            response_json = json.loads(response.text)
-            if response_json['cevapBilgileri']['cevapKodu'] != "000":
-                self.logger.error("Ticket reservation failed: %s",
-                                  response_json['cevapBilgileri'])
-            else:
-                self.logger.info("Ticket reservation successful.")
-                self.ticket_reservation_info = response_json
-                self.logger.debug(
-                    "Ticket reservation response: %s", response_json)
-                return True
-        return False
-
+        
+        try:
+            response = requests.post(
+                api_constants.TICKET_RESERVATION_ENDPOINT,
+                headers=api_constants.REQUEST_HEADER,
+                data=json.dumps(req_body),
+                timeout=30)
+        except Exception as e:
+            self.logger.error("Ticket reservation request failed: %s", e)
+            # print detailed error message
+            self.logger.error("Ticket reservation request failed: %s", e.args)
+            raise e
+            
+        response_json = json.loads(response.text)
+        
+        if response_json['cevapBilgileri']['cevapKodu'] != "000":
+            self.logger.error("Ticket reservation failed: %s",
+                              response_json['cevapBilgileri'])
+            raise ValueError(f"{response_json['cevapBilgileri']['cevapMsj']} {response_json['cevapBilgileri']['detay']}")
+        else:
+            self.logger.info("Ticket reservation successful.")
+            self.ticket_reservation_info = response_json
+            self.logger.debug(
+                "Ticket reservation response: %s", response_json)
+            return True
 
 ######################################################### INTERFACE AUTOMATION ####################################
     # def send_keys(self, element, string, speed=0.000001):

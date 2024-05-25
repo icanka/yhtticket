@@ -128,7 +128,7 @@ class TripSearchApi:
                 api_constants.SEAT_CHECK_ENDPOINT,
                 headers=api_constants.REQUEST_HEADER,
                 data=json.dumps(s_check),
-                timeout=10,
+                timeout=3,
             )
             s_response.raise_for_status()
             s_response_json = json.loads(s_response.text)
@@ -142,7 +142,7 @@ class TripSearchApi:
                     api_constants.SELECT_EMPTY_SEAT_ENDPOINT,
                     headers=api_constants.REQUEST_HEADER,
                     data=json.dumps(seat_select_req),
-                    timeout=10,
+                    timeout=3,
                 )
                 response.raise_for_status()
 
@@ -581,7 +581,7 @@ class TripSearchApi:
                 passenger.tckn,
                 date,
             )
-            return False
+            raise ValueError(response_json["cevapBilgileri"]["cevapMsj"])
 
         TripSearchApi.logger.info(
             "Passenger: %s %s TCKN: %s Birthday: %s",

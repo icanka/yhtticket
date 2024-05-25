@@ -1,5 +1,6 @@
 import logging
-from typing import Dict
+from typing import Dict, Awaitable
+import asyncio
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import (
     Application,
@@ -8,6 +9,7 @@ from telegram.ext import (
     ConversationHandler,
     MessageHandler,
     filters,
+    BaseUpdateProcessor,
 )
 
 
@@ -21,168 +23,77 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
-WAITING = ConversationHandler.WAITING
-TIMEOUT = ConversationHandler.TIMEOUT
-END = ConversationHandler.END
+class MyUpdateProcessor(BaseUpdateProcessor):
+    """Simple implementation of a custom update processor that logs the updates."""
 
-MAIN_CHOOSING, TYPING_REPLY, TYPING_CHOICE = range(3)
-reply_keyboard = [
-    ["1", "2"],
-    ["Done"],
-    ["Done"],
-    ["Done"],
-    ["Done"],
-    ["Done"],
-    ["Done"],
-    ["Done"],
-    ["Done"],
-    ["Done"],
-    ["Done"],
-    ["Done"],
-    
-]
+    def __init__(self, max_concurrent_updates: int):
+        super().__init__(max_concurrent_updates)
+        self.user_locks = {}
 
-second_reply_keyboard = [
-    ["2.1", "2.2"],
-    ["Done"]
-]
+    async def do_process_update(self, update: Dict, coroutine: Awaitable[any]) -> None:
+        logger.info("PROCESSING UPDATE-----------------------------------")
+        user_id = update.get("message", {}).get("from_user", {}).get("id")
+        
+        if user_id is None:
+            logger.info("Update does not contain user information.")
+            return
 
-markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
-inner_markup = ReplyKeyboardMarkup(second_reply_keyboard, one_time_keyboard=True)
+        # check if a lock for this user ID is already acquired
+        if user_id not in self.user_locks:
+            # if not, create a new lock and add it to the dictionary
+            self.user_locks[user_id] = asyncio.Lock()
 
+        # Get the lock for this user ID
+        user_lock = self.user_locks[user_id]
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "Hi! My name is Doctor Botter.",
-        reply_markup=markup,
-    )
-
-    logger.info("youre now in state MAIN_CHOOSING: %s", MAIN_CHOOSING)
-    return MAIN_CHOOSING
+        # Acquire the lock using async with to ensure exclusive access
+        async with user_lock:
+            try:
+                # Simulate some processing time
+                logger.info("Processing update for user %s", user_id)
+                await asyncio.sleep(5)
+                await coroutine
+            except Exception as e:
+                logger.error("Error processing update: %s", e, exc_info=True)
 
 
-async def regular_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
-    context.user_data["choice"] = text
-    await update.message.reply_text(
-        f"Your {text.lower()}? Yes, I would love to hear about that!")
+        await asyncio.sleep(5)
+        # logger.info(f"Received update: %s", update)
+        logger.info("User: %s", update["message"]["from_user"]["id"])
+        # logger.info("coroutine: %s", coroutine)
+        logger.info("Running coroutine %s, type: %s", coroutine, type(coroutine))
+        await coroutine
+        logger.info("Finished coroutine")
 
-    logger.info("youre now in state TYPING_REPLY: %s", TYPING_REPLY)
-    return TYPING_REPLY
+    async def initialize(self) -> None:
+        logger.info("Initializing update processor")
 
-
-async def received_information(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
-
-    await update.message.reply_text(
-        "You've told me your {}. Thank you for letting me know!".format(text),
-        reply_markup=markup,
-    )
-
-    logger.info("youre now in state: MAIN_CHOOSING %s", MAIN_CHOOSING)
-    return MAIN_CHOOSING
+    async def shutdown(self) -> None:
+        logger.info("Shutting down update processor")
 
 
-async def done(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_data: Dict[str, str] = context.user_data
-    if "choice" in user_data:
-        del user_data["choice"]
-
-    await update.message.reply_text(
-        f"Thank you! I hope I can help you again sometime.",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-
-    logger.info("youre now in state END: %s", ConversationHandler.END)
-    return END
-
-async def timeout(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(update.message.text)
-    await update.message.reply_text("I'm sorry, I didn't understand that choice. Please try again.")
-
-    logger.info("TIMEOUT")
-    return MAIN_CHOOSING
-
-
-
-
-async def inner_conversation(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    context.user_data["previous"] = "inner"
-    await update.message.reply_text(
-        "Hi! Youre in inner conversation.",
-        reply_markup=inner_markup,
-    )
-
-    logger.info("youre now in state TYPING_REPLY: %s", TYPING_REPLY)
-    return TYPING_REPLY
-
-
-async def sorry(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "I'mmmm sorry, I didn't understand that choice. Please try again.",
-        reply_markup=markup,
-    )
-
-    logger.info("youre now in state END: %s", END)
-    return END
-
-
+async def say_hello(update: Update, context: ContextTypes) -> None:
+    """Send a message when the command /start is issued."""
+    user = update.message.from_user
+    await update.message.reply_text(f"Hello {user.first_name}!")
+    return 0
 
 
 def main() -> None:
     """Run the bot."""
     # Create the Application and pass it your bot's token.
-    application = Application.builder().token("***REMOVED***").build()
-
-
-    inner_conv_handler = ConversationHandler(
-        entry_points=[MessageHandler(filters.Regex("^2$"), inner_conversation)],
-        states={
-                TYPING_REPLY: [
-                    MessageHandler(
-                    filters.TEXT & ~(filters.COMMAND |
-                                     filters.Regex("^Done$")),
-                    received_information,
-                )
-            ],
-        },
-        
-        fallbacks=[MessageHandler(filters.Regex("^Done$"), sorry)],
+    application = (
+        Application.builder()
+        .token("***REMOVED***")
+        .concurrent_updates(MyUpdateProcessor(10))
+        .build()
     )
 
-    # Add conversation handler with the states CHOOSING, TYPING_CHOICE and TYPING_REPLY
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
-        states={
-            MAIN_CHOOSING: [
-                MessageHandler(
-                    filters.Regex(
-                        "^1$"), regular_choice
-                ),
-                inner_conv_handler,
-            ],
-            TYPING_REPLY: [
-                MessageHandler(
-                    filters.TEXT & ~(filters.COMMAND |
-                                     filters.Regex("^Done$")),
-                    received_information,
-                )
-            ],
-            ConversationHandler.WAITING: [
-                MessageHandler(
-                    filters.ALL, timeout
-                )
-            ],                
-        },
-        fallbacks=[MessageHandler(filters.Regex("^Done$"), done)],
-    )
+    say_hello_handler = CommandHandler("hi", say_hello)
+    application.add_handler(say_hello_handler)
 
-    application.add_handler(conv_handler)
+    application.run_polling()
 
-    # Run the bot until the user presses Ctrl-C
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
-    
-    
-    
+
 if __name__ == "__main__":
     main()
