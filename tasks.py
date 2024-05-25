@@ -15,7 +15,7 @@ celery_app = Celery('celery_app', backend='redis://localhost:6379/0',
 redis_client = redis.Redis(host='localhost', port=6379, db=0)
 
 
-@app.task(bind=True)
+@celery_app.task(bind=True)
 def find_trip_and_reserve(self, my_trip: Trip):
     """Search for trips with empty seats."""
     my_trip = pickle.loads(my_trip)
@@ -35,7 +35,7 @@ def find_trip_and_reserve(self, my_trip: Trip):
         return pickle.dumps(my_trip)
 
 
-@app.task(bind=True)
+@celery_app.task(bind=True)
 def keep_reserving_seat(self, my_trip: Trip):
     """Reserve a seat for a trip."""
     my_trip = pickle.loads(my_trip)

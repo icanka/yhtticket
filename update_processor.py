@@ -1,17 +1,14 @@
+""" Custom Update Processor """
 import logging
 from typing import Dict, Awaitable
 import asyncio
-from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
+from telegram import Update
 from telegram.ext import (
     Application,
     CommandHandler,
     ContextTypes,
-    ConversationHandler,
-    MessageHandler,
-    filters,
     BaseUpdateProcessor,
 )
-import random
 
 # Enable logging
 logging.basicConfig(
