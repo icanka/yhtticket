@@ -11,7 +11,7 @@ from telegram.ext import (
     filters,
     BaseUpdateProcessor,
 )
-
+import random
 
 # Enable logging
 logging.basicConfig(
@@ -23,24 +23,29 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 
-class MyUpdateProcessor(BaseUpdateProcessor):
+class CustomUpdateProcessor(BaseUpdateProcessor):
     """Simple implementation of a custom update processor that logs the updates."""
 
-    def __init__(self, max_concurrent_updates: int):
-        super().__init__(max_concurrent_updates)
-        self.user_locks = {}
-
     async def do_process_update(self, update: Dict, coroutine: Awaitable[any]) -> None:
-        logger.info("PROCESSING UPDATE-----------------------------------")
-        user_id = update.get("message", {}).get("from_user", {}).get("id")
+        """Sequential processing of updates for the same user.
+        This method is called for each update that is received from the Telegram server
         
+        We dont want to process multiple updates from the same user concurrently, 
+        To not deal with all consequences comes with it.
+        
+        But we also want to process updates from different users concurrently.
+        """
+        try:
+            user_id = update["message"]["from_user"]["id"]
+        except KeyError:
+            user_id = None
         if user_id is None:
-            logger.info("Update does not contain user information.")
             return
 
         # check if a lock for this user ID is already acquired
         if user_id not in self.user_locks:
             # if not, create a new lock and add it to the dictionary
+            logger.info("Creating lock for user %s", user_id)
             self.user_locks[user_id] = asyncio.Lock()
 
         # Get the lock for this user ID
@@ -51,25 +56,19 @@ class MyUpdateProcessor(BaseUpdateProcessor):
             try:
                 # Simulate some processing time
                 logger.info("Processing update for user %s", user_id)
-                await asyncio.sleep(5)
+                await asyncio.sleep(30)
                 await coroutine
+                logger.info("Finished processing update for user %s", user_id)
             except Exception as e:
                 logger.error("Error processing update: %s", e, exc_info=True)
 
-
-        await asyncio.sleep(5)
-        # logger.info(f"Received update: %s", update)
-        logger.info("User: %s", update["message"]["from_user"]["id"])
-        # logger.info("coroutine: %s", coroutine)
-        logger.info("Running coroutine %s, type: %s", coroutine, type(coroutine))
-        await coroutine
-        logger.info("Finished coroutine")
-
     async def initialize(self) -> None:
         logger.info("Initializing update processor")
+        self.user_locks = {}
 
     async def shutdown(self) -> None:
         logger.info("Shutting down update processor")
+        self.user_locks = None
 
 
 async def say_hello(update: Update, context: ContextTypes) -> None:
@@ -85,7 +84,7 @@ def main() -> None:
     application = (
         Application.builder()
         .token("***REMOVED***")
-        .concurrent_updates(MyUpdateProcessor(10))
+        .concurrent_updates(MyUpdateProcessor(5))
         .build()
     )
 

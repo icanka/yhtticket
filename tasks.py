@@ -8,7 +8,7 @@ import pickle
 import logging
 
 
-app = Celery('celery_app', backend='redis://localhost:6379/0',
+celery_app = Celery('celery_app', backend='redis://localhost:6379/0',
              broker='redis://localhost:6379/0',
              include=['tasks'])
 
