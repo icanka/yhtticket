@@ -48,11 +48,11 @@ from telegram.ext import (
 # Enable logging
 
 # set httpx logger to warning
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("telegram.ext.ConversationHandler").setLevel(logging.DEBUG)
+# logging.basicConfig(
+#     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+# )
+# logging.getLogger("httpx").setLevel(logging.WARNING)
+# logging.getLogger("telegram.ext.ConversationHandler").setLevel(logging.DEBUG)
 
 
 

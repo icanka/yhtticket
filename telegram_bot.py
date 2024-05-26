@@ -26,14 +26,7 @@ from tasks import redis_client, find_trip_and_reserve, keep_reserving_seat, cele
 from constants import *
 
 # set httpx logger to warning
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-# logging.getLogger("telegram.ext.ConversationHandler").setLevel(logging.DEBUG)
 logger = logging.getLogger(__name__)
-
 
 async def inline_funcs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle inline functions.
@@ -80,7 +73,6 @@ async def inline_funcs(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logger.error("TypeError: %s", e)
 
         await context.bot.answer_inline_query(update.inline_query.id, results)
-
         return
 
 
@@ -515,8 +507,6 @@ async def delete_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Start the reservation process."""
-    await set_passenger(update, context)
-
     task_id = context.user_data.get("task_id")
     passenger = context.user_data.get(PASSENGER)
     trip = context.user_data.get(TRIP)
@@ -525,7 +515,7 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text("Please search for a trip first.")
         return context.user_data.get(CURRENT_STATE, END)
     elif task_id is not None:
-        logger.info("chechking task with task_id: %s", task_id)
+        logger.info("checking task with task_id: %s", task_id)
         i = celery_app.control.inspect()
         tasks = [t for task in i.active().values() for t in task if t["id"] == task_id]
 
@@ -548,6 +538,8 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text(text=text)
         return context.user_data.get(CURRENT_STATE, END)
 
+
+    await init_passenger(update, context)
     # maybe user directly calls this method, so trip passenger is None
     if passenger is not None:
         logger.info("Setting trip.passenger")
@@ -599,6 +591,7 @@ async def start_search(context: ContextTypes.DEFAULT_TYPE) -> int:
     task = find_trip_and_reserve.delay(trip_)
 
     # save the task id to the context
+    logger.info("SETTING TASK_ID: %s", task.id)
     context.job.data["task_id"] = task.id
 
     await context.bot.send_message(
@@ -673,7 +666,7 @@ async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
             chat_id=context.job.chat_id,
             text="Keeping the seat lock until you progress to payment.",
         )
-        logger.info("Setting task_id to None.")
+        logger.warning("SETTING TASK_ID: None")
         context.job.data["task_id"] = None
         logger.info("Revoking task with id: %s", task_id)
         task_.revoke()
@@ -705,7 +698,7 @@ async def keep_seat_lock(context: ContextTypes.DEFAULT_TYPE) -> int:
     task = keep_reserving_seat.delay(pickle.dumps(trip))
     logger.info("setting task_id to context.user_data")
     # save the task id to the context
-    logger.info("setting task_id: %s", task.id)
+    logger.warning("SETTING TASK_ID: %s", task.id)
     context.job.data["task_id"] = task.id
     return context.job.data.get(CURRENT_STATE, END)
 
@@ -845,6 +838,11 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
     """Check the payment status."""
+    # get job queue
+    job_queue = context.job_queue
+    for job in job_queue.jobs():
+        logger.info("job: %s", job)
+    
     logger.info("Checking payment status.")
     p = context.job.data.get(PAYMENT)
     # get active tasks
@@ -914,6 +912,7 @@ async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         logger.info("Revoking task with id: %s", task_id)
         task = AsyncResult(task_id)
         task.revoke(terminate=True)
+        logger.warning("SETTING TASK_ID: None")
         context.user_data["task_id"] = None
 
     await update.message.reply_text("Search is reset. You can start a new search.")

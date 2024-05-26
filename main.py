@@ -15,11 +15,19 @@ from update_processor import CustomUpdateProcessor
 from telegram_bot import *
 from constants import *
 
+print("main.py is running")
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
+    stream=sys.stdout,
+    filename="telegram_bot.log",
+)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+print("Logging is set up")
 
 def main() -> None:
     """Run the bot."""
     my_persistance = PicklePersistence(filepath="my_persistence")
-
     app = (
         ApplicationBuilder()
         .token("***REMOVED***")

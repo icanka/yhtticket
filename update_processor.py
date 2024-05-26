@@ -9,16 +9,7 @@ from telegram.ext import (
     ContextTypes,
     BaseUpdateProcessor,
 )
-
-# Enable logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
-# set higher logging level for httpx to avoid all GET and POST requests being logged
-logging.getLogger("httpx").setLevel(logging.WARNING)
-
 logger = logging.getLogger(__name__)
-
 
 class CustomUpdateProcessor(BaseUpdateProcessor):
     """Simple implementation of a custom update processor that logs the updates."""
@@ -32,17 +23,15 @@ class CustomUpdateProcessor(BaseUpdateProcessor):
         
         But we also want to process updates from different users concurrently.
         """
-        try:
-            user_id = update["message"]["from_user"]["id"]
-        except KeyError:
-            user_id = None
+        user_id = update.effective_user.id
         if user_id is None:
+            logger.error("Cannot process update: No user ID found in update: %s", update)
+            coroutine.close()
             return
 
         # check if a lock for this user ID is already acquired
         if user_id not in self.user_locks:
             # if not, create a new lock and add it to the dictionary
-            logger.info("Creating lock for user %s", user_id)
             self.user_locks[user_id] = asyncio.Lock()
 
         # Get the lock for this user ID
@@ -52,10 +41,7 @@ class CustomUpdateProcessor(BaseUpdateProcessor):
         async with user_lock:
             try:
                 # Simulate some processing time
-                logger.info("Processing update for user %s", user_id)
-                await asyncio.sleep(30)
                 await coroutine
-                logger.info("Finished processing update for user %s", user_id)
             except Exception as e:
                 logger.error("Error processing update: %s", e, exc_info=True)
 
