@@ -28,6 +28,7 @@ from constants import *
 # set httpx logger to warning
 logger = logging.getLogger(__name__)
 
+
 async def inline_funcs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle inline functions.
 
@@ -81,11 +82,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     text = "Add, update or show your information. To abort, simply type /stop"
     keyboard = InlineKeyboardMarkup(MAIN_MENU_BUTTONS)
-
-    # try:
-    #     init_passenger(update, context)
-    # except KeyError as exc:
-    #     logging.error("KeyError: %s", exc)
 
     if context.user_data.get(IN_PROGRESS):
         try:
@@ -508,7 +504,6 @@ async def delete_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Start the reservation process."""
     task_id = context.user_data.get("task_id")
-    passenger = context.user_data.get(PASSENGER)
     trip = context.user_data.get(TRIP)
 
     if trip is None:
@@ -538,8 +533,8 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text(text=text)
         return context.user_data.get(CURRENT_STATE, END)
 
-
-    await init_passenger(update, context)
+    await set_passenger(update, context)
+    passenger = context.user_data.get(PASSENGER)
     # maybe user directly calls this method, so trip passenger is None
     if passenger is not None:
         logger.info("Setting trip.passenger")
@@ -549,12 +544,25 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     chat_id = update.message.chat_id
     # run the callback_1 function after 3 seconds once
 
-    context.job_queue.run_once(start_search, 3, data=context.user_data, chat_id=chat_id)
+    context.job_queue.run_once(
+        start_search,
+        1,
+        data=context.user_data,
+        chat_id=chat_id,
+        job_kwargs={"misfire_grace_time": 30},
+    )
 
     # runa job every 10 seconds
     context.job_queue.run_repeating(
-        check_search_status, 10, data=context.user_data, chat_id=chat_id
+        check_search_status,
+        first=30,
+        interval=30,
+        data=context.user_data,
+        chat_id=chat_id,
+        job_kwargs={"misfire_grace_time": 30},
     )
+    jobs = context.job_queue.jobs()
+    logger.info("Job queue: %s, len: %s", jobs, len(jobs))
 
     # if user_trip is not None:
     #     user_trip_bytes = pickle.dumps(user_trip)
@@ -604,21 +612,21 @@ async def start_search(context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
     """Check the status of the task."""
+    start_time = time.time()
+
     task_id = context.job.data.get("task_id")
     task_ = None
     if task_id is None:
         await context.bot.send_message(
-            chat_id=context.job.chat_id, text="No task in progress."
+            chat_id=context.job.chat_id, text="No task in progress. Removing job."
         )
         context.job.schedule_removal()
         return context.job.data.get(CURRENT_STATE, END)
 
-    # async sleep
-    await asyncio.sleep(10)
     # try active tasks first
     i = celery_app.control.inspect()
     active_tasks = i.active()
-    logger.info("active_tasks: %s", active_tasks)
+    logger.info("active_tasks: %s", len(active_tasks))
     for task in active_tasks.values():
         for t in task:
             logger.info("task_name : %s", t["name"])
@@ -627,6 +635,9 @@ async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
                     chat_id=context.job.chat_id, text="No search task in progress."
                 )
                 context.job.schedule_removal()
+                end_time = time.time()
+                execution_time = end_time - start_time
+                logger.info("Execution time: %s", execution_time)
                 return context.job.data.get(CURRENT_STATE, END)
             elif t["id"] == task_id:
                 logger.info("Found celery task with id: %s", task_id)
@@ -672,7 +683,15 @@ async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
         task_.revoke()
         logger.info("Starting job keep_seat_lock.")
         context.job_queue.run_once(
-            keep_seat_lock, 3, data=context.job.data, chat_id=context.job.chat_id
+            keep_seat_lock,
+            3,
+            data=context.job.data,
+            chat_id=context.job.chat_id,
+            job_kwargs={"misfire_grace_time": 30},
+        )
+        context.bot.send_message(
+            chat_id=context.job.chat_id,
+            text="Started keep_seat_lock job.",
         )
 
         logger.info("Removing job with name: %s", context.job.name)
@@ -682,6 +701,9 @@ async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
         jobs = context.job_queue.jobs()
         logger.info("Job queue: %s", jobs)
 
+    end_time = time.time()
+    execution_time = end_time - start_time
+    logger.info("Execution time: %s", execution_time)
     return context.job.data.get(CURRENT_STATE, END)
 
 
@@ -706,6 +728,8 @@ async def keep_seat_lock(context: ContextTypes.DEFAULT_TYPE) -> int:
 async def get_set_current_trip(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
+    """Get the current trip from the task and set it to context.user_data."""
+
     # get task from task and set it to context.user_data
     logger.info("get_set_current_trip")
     i = celery_app.control.inspect()
@@ -729,14 +753,9 @@ async def get_set_current_trip(
 
 async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Proceed to payment."""
-    # set the passenger object, for if the user has changed some information
-    await update.message.reply_text("started.")
-    await asyncio.sleep(2)
-    await set_passenger(update, context)
     # get currently running tasks
     i = celery_app.control.inspect()
     active_tasks = i.active()
-
     task_id = context.user_data.get("task_id")
     logger.info("task_id: %s", task_id)
 
@@ -762,22 +781,15 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
                 context.user_data[TRIP] = trip
                 # keep the seat lock
-                context.job_queue.run_once(
+                job = context.job_queue.run_once(
                     keep_seat_lock,
-                    3,
+                    0,
                     data=context.user_data,
                     chat_id=update.message.chat_id,
+                    job_kwargs={"misfire_grace_time": 30},
                 )
 
     trip = context.user_data.get(TRIP)
-    # set the passenger object for trip
-    trip.passenger = context.user_data.get(PASSENGER)
-
-    logger.info("trip.is_seat_reserved: %s", trip.is_seat_reserved)
-    logger.info("trip.lock_end_time: %s", trip.lock_end_time)
-    logger.info("passenger: %s", trip.passenger)
-    # if trip is reserved and lock_end_time is ahead of now
-
     if trip is None:
         text = "No trip is found."
         logger.info(text)
@@ -792,14 +804,22 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     # dont allow to proceed to payment if the seat lock time is too close to current time
     elif trip.is_seat_reserved and datetime.now() < trip.lock_end_time - timedelta(
-        seconds=120
+        seconds=60
     ):
+        # set the passenger object, for if the user has changed some information
+        await set_passenger(update, context)
         logger.info("We can proceed to payment. Everything looks fine.")
+
+        trip = context.user_data.get(TRIP)
+        # set the passenger object for trip
+        trip.passenger = context.user_data.get(PASSENGER)
+
         p = SeleniumPayment()
         logger.info("setting payment object to context.user_data.")
         context.user_data[PAYMENT] = p
         p.trip = trip
         logger.info("passenger: %s", trip.passenger)
+
         try:
             p.set_price()
             p.set_payment_url()
@@ -814,7 +834,8 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
         # we have succesfully created the payment url, now we can check the payment status
         # But first stop any other check_payment jobs
         for job in context.job_queue.jobs():
-            if job.name == "check_payment":
+            # if the check_payment belongs to the same chat_id
+            if job.name == "check_payment" and job.chat_id == update.message.chat_id:
                 logger.info(
                     "Removing job with name: %s, before starting a new one", job.name
                 )
@@ -824,9 +845,10 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
             check_payment,
             data=context.user_data,
             chat_id=update.message.chat_id,
-            interval=20,
+            interval=10,
             first=30,
             last=300,
+            job_kwargs={"misfire_grace_time": 30},
         )
 
     else:
@@ -842,21 +864,22 @@ async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
     job_queue = context.job_queue
     for job in job_queue.jobs():
         logger.info("job: %s", job)
-    
+
     logger.info("Checking payment status.")
     p = context.job.data.get(PAYMENT)
     # get active tasks
     logger.info("task_id: %s", context.job.data.get("task_id"))
     task_id = context.job.data.get("task_id")
-    i = celery_app.control.inspect()
-    tasks = [t for task in i.active().values() for t in task if t["id"] == task_id]
+    # i = celery_app.control.inspect()
+    # tasks = [t for task in i.active().values() for t in task if t["id"] == task_id]
     logger.info("p.trip: %s", p.trip)
     logger.info("p.trip.passenger: %s", p.trip.passenger)
+    
     try:
         if p.is_payment_success():
             text = "Payment is successful. Creating ticket."
             await context.bot.send_message(chat_id=context.job.chat_id, text=text)
-            logger.info(text)
+            logger.info("Payment is successful. Creating ticket.")
             if p.ticket_reservation():
                 logger.info("ticket: %s", p.ticket_reservation_info)
                 logger.info("Stop keep_seat_lock.")
@@ -885,8 +908,31 @@ async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
         return context.job.data.get(CURRENT_STATE, END)
     except requests.exceptions.RequestException as rexc:
         logger.info("%s", rexc)
-        return context.user_data.get(CURRENT_STATE, END)
+        return context.job.data.get(CURRENT_STATE, END)
     return context.job.data.get(CURRENT_STATE, END)
+
+
+async def check_payment_test(context: ContextTypes.DEFAULT_TYPE) -> int:
+    logger.info("TEST METHOD.Sleeping for 60 seconds.")
+    asyncio.sleep(60)
+    return context.job.data.get(CURRENT_STATE, END)
+
+
+async def start_test_check_payment(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+
+    for r in range(100):
+        logger.info("RUNNING THE %sth TIME", r)
+        context.job_queue.run_repeating(
+            check_payment_test,
+            data=context.user_data,
+            chat_id=update.message.chat_id,
+            interval=10,
+            first=0,
+            last=300,
+            job_kwargs={"misfire_grace_time": 3},
+        )
 
 
 async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -930,6 +976,7 @@ async def check_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.info("task_id: %s", task_id)
     if task_id is not None:
         active_tasks = i.active()
+        logger.info("active_tasks len: %s", len(active_tasks.values()))
         for task in active_tasks.values():
 
             for t in task:

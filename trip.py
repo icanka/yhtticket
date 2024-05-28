@@ -66,7 +66,7 @@ class Trip:
             elif self.is_seat_reserved:
                 self.logger.info("Seat is already reserved.")
                 time_diff = self.lock_end_time - datetime.now()
-                if time_diff.total_seconds() < 5:
+                if time_diff.total_seconds() < 0:
                     self.logger.info(time_diff.total_seconds())
                     self.logger.info(
                         "Lock time ending is approaching. Starting to reserve the seat again"

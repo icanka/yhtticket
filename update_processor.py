@@ -19,7 +19,7 @@ class CustomUpdateProcessor(BaseUpdateProcessor):
         This method is called for each update that is received from the Telegram server
         
         We dont want to process multiple updates from the same user concurrently, 
-        To not deal with all consequences comes with it.
+        to not to deal with all consequences comes with it such as race conditions.
         
         But we also want to process updates from different users concurrently.
         """
@@ -67,7 +67,7 @@ def main() -> None:
     application = (
         Application.builder()
         .token("***REMOVED***")
-        .concurrent_updates(MyUpdateProcessor(5))
+        .concurrent_updates(CustomUpdateProcessor(5))
         .build()
     )
 

@@ -155,12 +155,29 @@ class SeleniumPayment(MainSeleniumPayment):
         )
         self.logger.info("Price request: %s", json.dumps(req_body))
         # send request
-        response = requests.post(
-            api_constants.PRICE_ENDPOINT,
-            headers=api_constants.REQUEST_HEADER,
-            data=json.dumps(req_body),
-            timeout=10,
-        )
+        
+        
+        retries = 0
+        while retries < 5:
+            try:
+                response = requests.post(
+                    api_constants.PRICE_ENDPOINT,
+                    headers=api_constants.REQUEST_HEADER,
+                    data=json.dumps(req_body),
+                    timeout=10,
+                )
+            except requests.exceptions.RequestException as e:
+                retries += 1
+                self.logger.error("Price request failed: %s, retry: %s", e, retries)
+                time.sleep(5)
+                continue
+            except TimeoutError as e:
+                retries += 1
+                self.logger.error("Price request failed: %s, retry: %s", e, retries)
+                time.sleep(5)
+                continue
+            break
+
         response_json = json.loads(response.text)
         self.logger.info("Price response: %s", response_json["anahatFiyatHesSonucDVO"])
         self.normal_price = int(
@@ -200,16 +217,26 @@ class SeleniumPayment(MainSeleniumPayment):
         for seat in self.trip.seat_lock_response["koltuklarimListesi"]:
             self.vb_enroll_control_req["koltukLockList"].append(seat["koltukLockId"])
 
-        try:
-            response = requests.post(
-                api_constants.VB_ENROLL_CONTROL_ENDPOINT,
-                headers=api_constants.REQUEST_HEADER,
-                data=json.dumps(self.vb_enroll_control_req),
-                timeout=10,
-            )
-        except requests.exceptions.RequestException as e:
-            self.logger.error("Payment request failed: %s", e)
-            raise e
+        retries = 0
+        while retries < 5:
+            try:
+                response = requests.post(
+                    api_constants.VB_ENROLL_CONTROL_ENDPOINT,
+                    headers=api_constants.REQUEST_HEADER,
+                    data=json.dumps(self.vb_enroll_control_req),
+                    timeout=10,
+                )
+            except requests.exceptions.RequestException as e:
+                retries += 1
+                self.logger.error("Payment request failed: %s, retry: %s", e, retries)
+                time.sleep(5)
+                continue
+            except TimeoutError as e:
+                retries += 1
+                self.logger.error("Payment request failed: %s, retry: %s", e, retries)
+                time.sleep(5)
+                continue
+            break
 
         response_json = json.loads(response.text)
         if response_json["cevapBilgileri"]["cevapKodu"] != "000":
@@ -262,14 +289,32 @@ class SeleniumPayment(MainSeleniumPayment):
         }
         self.logger.info("Sending odeme sorgu request: %s", odeme_sorgu)
 
-        odeme_sorgu_response = requests.post(
-            api_constants.VB_ODEME_SORGU,
-            headers=api_constants.REQUEST_HEADER,
-            data=json.dumps(odeme_sorgu),
-            timeout=10,
-        )
+        retries = 0
+        while retries < 5:
+            try:
+                odeme_sorgu_response = requests.post(
+                    api_constants.VB_ODEME_SORGU,
+                    headers=api_constants.REQUEST_HEADER,
+                    data=json.dumps(odeme_sorgu),
+                    timeout=10,
+                )
+                odeme_sorgu_response.raise_for_status()
+            except requests.exceptions.RequestException as e:
+                retries += 1
+                self.logger.error(
+                    "Payment sorgu request failed: %s, retry: %s", e, retries
+                )
+                time.sleep(5)
+                continue
+            except TimeoutError as e:
+                retries += 1
+                self.logger.error(
+                    "Payment sorgu request failed: %s, retry: %s", e, retries
+                )
+                time.sleep(5)
+                continue
+            break
 
-        odeme_sorgu_response.raise_for_status()
         odeme_sorgu_response_json = json.loads(odeme_sorgu_response.text)
 
         if odeme_sorgu_response_json["cevapBilgileri"]["cevapKodu"] != "000":
@@ -326,18 +371,31 @@ class SeleniumPayment(MainSeleniumPayment):
         self.logger.info("Ticket reservation request: %s", req_body)
         # send request
 
-        try:
-            response = requests.post(
-                api_constants.TICKET_RESERVATION_ENDPOINT,
-                headers=api_constants.REQUEST_HEADER,
-                data=json.dumps(req_body),
-                timeout=30,
-            )
-        except Exception as e:
-            self.logger.error("Ticket reservation request failed: %s", e)
-            # print detailed error message
-            self.logger.error("Ticket reservation request failed: %s", e.args)
-            raise e
+        retries = 0
+        while retries < 5:
+            try:
+                response = requests.post(
+                    api_constants.TICKET_RESERVATION_ENDPOINT,
+                    headers=api_constants.REQUEST_HEADER,
+                    data=json.dumps(req_body),
+                    timeout=10,
+                )
+                response.raise_for_status()
+            except requests.exceptions.RequestException as e:
+                retries += 1
+                self.logger.error(
+                    "Ticket reservation request failed: %s, retry: %s", e, retries
+                )
+                time.sleep(5)
+                continue
+            except TimeoutError as e:
+                retries += 1
+                self.logger.error(
+                    "Ticket reservation request failed: %s, retry: %s", e, retries
+                )
+                time.sleep(5)
+                continue
+            break
 
         response_json = json.loads(response.text)
 

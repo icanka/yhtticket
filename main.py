@@ -12,6 +12,8 @@ from telegram.ext import (
     ConversationHandler,
 )
 from update_processor import CustomUpdateProcessor
+from apscheduler.events import EVENT_JOB_SUBMITTED, EVENT_JOB_MISSED, EVENT_JOB_MAX_INSTANCES
+from scheduler_listeners import submit_listener, mis_listener, max_instances_listener
 from telegram_bot import *
 from constants import *
 
@@ -19,11 +21,11 @@ print("main.py is running")
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s",
     level=logging.INFO,
-    stream=sys.stdout,
-    filename="telegram_bot.log",
+    handlers=[logging.StreamHandler(), logging.FileHandler("trip_bot.log")],
 )
 logging.getLogger("httpx").setLevel(logging.WARNING)
 print("Logging is set up")
+
 
 def main() -> None:
     """Run the bot."""
@@ -36,6 +38,22 @@ def main() -> None:
         .concurrent_updates(CustomUpdateProcessor(3))
         .build()
     )
+
+
+    scheduler_configuration = {
+        "coalesce": True,
+        "misfire_grace_time": 10, # default misfire time
+    }
+    scheduler = app.job_queue.scheduler
+    scheduler.configure()
+    scheduler.configure(
+        job_defaults=scheduler_configuration, **app.job_queue.scheduler_configuration
+    )
+    scheduler.add_listener(submit_listener, EVENT_JOB_SUBMITTED)
+    scheduler.add_listener(mis_listener, EVENT_JOB_MISSED)
+    scheduler.add_listener(max_instances_listener, EVENT_JOB_MAX_INSTANCES)
+    # logger.info("scheduler configuration: %s", scheduler.__dict__)
+
     fallback_handlers = [
         CommandHandler("stop", stop),
         CommandHandler("res", res),
@@ -216,6 +234,11 @@ def main() -> None:
         "get_set_current_trip", get_set_current_trip
     )
     app.add_handler(get_set_current_trip_handler)
+
+
+    test_command_handler = CommandHandler("test", start_test_check_payment)
+    app.add_handler(test_command_handler)
+
 
     unknown_command_handler = MessageHandler(filters.COMMAND, unknown_command)
     app.add_handler(unknown_command_handler)
