@@ -3,9 +3,11 @@
 import json
 import logging
 from datetime import datetime, timedelta
+import time
 import requests
 import dateparser
 import api_constants
+from requests.exceptions import RequestException
 from _utils import find_value
 from passenger import Passenger
 
@@ -21,9 +23,10 @@ class SeatLockedException(Exception):
 
 class TripSearchApi:
     """Class for searching for trips and selecting empty seats."""
+
     logger = logging.getLogger(__name__)
     time_format = "%b %d, %Y %I:%M:%S %p"
-    
+
     # def __init__(self) -> None:
     #     # set up class logger
     #     TripSearchApi.logger = logging.getLogger(__name__)
@@ -46,8 +49,7 @@ class TripSearchApi:
         vagon_yerlesim = vagon_json["vagonHaritasiIcerikDVO"]["vagonYerlesim"]
         koltuk_durumlari = vagon_json["vagonHaritasiIcerikDVO"]["koltukDurumlari"]
         # efficient way to merge two lists of dictionaries based on a common key
-        index_dict = {d["koltukNo"]
-            : d for d in koltuk_durumlari if "koltukNo" in d}
+        index_dict = {d["koltukNo"]: d for d in koltuk_durumlari if "koltukNo" in d}
         # pprint(index_dict)
         merged_list = []
         for seat in vagon_yerlesim:
@@ -107,12 +109,19 @@ class TripSearchApi:
             dict: The response JSON containing the selected seat information
             if the response code is 200.
         """
+
+        retries = 0
+        max_retries = 3
+        sleep = 3
+        timeout = 3
         # Select the first empty seat
         seat_select_req = api_constants.koltuk_sec_req_body.copy()
         s_check = api_constants.seat_check.copy()
         if trip["empty_seats"]:
             empty_seat = trip["empty_seats"][0] if empty_seat is None else empty_seat
-            TripSearchApi.logger.info("Selecting empty seat: koltukNo: %s", empty_seat["koltukNo"])
+            TripSearchApi.logger.info(
+                "Selecting empty seat: koltukNo: %s", empty_seat["koltukNo"]
+            )
 
             seat_select_req["seferId"] = trip["seferId"]
             seat_select_req["vagonSiraNo"] = empty_seat["vagonSiraNo"]
@@ -123,39 +132,54 @@ class TripSearchApi:
             s_check["seciliVagonSiraNo"] = empty_seat["vagonSiraNo"]
             s_check["koltukNo"] = empty_seat["koltukNo"]
 
-            
-            s_response = requests.post(
-                api_constants.SEAT_CHECK_ENDPOINT,
-                headers=api_constants.REQUEST_HEADER,
-                data=json.dumps(s_check),
-                timeout=3,
-            )
-            s_response.raise_for_status()
-            s_response_json = json.loads(s_response.text)
-
-            if s_response_json["cevapBilgileri"]["cevapKodu"] != "000":
-                TripSearchApi.logger.error("response_json: %s", s_response_json)
-                raise ValueError(f"Non zero response code: s_response_json: {s_response_json}")
-
-            if not s_response_json["koltukLocked"]:
-                response = requests.post(
-                    api_constants.SELECT_EMPTY_SEAT_ENDPOINT,
-                    headers=api_constants.REQUEST_HEADER,
-                    data=json.dumps(seat_select_req),
-                    timeout=3,
-                )
-                response.raise_for_status()
-
-                response_json = json.loads(response.text)
-                TripSearchApi.logger.debug(response_json)
-                if response_json["cevapBilgileri"]["cevapKodu"] != "000":
-                    TripSearchApi.logger.error(
-                        "Non zero response code: response_json: %s", response_json
+            while retries < max_retries:
+                try:
+                    s_response = requests.post(
+                        api_constants.SEAT_CHECK_ENDPOINT,
+                        headers=api_constants.REQUEST_HEADER,
+                        data=json.dumps(s_check),
+                        timeout=timeout,
                     )
-                    raise ValueError(f"Non zero response code: response_json: {response_json}")
-                end_time = response_json["koltuklarimListesi"][0]["bitisZamani"]
-            else:
-                raise SeatLockedException(empty_seat)
+                    s_response.raise_for_status()
+                    s_response_json = s_response.json()
+
+                    if s_response_json["cevapBilgileri"]["cevapKodu"] != "000":
+                        TripSearchApi.logger.error("response_json: %s", s_response_json)
+                        raise ValueError(
+                            f"Non zero response code: s_response_json: {s_response_json}"
+                        )
+
+                    if not s_response_json["koltukLocked"]:
+                        response = requests.post(
+                            api_constants.SELECT_EMPTY_SEAT_ENDPOINT,
+                            headers=api_constants.REQUEST_HEADER,
+                            data=json.dumps(seat_select_req),
+                            timeout=timeout,
+                        )
+
+                        response.raise_for_status()
+                        response_json = response.json()
+
+                        if response_json["cevapBilgileri"]["cevapKodu"] != "000":
+                            TripSearchApi.logger.error(
+                                "Non zero response code: response_json: %s",
+                                response_json,
+                            )
+                            raise ValueError(
+                                f"Non zero response code: response_json: {response_json}"
+                            )
+                        end_time = response_json["koltuklarimListesi"][0]["bitisZamani"]
+                    else:
+                        raise SeatLockedException(empty_seat)
+                except RequestException as e:
+                    TripSearchApi.logger.error("Request exception: %s", e)
+                    retries += 1
+                    TripSearchApi.logger.error(
+                        "Retrying seat selection. Retry count: %s", retries
+                    )
+                    time.sleep(sleep)
+                break
+
             return end_time, empty_seat, response_json
 
     @staticmethod
@@ -169,16 +193,34 @@ class TripSearchApi:
         Returns:
             list: The list of dictionaries containing the empty seat information.
         """
+        retries = 0
+        max_retries = 10
+        sleep = 10
+        timeout = 10
+
         TripSearchApi.logger.debug(vagon_map_req)
         TripSearchApi.logger.debug(vagons)
         empty_seats = list()
-        response = requests.post(
-            api_constants.VAGON_HARITA_ENDPOINT,
-            headers=api_constants.REQUEST_HEADER,
-            data=json.dumps(vagon_map_req),
-            timeout=10,
-        )
-        response_json = json.loads(response.text)
+
+        while retries < max_retries:
+            try:
+                response = requests.post(
+                    api_constants.VAGON_HARITA_ENDPOINT,
+                    headers=api_constants.REQUEST_HEADER,
+                    data=json.dumps(vagon_map_req),
+                    timeout=timeout,
+                )
+                response.raise_for_status()
+            except RequestException as e:
+                TripSearchApi.logger.error("Error while getting vagon map: %s", e)
+                retries += 1
+                TripSearchApi.logger.error(
+                    "Retrying vagon map. Retry count: %s", retries
+                )
+                time.sleep(sleep)
+            break
+
+        response_json = response.json()
         TripSearchApi.logger.debug(response_json)
 
         for empty_seat in TripSearchApi.get_empty_vagon_seats(response_json):
@@ -208,21 +250,6 @@ class TripSearchApi:
         trip_with_seats = trip.copy()
         vagon_map_req = api_constants.vagon_harita_req_body.copy()
 
-        # vagon_req = api_constants.vagon_req_body.copy()
-        # vagon_req["seferBaslikId"] = trip_with_seats["seferId"]
-        # vagon_req["binisIstId"] = trip_with_seats["binisIstasyonId"]
-        # vagon_req["inisIstId"] = trip_with_seats["inisIstasyonId"]
-
-        # get the vagons' seat status for the trip
-        # TripSearchApi.logger.debug(vagon_req)
-        # response = requests.post(
-        #     api_constants.VAGON_SEARCH_ENDPOINT,
-        #     headers=api_constants.REQUEST_HEADER,
-        #     data=json.dumps(vagon_req),
-        #     timeout=10,
-        # )
-        # response_json = json.loads(response.text)
-        # TripSearchApi.logger.debug(response_json)
         trip_with_seats["empty_seats"] = list()
 
         for vagon in trip["vagons"]:
@@ -234,7 +261,8 @@ class TripSearchApi:
                 vagon_type = vagon["vagonTipId"]
                 if seat_type != vagon_type:
                     TripSearchApi.logger.debug(
-                        "seat_type: %s, vagon_type: %s", seat_type, vagon_type)
+                        "seat_type: %s, vagon_type: %s", seat_type, vagon_type
+                    )
                     continue
             empty_seats = TripSearchApi.get_detailed_vagon_info_empty_seats(
                 vagon_map_req, trip["vagons"]
@@ -305,8 +333,7 @@ class TripSearchApi:
         if to_station not in [station["station_name"] for station in stations]:
             TripSearchApi.logger.error("%s is not a valid station", to_station)
             raise ValueError(f"{to_station} is not a valid station")
-        
-        
+
     @staticmethod
     def search_trips(
         from_station,
@@ -342,6 +369,11 @@ class TripSearchApi:
                 - 'inisIstasyonId': The ID of the destination station.
         """
         # log the method parameters
+        retries = 0
+        max_retries = 10
+        sleep = 10
+        timeout = 3
+
         TripSearchApi.logger.info(
             "Searching for trips. from_station: %s to_station: %s from_date: %s to_date: %s",
             from_station,
@@ -351,7 +383,9 @@ class TripSearchApi:
         )
 
         if not from_date:
-            TripSearchApi.logger.info("from_date is not provided. Using the current date.")
+            TripSearchApi.logger.info(
+                "from_date is not provided. Using the current date."
+            )
             from_date = datetime.now().strftime(TripSearchApi.time_format)
 
         vagon_req_body = api_constants.vagon_req_body.copy()
@@ -387,27 +421,32 @@ class TripSearchApi:
             from_date, TripSearchApi.time_format
         )
 
-        response = requests.post(
-            api_constants.TRIP_SEARCH_ENDPOINT,
-            headers=api_constants.REQUEST_HEADER,
-            data=json.dumps(trip_req),
-            timeout=30,
-        )
+        while retries < max_retries:
+            try:
+                response = requests.post(
+                    api_constants.TRIP_SEARCH_ENDPOINT,
+                    headers=api_constants.REQUEST_HEADER,
+                    data=json.dumps(trip_req),
+                    timeout=timeout,
+                )
+                response.raise_for_status()
+            except RequestException as e:
+                TripSearchApi.logger.error("Error while searching for trips: %s", e)
+                retries += 1
+                TripSearchApi.logger.error(
+                    "Retrying trip search. Retry count: %s", retries
+                )
+                time.sleep(sleep)
+            break
 
-        response_json = json.loads(response.text)
+        response_json = response.json()
 
         sorted_trips = sorted(
             response_json["seferSorgulamaSonucList"],
             key=lambda trip: datetime.strptime(
-                trip["binisTarih"], TripSearchApi.time_format),
+                trip["binisTarih"], TripSearchApi.time_format
+            ),
         )
-
-        # trips only with trip['trenTipi'] == 'YHT'
-        # sorted_trips = [
-        #     trip
-        #     for trip in sorted_trips
-        #     if trip["trenTipi"] == "YHT"
-        # ]
 
         # filter trips based on to_date
         logging.info("trip count: %s", len(sorted_trips))
@@ -418,7 +457,8 @@ class TripSearchApi:
             sorted_trips = [
                 trip
                 for trip in sorted_trips
-                if datetime.strptime(trip["binisTarih"], TripSearchApi.time_format) < to_date
+                if datetime.strptime(trip["binisTarih"], TripSearchApi.time_format)
+                < to_date
             ]
 
         logging.info("trip count after sort: %s", len(sorted_trips))
@@ -448,7 +488,11 @@ class TripSearchApi:
                                 vagon_type["kalanSayi"]
                                 - vagon_type["kalanEngelliKoltukSayisi"]
                             )
-                            t["eco_empty_seat_count"] = 0 if t["eco_empty_seat_count"] < 0 else t["eco_empty_seat_count"]
+                            t["eco_empty_seat_count"] = (
+                                0
+                                if t["eco_empty_seat_count"] < 0
+                                else t["eco_empty_seat_count"]
+                            )
                         # 17001 is the vagonTipId for business class
                         if vagon_type["vagonTipId"] == 17001:
                             t["buss_empty_seat_count"] = (
@@ -459,21 +503,13 @@ class TripSearchApi:
                         # 11750035651 is the vagonTipId for 'anahat' trips' bed seat
                         if vagon_type["vagonTipId"] == 11750035651:
                             pass
-                        TripSearchApi.logger.info("vagonTipId: %s",
-                                         vagon_type["vagonTipId"])
-                    # t["eco_empty_seat_count"] = (
-                    #     trip["vagonTipleriBosYerUcret"][0]["kalanSayi"]
-                    #     - trip["vagonTipleriBosYerUcret"][0]["kalanEngelliKoltukSayisi"]
-                    # )
-                    # t["eco_empty_seat_count"] = 0 if t["eco_empty_seat_count"] < 0 else t["eco_empty_seat_count"]
+                        TripSearchApi.logger.info(
+                            "vagonTipId: %s", vagon_type["vagonTipId"]
+                        )
 
-                    # t["buss_empty_seat_count"] = (
-                    #     trip["vagonTipleriBosYerUcret"][1]["kalanSayi"]
-                    #     - trip["vagonTipleriBosYerUcret"][1]["kalanEngelliKoltukSayisi"]
-                    # )
-
-                    t["empty_seat_count"] = t.get(
-                        "eco_empty_seat_count", 0) + t.get("buss_empty_seat_count", 0)
+                    t["empty_seat_count"] = t.get("eco_empty_seat_count", 0) + t.get(
+                        "buss_empty_seat_count", 0
+                    )
 
                     t["binisTarih"] = trip["binisTarih"]
                     t["inisTarih"] = trip["inisTarih"]
@@ -492,7 +528,8 @@ class TripSearchApi:
                 except IndexError as e:  # no business class, just ignore
                     TripSearchApi.logger.error("IndexError: %s", e)
                     TripSearchApi.logger.error(
-                        "No business class for trip: %s", trip['seferId'])
+                        "No business class for trip: %s", trip["seferId"]
+                    )
         return trips
 
     @staticmethod
@@ -505,75 +542,100 @@ class TripSearchApi:
             str: JSON string representation of the filtered station list.
             int: HTTP status code if the request fails.
         """
-
+        retries = 0
+        max_retries = 10
+        sleep = 5
+        timeout = 10
         hst_stations = list()
 
-        try:
-            # Send the request to the endpoint
-            response = requests.post(
-                api_constants.STATION_LIST_ENDPOINT,
-                headers=api_constants.REQUEST_HEADER,
-                data=api_constants.STATION_LIST_REQUEST_BODY,
-                timeout=10,
-            )
+        while retries < max_retries:
+            try:
+                # Send the request to the endpoint
+                response = requests.post(
+                    api_constants.STATION_LIST_ENDPOINT,
+                    headers=api_constants.REQUEST_HEADER,
+                    data=api_constants.STATION_LIST_REQUEST_BODY,
+                    timeout=timeout,
+                )
 
-            response.raise_for_status()  # Raise an exception if the request fails
+                response.raise_for_status()
+                data = response.json()
 
-            # Parse the JSON response
-            data = json.loads(response.text)
+                for item in data["istasyonBilgileriList"]:
+                    if "YHT" in item["stationTrainTypes"]:
+                        station = {}
+                        station["station_name"] = find_value(item, "istasyonAdi")
+                        station["station_code"] = find_value(item, "istasyonKodu")
+                        station["station_id"] = find_value(item, "istasyonId")
+                        station["station_view_name"] = find_value(
+                            item, "stationViewName"
+                        )
+                        station["is_available"] = find_value(item, "istasyonDurumu")
+                        station["is_purchasable"] = find_value(
+                            item, "satisSorgudaGelsin"
+                        )
 
-            for item in data["istasyonBilgileriList"]:
-                if "YHT" in item["stationTrainTypes"]:
-                    station = {}
-                    station["station_name"] = find_value(item, "istasyonAdi")
-                    station["station_code"] = find_value(item, "istasyonKodu")
-                    station["station_id"] = find_value(item, "istasyonId")
-                    station["station_view_name"] = find_value(
-                        item, "stationViewName")
-                    station["is_available"] = find_value(
-                        item, "istasyonDurumu")
-                    station["is_purchasable"] = find_value(
-                        item, "satisSorgudaGelsin")
+                        # Filter out the stations that are not available or not
+                        # purchasable
+                        if (
+                            station["is_available"] is True
+                            and station["is_purchasable"] is True
+                        ):
+                            hst_stations.append(station)
 
-                    # Filter out the stations that are not available or not
-                    # purchasable
-                    if (
-                        station["is_available"] is True
-                        and station["is_purchasable"] is True
-                    ):
-                        hst_stations.append(station)
+                return hst_stations
 
-            return hst_stations
-
-        except requests.exceptions.RequestException as e:
-            TripSearchApi.logger.error(
-                "Error occurred while fetching the station list: %s", e)
-            raise e
+            except RequestException as e:
+                TripSearchApi.logger.error("Error while getting station list: %s", e)
+                retries += 1
+                TripSearchApi.logger.error(
+                    "Retrying station list. Retry count: %s", retries
+                )
+                time.sleep(sleep)
+            break
 
     @staticmethod
     def is_mernis_correct(passenger: Passenger, date_format: str = "%d/%m/%Y") -> bool:
+        """Mernis verification for the given passenger."""
+        retries = 0
+        max_retries = 10
+        sleep = 5
+
         mernis_req_body = api_constants.mernis_dogrula_req_body.copy()
-        date = datetime.strptime(
-            passenger.birthday, date_format).strftime(TripSearchApi.time_format)
+        date = datetime.strptime(passenger.birthday, date_format).strftime(
+            TripSearchApi.time_format
+        )
 
         mernis_req_body["ad"] = passenger.name
         mernis_req_body["soyad"] = passenger.surname
         mernis_req_body["tckn"] = passenger.tckn
         mernis_req_body["dogumTar"] = date
 
-        response = requests.post(
-            api_constants.MERNIS_DOGRULAMA_ENDPOINT,
-            headers=api_constants.REQUEST_HEADER,
-            data=json.dumps(mernis_req_body),
-            timeout=30,
-        )
-        response.raise_for_status()
+        while retries < max_retries:
+            try:
+                response = requests.post(
+                    api_constants.MERNIS_DOGRULAMA_ENDPOINT,
+                    headers=api_constants.REQUEST_HEADER,
+                    data=json.dumps(mernis_req_body),
+                    timeout=30,
+                )
+                response.raise_for_status()
+            except requests.RequestException as e:
+                TripSearchApi.logger.error("Error while verifying mernis: %s", e)
+                retries += 1
+                TripSearchApi.logger.error(
+                    "Retrying mernis verification. Retry count: %s", retries
+                )
+                time.sleep(sleep)
+            break
 
-        response_json = json.loads(response.text)
+        response_json = response.json()
         TripSearchApi.logger.debug(response_json)
+
         if response_json["cevapBilgileri"]["cevapKodu"] != "000":
             TripSearchApi.logger.error(
-                "Mernis verification failed. response_json: %s", response_json)
+                "Mernis verification failed. response_json: %s", response_json
+            )
             TripSearchApi.logger.error(
                 "Passenger: %s %s TCKN: %s Birthday: %s",
                 passenger.name,
@@ -582,13 +644,5 @@ class TripSearchApi:
                 date,
             )
             raise ValueError(response_json["cevapBilgileri"]["cevapMsj"])
-
-        TripSearchApi.logger.info(
-            "Passenger: %s %s TCKN: %s Birthday: %s",
-            passenger.name,
-            passenger.surname,
-            passenger.tckn,
-            date,
-        )
         TripSearchApi.logger.info("Mernis verification succeeded.")
         return True

@@ -793,9 +793,7 @@ async def set_passenger(
         return context.user_data.get(CURRENT_STATE, END)
 
 
-def init_passenger(
-    _: Update, context: ContextTypes.DEFAULT_TYPE, mernis_check=True
-):
+def init_passenger(_: Update, context: ContextTypes.DEFAULT_TYPE, mernis_check=True):
     """Handle the /init_passenger command. Sets user_data[PASSENGER]."""
     # get the message coming from command
 
@@ -838,28 +836,9 @@ def init_passenger(
         credit_card_ccv=context.user_data["credit_card_ccv"],
         credit_card_exp=context.user_data["credit_card_exp"],
     )
-
     # sometimes mernis check fails, so we need to retry
     if mernis_check:
-        for _ in range(10):
-            try:
-                TripSearchApi.is_mernis_correct(passenger)
-                logger.info("Mernis check is succesfull.")
-                break
-            except ValueError as exc:
-                logging.error("ValueError: %s", exc)
-                time.sleep(5)
-                # last iteration and mernis check failed
-                if _ == 4:
-                    raise ValueError(exc) from exc
-                continue
-            except requests.exceptions.HTTPError as exc:
-                logging.error("HTTPError: %s", exc)
-                time.sleep(5)
-                # last iteration and mernis check failed
-                if _ == 4:
-                    raise requests.exceptions.HTTPError(exc) from exc
-                continue
+        TripSearchApi.is_mernis_correct(passenger)
 
     context.user_data[PASSENGER] = passenger
     logger.info("passenger object set to context.user_data[PASSENGER].")

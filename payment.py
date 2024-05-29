@@ -178,7 +178,6 @@ class SeleniumPayment(MainSeleniumPayment):
                 retries += 1
                 self.logger.error("Price request failed: %s, retry: %s", e, retries)
                 time.sleep(self.retry_delay)
-                continue
             break
 
         response_json = response.json()
@@ -233,7 +232,6 @@ class SeleniumPayment(MainSeleniumPayment):
                 retries += 1
                 self.logger.error("Payment request failed: %s, retry: %s", e, retries)
                 time.sleep(self.retry_delay)
-                continue
             break
 
         response_json = response.json()
@@ -290,7 +288,6 @@ class SeleniumPayment(MainSeleniumPayment):
                     "Odeme sorgu request failed: %s, retry: %s", e, retries
                 )
                 time.sleep(self.retry_delay)
-                continue
             break
 
         odeme_sorgu_response_json = odeme_sorgu_response.json()
@@ -365,7 +362,6 @@ class SeleniumPayment(MainSeleniumPayment):
                     "Ticket reservation request failed: %s, retry: %s", e, retries
                 )
                 time.sleep(self.retry_delay)
-                continue
             break
 
         response_json = response.json()
