@@ -392,109 +392,6 @@ async def handle_datetime_type(
 #     arg_string = update.message.text.partition(" ")[2]
 
 
-async def set_passenger(
-    update: Update, context: ContextTypes.DEFAULT_TYPE, mernis_check=True
-) -> Passenger:
-    """Wrapper for init_passenger. Handles exceptions. See: init_passenger()"""
-    try:
-        logging.info("init_passenger")
-        init_passenger(update, context, mernis_check)
-
-    except KeyError as feature:
-        logging.error("KeyError: %s", feature)
-        await update.message.reply_text(
-            f"{feature} is required, please update your information first."
-        )
-        return context.user_data.get(CURRENT_STATE, END)
-
-    except ValueError as exc:
-        logging.error("ValueError: %s", exc)
-        await update.message.reply_text(
-            "Mernis verification failed. Please update your information first.",
-        )
-        return context.user_data.get(CURRENT_STATE, END)
-
-    except requests.exceptions.HTTPError as exc:
-        logging.error("HTTPError: %s", exc)
-        await update.message.reply_text(
-            "Mernis verification failed. Please update your information first.",
-        )
-        return context.user_data.get(CURRENT_STATE, END)
-
-
-def init_passenger(
-    update: Update, context: ContextTypes.DEFAULT_TYPE, mernis_check=True
-):
-    """Handle the /init_passenger command. Sets user_data[PASSENGER]."""
-    # get the message coming from command
-
-    # make sure all the required information is provided
-    for feature in FEATURE_HELP_MESSAGES:
-        if context.user_data.get(feature) is None:
-            logging.info("KeyError: %s", feature)
-            raise KeyError(feature)
-
-    match context.user_data.get("seat_type"):
-        case "Business":
-            seat_type = Seat.BUSS
-        case "Economy":
-            seat_type = Seat.ECO
-        case "Any":
-            seat_type = Seat.ANY
-        case _:
-            seat_type = Seat.ANY
-
-    match context.user_data.get("tariff"):
-        case "Tam":
-            tariff = Tariff.TAM
-        case "Tsk":
-            tariff = Tariff.TSK
-        case _:
-            tariff = Tariff.TAM
-
-    # create a passenger object
-    passenger = Passenger(
-        tckn=context.user_data["tckn"],
-        name=context.user_data["name"],
-        surname=context.user_data["surname"],
-        birthday=context.user_data["birthday"],
-        email=context.user_data["email"],
-        phone=context.user_data["phone"],
-        sex=context.user_data["sex"],
-        seat_type=seat_type,
-        tariff=tariff,
-        credit_card_no=context.user_data["credit_card_no"],
-        credit_card_ccv=context.user_data["credit_card_ccv"],
-        credit_card_exp=context.user_data["credit_card_exp"],
-    )
-
-    # sometimes mernis check fails, so we need to retry
-    if mernis_check:
-        for _ in range(10):
-            try:
-                TripSearchApi.is_mernis_correct(passenger)
-                logger.info("Mernis check is succesfull.")
-                break
-            except ValueError as exc:
-                logging.error("ValueError: %s", exc)
-                time.sleep(5)
-                # last iteration and mernis check failed
-                if _ == 4:
-                    raise ValueError(exc) from exc
-                continue
-            except requests.exceptions.HTTPError as exc:
-                logging.error("HTTPError: %s", exc)
-                time.sleep(5)
-                # last iteration and mernis check failed
-                if _ == 4:
-                    raise requests.exceptions.HTTPError(exc) from exc
-                continue
-
-    context.user_data[PASSENGER] = passenger
-    logger.info("passenger object set to context.user_data[PASSENGER].")
-    logging.info("passenger: %s.", context.user_data[PASSENGER])
-
-
 async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Start the reservation process."""
     task_id = context.user_data.get("task_id")
@@ -867,34 +764,107 @@ async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
     return context.job.data.get(CURRENT_STATE, END)
 
 
-async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Reset the search task."""
-    trip = context.user_data.get(TRIP)
+async def set_passenger(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, mernis_check=True
+) -> Passenger:
+    """Wrapper for init_passenger. Handles exceptions. See: init_passenger()"""
+    try:
+        logging.info("init_passenger")
+        init_passenger(update, context, mernis_check)
 
-    # reset the fields
-    if trip:
-        trip.trip_json = None
-        trip.empty_seat_json = None
-        trip.seat_lock_response = None
-        trip.lock_end_time = None
-        trip.is_seat_reserved = False
-        trip.koltuk_lock_id_list = []
+    except KeyError as feature:
+        logging.error("KeyError: %s", feature)
+        await update.message.reply_text(
+            f"{feature} is required, please update your information first."
+        )
+        return context.user_data.get(CURRENT_STATE, END)
 
-    # remove all jobs
-    for job in context.job_queue.jobs():
-        job.schedule_removal()
+    except ValueError as exc:
+        logging.error("ValueError: %s", exc)
+        await update.message.reply_text(
+            "Mernis verification failed. Please update your information first.",
+        )
+        return context.user_data.get(CURRENT_STATE, END)
 
-    # revoke the user task
-    if context.user_data.get("task_id") is not None:
-        task_id = context.user_data.get("task_id")
-        logger.info("Revoking task with id: %s", task_id)
-        task = AsyncResult(task_id)
-        task.revoke(terminate=True)
-        logger.warning("SETTING TASK_ID: None")
-        context.user_data["task_id"] = None
+    except requests.exceptions.HTTPError as exc:
+        logging.error("HTTPError: %s", exc)
+        await update.message.reply_text(
+            "Mernis verification failed. Please update your information first.",
+        )
+        return context.user_data.get(CURRENT_STATE, END)
 
-    await update.message.reply_text("Search is reset. You can start a new search.")
-    return context.user_data.get(CURRENT_STATE, END)
+
+def init_passenger(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, mernis_check=True
+):
+    """Handle the /init_passenger command. Sets user_data[PASSENGER]."""
+    # get the message coming from command
+
+    # make sure all the required information is provided
+    for feature in FEATURE_HELP_MESSAGES:
+        if context.user_data.get(feature) is None:
+            logging.info("KeyError: %s", feature)
+            raise KeyError(feature)
+
+    match context.user_data.get("seat_type"):
+        case "Business":
+            seat_type = Seat.BUSS
+        case "Economy":
+            seat_type = Seat.ECO
+        case "Any":
+            seat_type = Seat.ANY
+        case _:
+            seat_type = Seat.ANY
+
+    match context.user_data.get("tariff"):
+        case "Tam":
+            tariff = Tariff.TAM
+        case "Tsk":
+            tariff = Tariff.TSK
+        case _:
+            tariff = Tariff.TAM
+
+    # create a passenger object
+    passenger = Passenger(
+        tckn=context.user_data["tckn"],
+        name=context.user_data["name"],
+        surname=context.user_data["surname"],
+        birthday=context.user_data["birthday"],
+        email=context.user_data["email"],
+        phone=context.user_data["phone"],
+        sex=context.user_data["sex"],
+        seat_type=seat_type,
+        tariff=tariff,
+        credit_card_no=context.user_data["credit_card_no"],
+        credit_card_ccv=context.user_data["credit_card_ccv"],
+        credit_card_exp=context.user_data["credit_card_exp"],
+    )
+
+    # sometimes mernis check fails, so we need to retry
+    if mernis_check:
+        for _ in range(10):
+            try:
+                TripSearchApi.is_mernis_correct(passenger)
+                logger.info("Mernis check is succesfull.")
+                break
+            except ValueError as exc:
+                logging.error("ValueError: %s", exc)
+                time.sleep(5)
+                # last iteration and mernis check failed
+                if _ == 4:
+                    raise ValueError(exc) from exc
+                continue
+            except requests.exceptions.HTTPError as exc:
+                logging.error("HTTPError: %s", exc)
+                time.sleep(5)
+                # last iteration and mernis check failed
+                if _ == 4:
+                    raise requests.exceptions.HTTPError(exc) from exc
+                continue
+
+    context.user_data[PASSENGER] = passenger
+    logger.info("passenger object set to context.user_data[PASSENGER].")
+    logging.info("passenger: %s.", context.user_data[PASSENGER])
 
 
 async def selecting_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -925,6 +895,36 @@ async def selecting_seat_type(
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     return SELECTING_SEAT_TYPE
+
+
+async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Reset the search task."""
+    trip = context.user_data.get(TRIP)
+
+    # reset the fields
+    if trip:
+        trip.trip_json = None
+        trip.empty_seat_json = None
+        trip.seat_lock_response = None
+        trip.lock_end_time = None
+        trip.is_seat_reserved = False
+        trip.koltuk_lock_id_list = []
+
+    # remove all jobs
+    for job in context.job_queue.jobs():
+        job.schedule_removal()
+
+    # revoke the user task
+    if context.user_data.get("task_id") is not None:
+        task_id = context.user_data.get("task_id")
+        logger.info("Revoking task with id: %s", task_id)
+        task = AsyncResult(task_id)
+        task.revoke(terminate=True)
+        logger.warning("SETTING TASK_ID: None")
+        context.user_data["task_id"] = None
+
+    await update.message.reply_text("Search is reset. You can start a new search.")
+    return context.user_data.get(CURRENT_STATE, END)
 
 
 async def delete_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
