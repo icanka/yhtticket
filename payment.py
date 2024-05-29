@@ -8,6 +8,7 @@ import json
 from pprint import pprint
 from selenium import webdriver
 import selenium
+from requests.exceptions import RequestException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
@@ -98,6 +99,14 @@ class SeleniumPayment(MainSeleniumPayment):
 
         self.enroll_reference = None
         self.vpos_ref = None
+        self.timeout = 10
+        self.retry_delay = 30
+        self.max_retries = 10
+        self.odeme_sorgu = {
+            "kanalKodu": "3",
+            "dil": 0,
+            "enrollReference": self.enroll_reference,
+        }
 
         # add kwargs as instance attributes, you can override the default values
         for key, value in kwargs.items():
@@ -155,30 +164,24 @@ class SeleniumPayment(MainSeleniumPayment):
         )
         self.logger.info("Price request: %s", json.dumps(req_body))
         # send request
-        
-        
+
         retries = 0
-        while retries < 5:
+        while retries < self.max_retries:
             try:
                 response = requests.post(
                     api_constants.PRICE_ENDPOINT,
                     headers=api_constants.REQUEST_HEADER,
                     data=json.dumps(req_body),
-                    timeout=10,
+                    timeout=self.timeout,
                 )
-            except requests.exceptions.RequestException as e:
+            except RequestException as e:
                 retries += 1
                 self.logger.error("Price request failed: %s, retry: %s", e, retries)
-                time.sleep(5)
-                continue
-            except TimeoutError as e:
-                retries += 1
-                self.logger.error("Price request failed: %s, retry: %s", e, retries)
-                time.sleep(5)
+                time.sleep(self.retry_delay)
                 continue
             break
 
-        response_json = json.loads(response.text)
+        response_json = response.json()
         self.logger.info("Price response: %s", response_json["anahatFiyatHesSonucDVO"])
         self.normal_price = int(
             response_json["anahatFiyatHesSonucDVO"]["indirimsizToplamUcret"]
@@ -218,39 +221,27 @@ class SeleniumPayment(MainSeleniumPayment):
             self.vb_enroll_control_req["koltukLockList"].append(seat["koltukLockId"])
 
         retries = 0
-        while retries < 5:
+        while retries < self.max_retries:
             try:
                 response = requests.post(
                     api_constants.VB_ENROLL_CONTROL_ENDPOINT,
                     headers=api_constants.REQUEST_HEADER,
                     data=json.dumps(self.vb_enroll_control_req),
-                    timeout=10,
+                    timeout=self.timeout,
                 )
-            except requests.exceptions.RequestException as e:
+            except RequestException as e:
                 retries += 1
                 self.logger.error("Payment request failed: %s, retry: %s", e, retries)
-                time.sleep(5)
-                continue
-            except TimeoutError as e:
-                retries += 1
-                self.logger.error("Payment request failed: %s, retry: %s", e, retries)
-                time.sleep(5)
+                time.sleep(self.retry_delay)
                 continue
             break
 
-        response_json = json.loads(response.text)
+        response_json = response.json()
         if response_json["cevapBilgileri"]["cevapKodu"] != "000":
             self.logger.error("Payment failed: %s", response_json["cevapBilgileri"])
             raise ValueError(
                 f"{response_json['cevapBilgileri']['cevapMsj']} {response_json['cevapBilgileri']['detay']}"
             )
-
-        # with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as temp_file:
-        #     temp_file.write(response.text.encode('utf-8'))
-        #     temp_file_path = temp_file.name
-        #     self.vb_enroll_control_response = temp_file_path
-        #  Payment request
-        # session = requests.Session()
 
         acs_url = response_json["paymentAuthRequest"]["acsUrl"]
         pareq = response_json["paymentAuthRequest"]["pareq"]
@@ -282,40 +273,27 @@ class SeleniumPayment(MainSeleniumPayment):
 
     def is_payment_success(self):
         """set_is_payment_success"""
-        odeme_sorgu = {
-            "kanalKodu": "3",
-            "dil": 0,
-            "enrollReference": self.enroll_reference,
-        }
-        self.logger.info("Sending odeme sorgu request: %s", odeme_sorgu)
-
         retries = 0
-        while retries < 8:
+
+        while retries < self.max_retries:
             try:
                 odeme_sorgu_response = requests.post(
                     api_constants.VB_ODEME_SORGU,
                     headers=api_constants.REQUEST_HEADER,
-                    data=json.dumps(odeme_sorgu),
-                    timeout=10,
+                    data=json.dumps(self.odeme_sorgu),
+                    timeout=self.timeout,
                 )
                 odeme_sorgu_response.raise_for_status()
-            except requests.exceptions.RequestException as e:
+            except RequestException as e:
                 retries += 1
                 self.logger.error(
-                    "Payment sorgu request failed: %s, retry: %s", e, retries
+                    "Odeme sorgu request failed: %s, retry: %s", e, retries
                 )
-                time.sleep(5)
-                continue
-            except TimeoutError as e:
-                retries += 1
-                self.logger.error(
-                    "Payment sorgu request failed: %s, retry: %s", e, retries
-                )
-                time.sleep(30)
+                time.sleep(self.retry_delay)
                 continue
             break
 
-        odeme_sorgu_response_json = json.loads(odeme_sorgu_response.text)
+        odeme_sorgu_response_json = odeme_sorgu_response.json()
 
         if odeme_sorgu_response_json["cevapBilgileri"]["cevapKodu"] != "000":
             self.logger.error("Response: %s", odeme_sorgu_response.text)
@@ -372,13 +350,13 @@ class SeleniumPayment(MainSeleniumPayment):
         # send request
 
         retries = 0
-        while retries < 8:
+        while retries < self.max_retries:
             try:
                 response = requests.post(
                     api_constants.TICKET_RESERVATION_ENDPOINT,
                     headers=api_constants.REQUEST_HEADER,
                     data=json.dumps(req_body),
-                    timeout=10,
+                    timeout=self.timeout,
                 )
                 response.raise_for_status()
             except requests.exceptions.RequestException as e:
@@ -386,18 +364,11 @@ class SeleniumPayment(MainSeleniumPayment):
                 self.logger.error(
                     "Ticket reservation request failed: %s, retry: %s", e, retries
                 )
-                time.sleep(5)
-                continue
-            except TimeoutError as e:
-                retries += 1
-                self.logger.error(
-                    "Ticket reservation request failed: %s, retry: %s", e, retries
-                )
-                time.sleep(30)
+                time.sleep(self.retry_delay)
                 continue
             break
 
-        response_json = json.loads(response.text)
+        response_json = response.json()
 
         if response_json["cevapBilgileri"]["cevapKodu"] != "000":
             self.logger.error(

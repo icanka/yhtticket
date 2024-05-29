@@ -611,7 +611,6 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     tasks = [t for task in active_tasks.values() for t in task if t["id"] == task_id]
 
-    logger.info("tasks: %s", tasks)
     for task in tasks:
         if task["id"] == task_id:
             task_ = AsyncResult(task_id)
@@ -795,7 +794,7 @@ async def set_passenger(
 
 
 def init_passenger(
-    update: Update, context: ContextTypes.DEFAULT_TYPE, mernis_check=True
+    _: Update, context: ContextTypes.DEFAULT_TYPE, mernis_check=True
 ):
     """Handle the /init_passenger command. Sets user_data[PASSENGER]."""
     # get the message coming from command
