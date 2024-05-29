@@ -11,9 +11,10 @@ from telegram.ext import (
     CallbackQueryHandler,
     ConversationHandler,
 )
-from update_processor import CustomUpdateProcessor
 from apscheduler.events import EVENT_JOB_SUBMITTED, EVENT_JOB_MISSED, EVENT_JOB_MAX_INSTANCES
+from update_processor import CustomUpdateProcessor
 from scheduler_listeners import submit_listener, mis_listener, max_instances_listener
+from tasks import redis_client
 from telegram_bot import *
 from constants import *
 
@@ -235,11 +236,15 @@ def main() -> None:
     )
     app.add_handler(get_set_current_trip_handler)
 
+    check_payment_test_handler = CommandHandler("check_payment_test", start_test_check_payment)
+    app.add_handler(check_payment_test_handler)
 
-    test_command_handler = CommandHandler("test", start_test_check_payment)
+    test_command_handler = CommandHandler("test", test_task)
     app.add_handler(test_command_handler)
 
-
+    sen_task_id_handler = CommandHandler("send_task_id", send_redis_key)
+    app.add_handler(sen_task_id_handler)
+    
     unknown_command_handler = MessageHandler(filters.COMMAND, unknown_command)
     app.add_handler(unknown_command_handler)
 

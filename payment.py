@@ -290,7 +290,7 @@ class SeleniumPayment(MainSeleniumPayment):
         self.logger.info("Sending odeme sorgu request: %s", odeme_sorgu)
 
         retries = 0
-        while retries < 5:
+        while retries < 8:
             try:
                 odeme_sorgu_response = requests.post(
                     api_constants.VB_ODEME_SORGU,
@@ -311,7 +311,7 @@ class SeleniumPayment(MainSeleniumPayment):
                 self.logger.error(
                     "Payment sorgu request failed: %s, retry: %s", e, retries
                 )
-                time.sleep(5)
+                time.sleep(30)
                 continue
             break
 
@@ -372,7 +372,7 @@ class SeleniumPayment(MainSeleniumPayment):
         # send request
 
         retries = 0
-        while retries < 5:
+        while retries < 8:
             try:
                 response = requests.post(
                     api_constants.TICKET_RESERVATION_ENDPOINT,
@@ -393,7 +393,7 @@ class SeleniumPayment(MainSeleniumPayment):
                 self.logger.error(
                     "Ticket reservation request failed: %s, retry: %s", e, retries
                 )
-                time.sleep(5)
+                time.sleep(30)
                 continue
             break
 

@@ -22,7 +22,13 @@ from payment import SeleniumPayment
 from trip_search import TripSearchApi
 from trip import Trip
 from passenger import Passenger, Seat, Tariff
-from tasks import redis_client, find_trip_and_reserve, keep_reserving_seat, celery_app
+from tasks import (
+    test_task_,
+    redis_client,
+    find_trip_and_reserve,
+    keep_reserving_seat,
+    celery_app,
+)
 from constants import *
 
 # set httpx logger to warning
@@ -563,14 +569,6 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     jobs = context.job_queue.jobs()
     logger.info("Job queue: %s, len: %s", jobs, len(jobs))
-
-    # if user_trip is not None:
-    #     user_trip_bytes = pickle.dumps(user_trip)
-    #     task = tripp.delay(user_trip_bytes)
-    #     tas
-    # await update.message.reply_text("I'm starting to search.")
-    # logging.info("started searching reservation.")
-
     return context.user_data.get(CURRENT_STATE, END)
 
 
@@ -709,16 +707,9 @@ async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def keep_seat_lock(context: ContextTypes.DEFAULT_TYPE) -> int:
     """Keep the seat lock until the user progresses to payment."""
-
-    # unset redis flag in case it is set
-    logger.info("Unsetting stop_reserve_seat_flag")
-    redis_client.delete("stop_reserve_seat_flag")
-
-    logger.info("Keeping the seat lock.")
-
     trip = context.job.data.get(TRIP)
     task = keep_reserving_seat.delay(pickle.dumps(trip))
-    logger.info("setting task_id to context.user_data")
+    logger.info("Setting task_id to context.user_data")
     # save the task id to the context
     logger.warning("SETTING TASK_ID: %s", task.id)
     context.job.data["task_id"] = task.id
@@ -731,15 +722,16 @@ async def get_set_current_trip(
     """Get the current trip from the task and set it to context.user_data."""
 
     # get task from task and set it to context.user_data
+    
     logger.info("get_set_current_trip")
     i = celery_app.control.inspect()
     active_tasks = i.active()
-
     tasks = [t for task in active_tasks.values() for t in task]
     logger.info("tasks: %s", tasks)
+    
     for task in tasks:
         task_ = AsyncResult(task["id"])
-        redis_client.set("stop_reserve_seat_flag", 1)
+        redis_client.set(task["id"], 1, ex=60)
         result = task_.get()
         trip = pickle.loads(result)
         context.user_data[TRIP] = trip
@@ -770,14 +762,13 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
                 # stop the keep_seat_lock job to get the trip object
                 # then start it again to keep the seat lock in case payment fails
-                redis_client.set("stop_reserve_seat_flag", 1)
-                logger.info("stop_reserve_seat_flag is set.")
+                redis_client.set(task_id, 1, ex=600)
                 # wait for the task to finish but also with a timeout
-                trip_ = task_.get(timeout=10)
+                trip_ = task_.get(timeout=20)
                 trip = pickle.loads(trip_)
 
-                logger.info("loaded trip: %s", trip)
-                logger.info("setting trip to context.user_data.")
+                logger.info("Trip from keep_reserving_seat task: %s", trip)
+                logger.info("Setting trip to context.user_data.")
 
                 context.user_data[TRIP] = trip
                 # keep the seat lock
@@ -802,7 +793,7 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text(text=text)
         return context.user_data.get(CURRENT_STATE, END)
 
-    # dont allow to proceed to payment if the seat lock time is too close to current time
+    # dont allow to proceed to payment if the seat lock time is about to expire
     elif trip.is_seat_reserved and datetime.now() < trip.lock_end_time - timedelta(
         seconds=60
     ):
@@ -810,15 +801,14 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await set_passenger(update, context)
         logger.info("We can proceed to payment. Everything looks fine.")
 
-        trip = context.user_data.get(TRIP)
         # set the passenger object for trip
         trip.passenger = context.user_data.get(PASSENGER)
 
         p = SeleniumPayment()
-        logger.info("setting payment object to context.user_data.")
+        logger.info("Setting payment object to context.user_data[PAYMENT]")
         context.user_data[PAYMENT] = p
         p.trip = trip
-        logger.info("passenger: %s", trip.passenger)
+        logger.info("Passenger: %s", trip.passenger)
 
         try:
             p.set_price()
@@ -866,29 +856,33 @@ async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
         logger.info("job: %s", job)
 
     logger.info("Checking payment status.")
+
     p = context.job.data.get(PAYMENT)
-    # get active tasks
-    logger.info("task_id: %s", context.job.data.get("task_id"))
     task_id = context.job.data.get("task_id")
-    # i = celery_app.control.inspect()
-    # tasks = [t for task in i.active().values() for t in task if t["id"] == task_id]
+
+    logger.info("task_id: %s", task_id)
     logger.info("p.trip: %s", p.trip)
     logger.info("p.trip.passenger: %s", p.trip.passenger)
-    
+
     try:
         if p.is_payment_success():
+
             text = "Payment is successful. Creating ticket."
             await context.bot.send_message(chat_id=context.job.chat_id, text=text)
             logger.info("Payment is successful. Creating ticket.")
+
             if p.ticket_reservation():
+
                 logger.info("ticket: %s", p.ticket_reservation_info)
-                logger.info("Stop keep_seat_lock.")
-                logger.info("Stopping keep_seat_lock. Set stop_reserve_seat_flag to 1.")
-                redis_client.set("stop_reserve_seat_flag", 1)
+                logger.info("Stopping keep_seat_lock.")
+                redis_client.set(task_id, 1, ex=600)
+
                 task = AsyncResult(task_id)
                 task.revoke()
-                logger.info("Removing job with name: %s", context.job.name)
+
+                logger.info("Removing this job: %s", context.job.name)
                 context.job.schedule_removal()
+
                 logger.info("TICKET RESERVATION IS SUCCESSFUL.")
                 logger.info("TICKET: %s", p.ticket_reservation_info)
                 await context.bot.send_message(
@@ -913,6 +907,9 @@ async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def check_payment_test(context: ContextTypes.DEFAULT_TYPE) -> int:
+    chat_id = context.job.data.get("chat_id")
+    logger.info("chat_data: %s", context.job.chat_id)
+
     logger.info("TEST METHOD.Sleeping for 60 seconds.")
     asyncio.sleep(60)
     return context.job.data.get(CURRENT_STATE, END)
@@ -922,7 +919,7 @@ async def start_test_check_payment(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
 
-    for r in range(100):
+    for r in range(1):
         logger.info("RUNNING THE %sth TIME", r)
         context.job_queue.run_repeating(
             check_payment_test,
@@ -933,6 +930,24 @@ async def start_test_check_payment(
             last=300,
             job_kwargs={"misfire_grace_time": 3},
         )
+
+
+async def test_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # create test_task celery task and print its id
+    task = test_task_.delay()
+    # set the task_id to the context
+    context.user_data["task_id"] = task.id
+    logger.info("task_id: %s", task.id)
+    return context.user_data.get(CURRENT_STATE, END)
+
+
+async def send_redis_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # get chat_id
+    stop_task_id = context.user_data.get("task_id")
+
+    redis_client.set(stop_task_id, 1, ex=600)
+    logger.info("stop_task_id: %s", stop_task_id)
+    return context.user_data.get(CURRENT_STATE, END)
 
 
 async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
