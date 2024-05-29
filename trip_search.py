@@ -273,41 +273,6 @@ class TripSearchApi:
             "Length of empty seats: %s", len(trip_with_seats["empty_seats"])
         )
 
-        # for vagon in response_json["vagonBosYerList"]:
-        #     try:
-        #         vagon_map_req["vagonSiraNo"] = vagon["vagonSiraNo"]
-        #         vagon_map_req["seferBaslikId"] = vagon_req["seferBaslikId"]
-        #         vagon_map_req["binisIst"] = from_station
-        #         vagon_map_req["InisIst"] = to_station
-        #         if seat_type is not None:
-        #             #TripSearchApi.logger.info("Seat type: %s, vagon_sira_no: %s",
-        #             #                seat_type, vagon["vagonSiraNo"])
-        #             items = [vagon_ for vagon_ in trip["vagons"]
-        #                     if vagon_["vagonSiraNo"] == vagon["vagonSiraNo"]]
-        #             #TripSearchApi.logger.info("items: %s", items)
-        #             vagon_type = next(
-        #                 vagon_["vagonTipId"]
-        #                 for vagon_ in trip["vagons"]
-        #                 if vagon_["vagonSiraNo"] == vagon["vagonSiraNo"]
-        #             )
-        #             #TripSearchApi.logger.info("vagon_type: %s", vagon_type)
-        #             if seat_type != vagon_type:
-        #                 continue
-        #     except StopIteration:
-        #         TripSearchApi.logger.error(
-        #             # this happens with anahat trips because
-        #             "No vagon type found for vagon_sira_no: %s", vagon["vagonSiraNo"]
-        #         )
-        #         continue
-        #     empty_seats = self.get_detailed_vagon_info_empty_seats(
-        #         vagon_map_req, trip["vagons"]
-        #     )
-        #     TripSearchApi.logger.debug(empty_seats)
-        #     trip_with_seats["empty_seats"].extend(empty_seats)
-        # TripSearchApi.logger.info(
-        #     "Length of empty seats: %s", len(trip_with_seats["empty_seats"])
-        # )
-
         return trip_with_seats
 
     @staticmethod
