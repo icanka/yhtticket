@@ -495,18 +495,6 @@ def init_passenger(
     logging.info("passenger: %s.", context.user_data[PASSENGER])
 
 
-async def delete_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Delete the key from the user_data."""
-    key = context.args[0]
-    if key in context.user_data:
-        del context.user_data[key]
-        text = f"Key {key} deleted."
-    else:
-        text = f"Key {key} not found."
-    await update.message.reply_text(text=text)
-    return context.user_data[CURRENT_STATE]
-
-
 async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Start the reservation process."""
     task_id = context.user_data.get("task_id")
@@ -716,33 +704,6 @@ async def keep_seat_lock(context: ContextTypes.DEFAULT_TYPE) -> int:
     return context.job.data.get(CURRENT_STATE, END)
 
 
-async def get_set_current_trip(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
-    """Get the current trip from the task and set it to context.user_data."""
-
-    # get task from task and set it to context.user_data
-    
-    logger.info("get_set_current_trip")
-    i = celery_app.control.inspect()
-    active_tasks = i.active()
-    tasks = [t for task in active_tasks.values() for t in task]
-    logger.info("tasks: %s", tasks)
-    
-    for task in tasks:
-        task_ = AsyncResult(task["id"])
-        redis_client.set(task["id"], 1, ex=60)
-        result = task_.get()
-        trip = pickle.loads(result)
-        context.user_data[TRIP] = trip
-        logger.info("starting keep_seat_lock.")
-        context.job_queue.run_once(
-            keep_seat_lock, 3, data=context.user_data, chat_id=update.message.chat_id
-        )
-        return context.user_data.get(CURRENT_STATE, END)
-    return context.user_data.get(CURRENT_STATE, END)
-
-
 async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Proceed to payment."""
     # get currently running tasks
@@ -906,50 +867,6 @@ async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
     return context.job.data.get(CURRENT_STATE, END)
 
 
-async def check_payment_test(context: ContextTypes.DEFAULT_TYPE) -> int:
-    chat_id = context.job.data.get("chat_id")
-    logger.info("chat_data: %s", context.job.chat_id)
-
-    logger.info("TEST METHOD.Sleeping for 60 seconds.")
-    asyncio.sleep(60)
-    return context.job.data.get(CURRENT_STATE, END)
-
-
-async def start_test_check_payment(
-    update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> int:
-
-    for r in range(1):
-        logger.info("RUNNING THE %sth TIME", r)
-        context.job_queue.run_repeating(
-            check_payment_test,
-            data=context.user_data,
-            chat_id=update.message.chat_id,
-            interval=10,
-            first=0,
-            last=300,
-            job_kwargs={"misfire_grace_time": 3},
-        )
-
-
-async def test_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    # create test_task celery task and print its id
-    task = test_task_.delay()
-    # set the task_id to the context
-    context.user_data["task_id"] = task.id
-    logger.info("task_id: %s", task.id)
-    return context.user_data.get(CURRENT_STATE, END)
-
-
-async def send_redis_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    # get chat_id
-    stop_task_id = context.user_data.get("task_id")
-
-    redis_client.set(stop_task_id, 1, ex=600)
-    logger.info("stop_task_id: %s", stop_task_id)
-    return context.user_data.get(CURRENT_STATE, END)
-
-
 async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Reset the search task."""
     trip = context.user_data.get(TRIP)
@@ -980,43 +897,6 @@ async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     return context.user_data.get(CURRENT_STATE, END)
 
 
-async def check_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Check the status of the task."""
-    i = celery_app.control.inspect()
-    text = "You have no running task."
-    task_id = context.user_data.get("task_id")
-    # log job queue
-    jobs = context.job_queue.jobs()
-    logger.info("Job queue: %s, len: %s", jobs, len(jobs))
-    logger.info("task_id: %s", task_id)
-    if task_id is not None:
-        active_tasks = i.active()
-        logger.info("active_tasks len: %s", len(active_tasks.values()))
-        for task in active_tasks.values():
-
-            for t in task:
-                logger.info("active_task name: %s", t["name"])
-                logger.info("active_task id: %s", t["id"])
-                if t["id"] == task_id:
-                    task_ = AsyncResult(task_id)
-                    task_name = t["name"].split(".")[1]
-                    text = f"You have currently running a task: {
-                        task_name}, status: {task_.status}."
-                    break
-    await update.message.reply_text(text=text)
-    return context.user_data.get(CURRENT_STATE, END)
-
-
-# async def test_method(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-#     """Return END to end the conversation."""
-#     text = "You are in the test method."
-#     logging.info("You are in the test method. callback_query_data: %s",
-#                  update.callback_query.data)
-#     await update.callback_query.answer()
-#     await update.callback_query.edit_message_text(text=text)
-#     return TEST
-
-
 async def selecting_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Select the tariff."""
     logging.info("Selecting tariff.")
@@ -1045,6 +925,18 @@ async def selecting_seat_type(
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     return SELECTING_SEAT_TYPE
+
+
+async def delete_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Delete the key from the user_data."""
+    key = context.args[0]
+    if key in context.user_data:
+        del context.user_data[key]
+        text = f"Key {key} deleted."
+    else:
+        text = f"Key {key} not found."
+    await update.message.reply_text(text=text)
+    return context.user_data[CURRENT_STATE]
 
 
 async def print_state(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -1083,3 +975,111 @@ async def print_trip(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         )
         await update.message.reply_text(text=reply_text)
     return context.user_data.get(CURRENT_STATE, END)
+
+
+async def get_set_current_trip(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    """Get the current trip from the task and set it to context.user_data."""
+
+    # get task from task and set it to context.user_data
+
+    logger.info("get_set_current_trip")
+    i = celery_app.control.inspect()
+    active_tasks = i.active()
+    tasks = [t for task in active_tasks.values() for t in task]
+    logger.info("tasks: %s", tasks)
+
+    for task in tasks:
+        task_ = AsyncResult(task["id"])
+        redis_client.set(task["id"], 1, ex=60)
+        result = task_.get()
+        trip = pickle.loads(result)
+        context.user_data[TRIP] = trip
+        context.job_queue.run_once(
+            keep_seat_lock, 3, data=context.user_data, chat_id=update.message.chat_id
+        )
+        return context.user_data.get(CURRENT_STATE, END)
+    return context.user_data.get(CURRENT_STATE, END)
+
+
+async def check_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Check the status of the task."""
+    i = celery_app.control.inspect()
+    text = "You have no running task."
+    task_id = context.user_data.get("task_id")
+    # log job queue
+    jobs = context.job_queue.jobs()
+    logger.info("Job queue: %s, len: %s", jobs, len(jobs))
+    logger.info("task_id: %s", task_id)
+    if task_id is not None:
+        active_tasks = i.active()
+        logger.info("active_tasks len: %s", len(active_tasks.values()))
+        for task in active_tasks.values():
+
+            for t in task:
+                logger.info("active_task name: %s", t["name"])
+                logger.info("active_task id: %s", t["id"])
+                if t["id"] == task_id:
+                    task_ = AsyncResult(task_id)
+                    task_name = t["name"].split(".")[1]
+                    text = f"You have currently running a task: {
+                        task_name}, status: {task_.status}."
+                    break
+    await update.message.reply_text(text=text)
+    return context.user_data.get(CURRENT_STATE, END)
+
+
+async def test_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # create test_task celery task and print its id
+    task = test_task_.delay()
+    # set the task_id to the context
+    context.user_data["task_id"] = task.id
+    logger.info("task_id: %s", task.id)
+    return context.user_data.get(CURRENT_STATE, END)
+
+
+async def send_redis_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # get chat_id
+    stop_task_id = context.user_data.get("task_id")
+
+    redis_client.set(stop_task_id, 1, ex=600)
+    logger.info("stop_task_id: %s", stop_task_id)
+    return context.user_data.get(CURRENT_STATE, END)
+
+
+async def check_payment_test(context: ContextTypes.DEFAULT_TYPE) -> int:
+    chat_id = context.job.data.get("chat_id")
+    logger.info("chat_data: %s", context.job.chat_id)
+
+    logger.info("TEST METHOD.Sleeping for 60 seconds.")
+    asyncio.sleep(60)
+    return context.job.data.get(CURRENT_STATE, END)
+
+
+async def start_test_check_payment(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+
+    for r in range(1):
+        logger.info("RUNNING THE %sth TIME", r)
+        context.job_queue.run_repeating(
+            check_payment_test,
+            data=context.user_data,
+            chat_id=update.message.chat_id,
+            interval=10,
+            first=0,
+            last=300,
+            job_kwargs={"misfire_grace_time": 3},
+        )
+    return context.user_data.get(CURRENT_STATE, END)
+
+
+# async def test_method(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+#     """Return END to end the conversation."""
+#     text = "You are in the test method."
+#     logging.info("You are in the test method. callback_query_data: %s",
+#                  update.callback_query.data)
+#     await update.callback_query.answer()
+#     await update.callback_query.edit_message_text(text=text)
+#     return TEST
