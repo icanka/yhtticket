@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 import time
 import requests
 import dateparser
-import api_constants
 from requests.exceptions import RequestException
+import api_constants
 from _utils import find_value
 from passenger import Passenger
 
@@ -131,6 +131,8 @@ class TripSearchApi:
             s_check["seferId"] = trip["seferId"]
             s_check["seciliVagonSiraNo"] = empty_seat["vagonSiraNo"]
             s_check["koltukNo"] = empty_seat["koltukNo"]
+
+            # for test purposes throw connectiontimeout exception
 
             while retries < max_retries:
                 try:
@@ -468,9 +470,6 @@ class TripSearchApi:
                         # 11750035651 is the vagonTipId for 'anahat' trips' bed seat
                         if vagon_type["vagonTipId"] == 11750035651:
                             pass
-                        TripSearchApi.logger.info(
-                            "vagonTipId: %s", vagon_type["vagonTipId"]
-                        )
 
                     t["empty_seat_count"] = t.get("eco_empty_seat_count", 0) + t.get(
                         "buss_empty_seat_count", 0
@@ -585,29 +584,28 @@ class TripSearchApi:
                     timeout=30,
                 )
                 response.raise_for_status()
-            except requests.RequestException as e:
-                TripSearchApi.logger.error("Error while verifying mernis: %s", e)
+                response_json = response.json()
+                TripSearchApi.logger.debug(response_json)
+
+                if response_json["cevapBilgileri"]["cevapKodu"] != "000":
+                    TripSearchApi.logger.error(
+                        "Mernis verification failed. response_json: %s", response_json
+                    )
+                    TripSearchApi.logger.error(
+                        "Passenger: %s %s TCKN: %s Birthday: %s",
+                        passenger.name,
+                        passenger.surname,
+                        passenger.tckn,
+                        date,
+                    )
+                    raise ValueError(response_json["cevapBilgileri"]["cevapMsj"])
+            except (requests.RequestException, ValueError) as e:
                 retries += 1
+                TripSearchApi.logger.error("Error while verifying mernis: %s", e)
                 TripSearchApi.logger.error(
                     "Retrying mernis verification. Retry count: %s", retries
                 )
                 time.sleep(sleep)
             break
-
-        response_json = response.json()
-        TripSearchApi.logger.debug(response_json)
-
-        if response_json["cevapBilgileri"]["cevapKodu"] != "000":
-            TripSearchApi.logger.error(
-                "Mernis verification failed. response_json: %s", response_json
-            )
-            TripSearchApi.logger.error(
-                "Passenger: %s %s TCKN: %s Birthday: %s",
-                passenger.name,
-                passenger.surname,
-                passenger.tckn,
-                date,
-            )
-            raise ValueError(response_json["cevapBilgileri"]["cevapMsj"])
         TripSearchApi.logger.info("Mernis verification succeeded.")
         return True

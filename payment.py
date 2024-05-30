@@ -1,24 +1,17 @@
 """ This module contains the SeleniumPayment class for handling Selenium-based payment operations."""
 
-from datetime import datetime
-import tempfile
-import time
-import requests
 import json
-from pprint import pprint
-from selenium import webdriver
-import selenium
-from requests.exceptions import RequestException
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
-import api_constants
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 import logging
+import time
+from datetime import datetime
 
-from trip_search import TripSearchApi
+import requests
+from requests.exceptions import RequestException
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
+import api_constants
+from tasks.trip_search import TripSearchApi
 
 
 # create a class which will be inherited from the SeleniumPayment class
@@ -272,7 +265,7 @@ class SeleniumPayment(MainSeleniumPayment):
     def is_payment_success(self):
         """set_is_payment_success"""
         retries = 0
-
+        self.logger.info("self.ode_sorgu: %s", self.odeme_sorgu)
         while retries < self.max_retries:
             try:
                 odeme_sorgu_response = requests.post(

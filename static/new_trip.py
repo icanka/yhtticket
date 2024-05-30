@@ -8,8 +8,8 @@ from typing import Optional
 
 import requests
 import api_constants
-from trip_search import TripSearchApi
-from trip_search import SeatLockedException
+from tasks.trip_search import TripSearchApi
+from tasks.trip_search import SeatLockedException
 from passenger import Passenger
 
 

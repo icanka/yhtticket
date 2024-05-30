@@ -1,173 +1,258 @@
-import json
-import logging
+""" This module is the main module of the project. It creates the bot and runs it. """
+
 from datetime import datetime
-from pprint import pprint
-import api_constants
-import time
-from payment import SeleniumPayment
-from trip import Trip
-from passenger import Passenger, Seat, Tariff
-from inline_func import query
-from tasks import find_trip_and_reserve
-import pickle
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    filters,
+    InlineQueryHandler,
+    PicklePersistence,
+    CallbackQueryHandler,
+    ConversationHandler,
+)
+from apscheduler.events import EVENT_JOB_SUBMITTED, EVENT_JOB_MISSED, EVENT_JOB_MAX_INSTANCES
+from update_processor import CustomUpdateProcessor
+from scheduler_listeners import submit_listener, mis_listener, max_instances_listener
+from telegram_bot import *
+from constants import *
+
+print("main.py is running")
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
+    handlers=[logging.StreamHandler(), logging.FileHandler("trip_bot.log")],
+)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+print("Logging is set up")
 
 
-def main():
-    """Main function to run the script."""
-    # Set up logging
-    # logging.basicConfig(
-    #     level=logging.INFO,
-    #     format="%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s",
-    #     handlers=[logging.FileHandler("trip_search.log"), logging.StreamHandler()],
-    # )
-
-    tckn = "18700774442"
-    name = "izzet can"
-    surname = "karakuş"
-    # birthday = "Jul 14, 1994 03:00:00 AM"
-    birthday = "14/07/1994"
-    email = "izzetcankarakus@gmail.com"
-    phone = "05340771521"
-    sex = "E"
-    credit_card_no = "4506347008156065"
-    # credit_card_no = "6501700150491393"
-    credit_card_ccv = "035"
-    # credit_card_ccv = "777"
-    credit_card_exp = "2406"
-    # credit_card_exp = "3004"
-
-    passenger = Passenger(
-        tckn,
-        name,
-        surname,
-        birthday,
-        email,
-        phone,
-        sex,
-        credit_card_no,
-        credit_card_ccv,
-        credit_card_exp,
-        Tariff.TSK,
-        Seat.ANY,
+def main() -> None:
+    """Run the bot."""
+    my_persistance = PicklePersistence(filepath="my_persistence")
+    app = (
+        ApplicationBuilder()
+        .token("***REMOVED***")
+        .arbitrary_callback_data(True)
+        .persistence(persistence=my_persistance)
+        .concurrent_updates(CustomUpdateProcessor(3))
+        .build()
     )
 
-    from_station = "İstanbul(Pendik)"
-    to_station = "Ankara Gar"
-    from_date = "30 May 20:00"
-    to_date = None  # '27 April 17:00'
-    seat_type = "buss"
 
-    # query(from_station, to_station, from_date)
+    scheduler_configuration = {
+        "coalesce": True,
+        "misfire_grace_time": 10, # default misfire time
+    }
+    scheduler = app.job_queue.scheduler
+    scheduler.configure()
+    scheduler.configure(
+        job_defaults=scheduler_configuration, **app.job_queue.scheduler_configuration
+    )
+    scheduler.add_listener(submit_listener, EVENT_JOB_SUBMITTED)
+    scheduler.add_listener(mis_listener, EVENT_JOB_MISSED)
+    scheduler.add_listener(max_instances_listener, EVENT_JOB_MAX_INSTANCES)
+    # logger.info("scheduler configuration: %s", scheduler.__dict__)
 
-    my_trip = Trip(
-        from_station, to_station, from_date, passenger,to_date
+    fallback_handlers = [
+        CommandHandler("stop", stop),
+        CommandHandler("res", res),
+        CommandHandler("print_state", print_state),
+        CallbackQueryHandler(handle_datetime_type, pattern=datetime),
+        MessageHandler(filters.COMMAND, unknown_command),
+    ]
+
+    seat_type_conv_handler = ConversationHandler(
+        entry_points=[CallbackQueryHandler(selecting_seat_type, pattern="^seat_type$")],
+        states={
+            SELECTING_SEAT_TYPE: [
+                CallbackQueryHandler(back, pattern=f"^{BACK}$"),
+                CallbackQueryHandler(save_input),
+            ],
+        },
+        fallbacks=fallback_handlers,
+        map_to_parent={
+            # End the child conversation and return to SELECTING_MAIN_ACTION state
+            BACK: ADDING_PERSONAL_INFO,
+            # End the whole conversation from within the child conversation.
+            END: END,
+            # save_input returnes this state so we need to map it
+            ADDING_PERSONAL_INFO: ADDING_PERSONAL_INFO,
+        },
     )
 
-    my_trip_ = pickle.dumps(my_trip)
-    task = find_trip_and_reserve.delay(my_trip_)
+    tariff_conv_handler = ConversationHandler(
+        entry_points=[CallbackQueryHandler(selecting_tariff, pattern="^tariff$")],
+        states={
+            SELECTING_TARIFF: [
+                CallbackQueryHandler(back, pattern=f"^{BACK}$"),
+                CallbackQueryHandler(save_input),
+            ],
+        },
+        fallbacks=fallback_handlers,
+        map_to_parent={
+            # End the child conversation and return to SELECTING_MAIN_ACTION state
+            BACK: ADDING_PERSONAL_INFO,
+            # End the whole conversation from within the child conversation.
+            END: END,
+            # save_input returnes this state so we need to map it
+            ADDING_PERSONAL_INFO: ADDING_PERSONAL_INFO,
+        },
+    )
 
-    while not task.ready():
-        time.sleep(1)
-        print("Waiting for task to complete")
-        print(task.id)
+    adding_self_conv_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(
+                adding_self,
+                pattern=f"^{
+                    ADDING_PERSONAL_INFO}$",
+            )
+        ],
+        states={
+            ADDING_PERSONAL_INFO: [
+                tariff_conv_handler,
+                seat_type_conv_handler,
+                CallbackQueryHandler(ask_for_input, pattern="^name$"),
+                CallbackQueryHandler(ask_for_input, pattern="^surname$"),
+                CallbackQueryHandler(ask_for_input, pattern="^tckn$"),
+                CallbackQueryHandler(ask_for_input, pattern="^birthday$"),
+                CallbackQueryHandler(ask_for_input, pattern="^sex$"),
+                CallbackQueryHandler(ask_for_input, pattern="^phone$"),
+                CallbackQueryHandler(ask_for_input, pattern="^email$"),
+                CallbackQueryHandler(back, pattern=f"^{BACK}$"),
+            ],
+            TYPING_REPLY: [
+                MessageHandler(filters.TEXT & (~filters.COMMAND), save_input),
+            ],
+        },
+        fallbacks=fallback_handlers,
+        map_to_parent={
+            # End the child conversation and return to SELECTING_MAIN_ACTION state
+            BACK: SELECTING_MAIN_ACTION,
+            # End the whole conversation from within the child conversation.
+            END: END,
+        },
+    )
 
-    trip = pickle.loads(task.result)
-    pprint(trip)
-    pprint(trip.empty_seat_json)
-    pprint(trip.seat_lock_response)
-    # check if trip is json
+    adding_credit_card_conv_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(
+                adding_credit_card, pattern=f"^{ADDING_CREDIT_CARD_INFO}$"
+            )
+        ],
+        states={
+            ADDING_CREDIT_CARD_INFO: [
+                CallbackQueryHandler(ask_for_input, pattern="^credit_card_no$"),
+                CallbackQueryHandler(ask_for_input, pattern="^credit_card_ccv$"),
+                CallbackQueryHandler(ask_for_input, pattern="^credit_card_exp$"),
+                CallbackQueryHandler(back, pattern=f"^{BACK}$"),
+            ],
+            TYPING_REPLY: [
+                MessageHandler(filters.TEXT & (~filters.COMMAND), save_input),
+            ],
+        },
+        fallbacks=fallback_handlers,
+        map_to_parent={
+            # End the child conversation and return to SELECTING_MAIN_ACTION state
+            BACK: SELECTING_MAIN_ACTION,
+            # End the whole conversation from within the child conversation.
+            END: END,
+        },
+    )
 
+    main_conv_handler = ConversationHandler(
+        entry_points=[CommandHandler("start", start)],
+        states={
+            SELECTING_MAIN_ACTION: [
+                adding_self_conv_handler,
+                adding_credit_card_conv_handler,
+                # CallbackQueryHandler(adding_self, pattern=f"^{ADDING_PERSONAL_INFO}$"),
+                CallbackQueryHandler(
+                    unimplemented, pattern=f"^{ADDING_CREDIT_CARD_INFO}$"
+                ),
+                CallbackQueryHandler(show_info, pattern=f"^{SHOWING_INFO}$"),
+                CallbackQueryHandler(end, pattern=f"^{END}$"),
+            ],
+            SHOWING_INFO: [
+                CallbackQueryHandler(start, pattern=f"^{BACK}$"),
+            ],
+            UNIMPLEMENTED: [
+                CallbackQueryHandler(start, pattern=f"^{BACK}$"),
+            ],
+        },
+        fallbacks=fallback_handlers,
+    )
+    inline_caps_handler = InlineQueryHandler(inline_funcs)
+
+    app.add_handler(main_conv_handler)
+    app.add_handler(inline_caps_handler)
+
+    # echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
+    # app.add_handler(echo_handler)
+
+    res_handler = CommandHandler("res", res)
+    app.add_handler(res_handler)
+
+    init_handler = CommandHandler("init_passenger", init_passenger)
+    app.add_handler(init_handler)
+    delete_key_handler = CommandHandler("delete_key", delete_key)
+    app.add_handler(delete_key_handler)
+    # app.add_handler(inline_caps_handler)
+
+    print_state_handler = CommandHandler("print_state", print_state)
+    app.add_handler(print_state_handler)
+
+    datetime_type_handler = CallbackQueryHandler(handle_datetime_type, pattern=datetime)
+    app.add_handler(datetime_type_handler)
+
+    start_reservation_handler = CommandHandler("start_res", start_res)
+    app.add_handler(start_reservation_handler)
+
+    reset_search_handler = CommandHandler("reset_search", reset_search)
+    app.add_handler(reset_search_handler)
+
+    check_task_handler = CommandHandler("check_task", check_task)
+    app.add_handler(check_task_handler)
+
+    print_trip_handler = CommandHandler("print_trip", print_trip)
+    app.add_handler(print_trip_handler)
+
+    proceed_to_payment_handler = CommandHandler(
+        "proceed_to_payment", proceed_to_payment
+    )
+    app.add_handler(proceed_to_payment_handler)
+
+    set_passenger_handler = CommandHandler("set_passenger", set_passenger)
+    app.add_handler(set_passenger_handler)
+
+    check_search_status_handler = CommandHandler(
+        "check_search_status", check_search_status
+    )
+    app.add_handler(check_search_status_handler)
+
+    get_set_current_trip_handler = CommandHandler(
+        "get_set_current_trip", get_set_current_trip
+    )
+    app.add_handler(get_set_current_trip_handler)
+
+    check_payment_test_handler = CommandHandler("check_payment_test", start_test_check_payment)
+    app.add_handler(check_payment_test_handler)
+
+    test_command_handler = CommandHandler("test", test_task)
+    app.add_handler(test_command_handler)
+
+    sen_task_id_handler = CommandHandler("send_task_id", send_redis_key)
+    app.add_handler(sen_task_id_handler)
     
-    p = SeleniumPayment()
-    p.trip = trip
-    p.set_price()
-    p.set_payment_url()
-    pprint(p.current_payment_url)
-    for i in range(10):
-        time.sleep(5)
-        p.is_payment_success()
-    
-    
-    # trip_str = my_trip.trip_json["binisTarih"]
-    # seat_str = my_trip.empty_seat_json["koltukNo"]
-    # vagon_str = my_trip.empty_seat_json["vagonSiraNo"]
-    # end_time = my_trip.lock_end_time
+    unknown_command_handler = MessageHandler(filters.COMMAND, unknown_command)
+    app.add_handler(unknown_command_handler)
 
-    # pprint(f"Lock will end at {end_time}")
-    #pprint(f"Seat {seat_str} in vagon {vagon_str} is reserved for trip {trip_str}")
+    # app.add_handler(CommandHandler("put", put))
+    # pprint(app.user_data)
+    # pprint(app.chat_data)
 
-    # find trip
-    # trips = my_trip.find_trip()
-    # trips = my_trip.get_trips(check_satis_durum=False)
-    # pprint(trips)
-    # pprint(f"Total of {len(trips)} trips found")
-    # #for trip in trips:
-    # #    pprint(
-    # #        f"eco: {trip['eco_empty_seat_count']} - buss: {trip['buss_empty_seat_count']}")
+    app.run_polling()
 
-    # if len(trips) > 0:
-    #     trip = trips[0]
-    #     my_trip.trip_json = trip
-    #     logging.info("Reserving: %s", trip.get('binisTarih'))
-    #     my_trip.reserve_seat()
-    #     p.trip = my_trip
-
-    #     while True:
-    #         payment_url: str = ''
-    #         time.sleep(10)
-    #         p.trip.reserve_seat()
-    #         p.set_price()
-    #         p.set_payment_url()
-    #         logging.info("Payment URL: %s", p.current_payment_url)
-    #         # compare urls
-
-    # p.ticket_reservation()
-
-    # my_trip.reserve_seat_data['lock_end_time'] = "2022-04-29 17:00:00"
-    # write to file
-    # with open(f'trip_{datetime.now().strftime("%H%M")}.json', 'w', encoding='utf-8') as file:
-    #    file.write(json.dumps(p.trip.trip_json))
-    # write reserved seat data to file
-    # with open(f'reserved_seat_{datetime.now().strftime("%H%M")}.json', 'w', encoding='utf-8') as file:
-    #    file.write(json.dumps(my_trip.reserve_seat_data))
-
-    # ready the page with selenium
-
-
-# while True:
-#     trips = search_trips(from_station, to_station, from_date, to_date)
-#     pprint(f"Total of {len(trips)} trips found")
-#     if len(trips) == 0:
-#         pprint("No trips found")
-#         time.sleep(3)
-#     else:
-#         # clear the console
-#         for trip in trips:
-#             pprint("Checking for empty seats")
-#             trip = get_empty_seats_trip(trip, from_station, to_station)
-#             # pprint(trip)
-#             os.system('cls' if os.name == 'nt' else 'clear')
-#             if trip['empty_seat_count'] > 0:
-#                 pprint("Found empty seats")
-#                 try:
-#                     seat_lock_json_result, empty_seat = select_first_empty_seat(
-#                         trip)
-#                     combined_data = {
-#                         'trip': trip,
-#                         'seat_lock_json_result': seat_lock_json_result,
-#                         'empty_seat': empty_seat,
-#                     }
-#                     with open(f'/tmp/trip_{datetime.now().strftime("%Y%m%d%H%M%S")}.json', 'w', encoding='utf-8') as file:
-#                         file.write(json.dumps(combined_data))
-#                 except Exception as e:
-#                     pprint(e)
-
-#                 # p = SeleniumPayment(
-#                 #     trip=trip,
-#                 #     empty_seat=empty_seat,
-#                 #     seat_lck_json=seat_lock_json_result,
-#                 #     tariff='TSK')
-#                 # p.process_payment()
 
 if __name__ == "__main__":
     main()

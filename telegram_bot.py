@@ -19,10 +19,10 @@ from telegram.ext import ContextTypes
 from celery.result import AsyncResult
 import inline_func
 from payment import SeleniumPayment
-from trip_search import TripSearchApi
-from trip import Trip
+from tasks.trip_search import TripSearchApi
+from tasks.trip import Trip
 from passenger import Passenger, Seat, Tariff
-from tasks import (
+from tasks.tasks import (
     test_task_,
     redis_client,
     find_trip_and_reserve,

@@ -1,11 +1,10 @@
+from datetime import datetime
 import time
 import logging
 import pickle
 import redis
-import requests
-from telegram import Bot
-from trip import Trip
-from celery import shared_task, Celery
+from tasks.trip import Trip
+from celery import Celery
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.FileHandler("tasks.log"))
@@ -20,9 +19,10 @@ celery_app = Celery(
 redis_client = redis.Redis(host="localhost", port=6379, db=0)
 
 
-@celery_app.task(bind=True)
+@celery_app.task(bind=True, max_retries=None)
 def find_trip_and_reserve(self, my_trip: Trip):
     """Search for trips with empty seats."""
+    count = 0
     my_trip = pickle.loads(my_trip)
     try:
         trips = my_trip.find_trip()
@@ -31,7 +31,9 @@ def find_trip_and_reserve(self, my_trip: Trip):
         my_trip.reserve_seat()
     except Exception as e:
         logger.error("Error while reserving seat: %s", e)
-        self.retry(countdown=10, exc=e)
+        count += 1
+        logger.info("Retrying... %s", count)
+        self.retry(countdown=10)
 
     logger.info("Seat is reserved: %s", my_trip.empty_seat_json.get("koltukNo"))
     if my_trip.is_seat_reserved:
@@ -39,7 +41,7 @@ def find_trip_and_reserve(self, my_trip: Trip):
         return pickle.dumps(my_trip)
 
 
-@celery_app.task(bind=True)
+@celery_app.task(bind=True, max_retries=None)
 def keep_reserving_seat(self, my_trip: Trip):
     """Reserve a seat for a trip."""
     my_trip = pickle.loads(my_trip)
@@ -47,12 +49,16 @@ def keep_reserving_seat(self, my_trip: Trip):
         my_trip.empty_seat_json.get('koltukNo')}"
     logger.info(text)
     while True:
+        logger.info("logger name: %s", logger.name)
         if should_stop(self):
             return pickle.dumps(my_trip)
-        logger.info("lock_end_time: %s", my_trip.lock_end_time)
+
+        if datetime.now().second % 60 == 0:
+            logger.info("lock_end_time: %s", my_trip.lock_end_time)
+
         try:
             my_trip.reserve_seat()
-        except requests.exceptions.ReadTimeout as e:
+        except Exception as e:
             logger.error("Error while reserving seat: %s", e)
             # retry indefinitely
             self.retry(countdown=0)
@@ -74,7 +80,7 @@ def test_task_(self):
 
 def should_stop(task_instance):
     """Check if the task should be stopped."""
-    id = str(task_instance.request.id).encode()
-    if id in redis_client.keys():
+    request_id = str(task_instance.request.id).encode()
+    if request_id in redis_client.keys():
         return True
     return False

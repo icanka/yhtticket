@@ -1,0 +1,6 @@
+2024-05-30 23:51:25,269 - update_processor - initialize - INFO - Initializing update processor
+2024-05-30 23:51:25,341 - apscheduler.scheduler - start - INFO - Scheduler started
+2024-05-30 23:51:25,341 - telegram.ext.Application - start - INFO - Application started
+2024-05-30 23:52:35,937 - update_processor - initialize - INFO - Initializing update processor
+2024-05-30 23:52:36,009 - apscheduler.scheduler - start - INFO - Scheduler started
+2024-05-30 23:52:36,009 - telegram.ext.Application - start - INFO - Application started

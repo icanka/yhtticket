@@ -1,17 +1,14 @@
 """This script is used to automate the ticket purchase process from TCDD website."""
 
-from dataclasses import dataclass, field
 import time
 from datetime import datetime
 import logging
-from typing import Optional
-
 import requests
-import api_constants
-from trip_search import TripSearchApi
-from trip_search import SeatLockedException
+from tasks.trip_search import TripSearchApi
+from tasks.trip_search import SeatLockedException
 from passenger import Passenger, Seat
 
+logger = logging.getLogger(__name__)
 
 class Trip:
     """Trip class to store trip details."""
@@ -37,7 +34,6 @@ class Trip:
         self.koltuk_lock_id_list = []
         self.lock_end_time = None
         self.is_seat_reserved = False
-        self.logger = logging.getLogger(__name__)
 
     def set_seat_lock_id(self):
         """Get the lock id of the seat."""
@@ -45,7 +41,7 @@ class Trip:
         seats = self.seat_lock_response["koltuklarimListesi"]
         for seat in seats:
             self.koltuk_lock_id_list.append(seat["koltukLockId"])
-        self.logger.info("koltuk_lock_id_list: %s", self.koltuk_lock_id_list)
+        logger.info("koltuk_lock_id_list: %s", self.koltuk_lock_id_list)
 
     def reserve_seat(self):
         """Reserve a seat for the given trip."""
@@ -53,22 +49,24 @@ class Trip:
         try:
             # first reserving of the seat
             if not self.is_seat_reserved:
-                self.logger.info("Seat is not reserved, reserving the seat.")
+                logger.info("Seat is not reserved, reserving the seat.")
                 lock_end_time, self.empty_seat_json, self.seat_lock_response = (
                     TripSearchApi.select_first_empty_seat(self.trip_json)
                 )
                 self.lock_end_time = datetime.strptime(lock_end_time, self.time_format)
                 self.set_seat_lock_id()
                 self.is_seat_reserved = True
-                self.logger.info("lock_end_time: %s", self.lock_end_time)
+                logger.info("lock_end_time: %s", self.lock_end_time)
 
             # we have already reserved the seat check lock_end_time and if it is passed then reserve the seat again
             elif self.is_seat_reserved:
-                self.logger.info("Seat is already reserved.")
+                #if datetime.now().second % 10 == 0:
+                logger.info("logger name: %s", logger.name)
+                logger.info("Seat is already reserved.")
                 time_diff = self.lock_end_time - datetime.now()
                 if time_diff.total_seconds() < 0:
-                    self.logger.info(time_diff.total_seconds())
-                    self.logger.info(
+                    logger.info(time_diff.total_seconds())
+                    logger.info(
                         "Lock time ending is approaching. Starting to reserve the seat again"
                     )
                     lock_end_time, _, self.seat_lock_response = (
@@ -80,7 +78,7 @@ class Trip:
                         lock_end_time, self.time_format
                     )
                     self.set_seat_lock_id()
-                    self.logger.info("lock_end_time: %s", self.lock_end_time)
+                    logger.info("lock_end_time: %s", self.lock_end_time)
 
         except SeatLockedException as e:
             logging.error("Error while reserving the seat: %s", e)
@@ -93,10 +91,10 @@ class Trip:
         )
         # return none if no trips are found
         if len(trips) == 0:
-            self.logger.info("No trips found. Returning None.")
+            logger.info("No trips found. Returning None.")
             return None
-        self.logger.info("Total of %s trips found", len(trips))
-        self.logger.info("returning trips")
+        logger.info("Total of %s trips found", len(trips))
+        logger.info("returning trips")
         return trips
 
     def find_trip(self):
@@ -105,13 +103,13 @@ class Trip:
         """
         trips_with_empty_seats = []
 
-        self.logger.info("Searching for trips with empty seat.")
+        logger.info("Searching for trips with empty seat.")
 
         while len(trips_with_empty_seats) == 0:
             time.sleep(1)
             if datetime.now().second % 60 == 0:
                 # log method parameters
-                self.logger.info(
+                logger.info(
                     "from_station: %s, to_station: %s, from_date: %s, to_date: %s",
                     self.from_station,
                     self.to_station,
@@ -152,7 +150,7 @@ class Trip:
                     logging.info("empty_seat_count: %s", empty_seat_count)
 
             except TypeError as e:
-                self.logger.error("Error while finding trip: %s", e)
+                logger.error("Error while finding trip: %s", e)
 
         return trips_with_empty_seats
 

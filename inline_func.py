@@ -15,7 +15,7 @@ from telegram.ext import (
     InlineQueryHandler,
 )
 import dateparser
-import trip
+import tasks.trip as trip
 
 
 def stations():
