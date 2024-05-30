@@ -2,7 +2,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import logging
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.FileHandler("scheduler.log"))
+logger.addHandler(logging.FileHandler("bot_data/logs/scheduler.log"))
 
 def submit_listener(event):
     logger.info("Job SUBMITTED: ID: %s", event.job_id)

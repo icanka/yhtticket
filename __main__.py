@@ -21,7 +21,7 @@ print("main.py is running")
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s",
     level=logging.INFO,
-    handlers=[logging.StreamHandler(), logging.FileHandler("trip_bot.log")],
+    handlers=[logging.StreamHandler(), logging.FileHandler("bot_data/logs/trip_bot.log")],
 )
 logging.getLogger("httpx").setLevel(logging.WARNING)
 print("Logging is set up")
@@ -29,7 +29,7 @@ print("Logging is set up")
 
 def main() -> None:
     """Run the bot."""
-    my_persistance = PicklePersistence(filepath="my_persistence")
+    my_persistance = PicklePersistence(filepath="bot_data/my_persistence")
     app = (
         ApplicationBuilder()
         .token("***REMOVED***")

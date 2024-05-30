@@ -7,7 +7,7 @@ from tasks.trip import Trip
 from celery import Celery
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.FileHandler("tasks.log"))
+logger.addHandler(logging.FileHandler("bot_data/logs/tasks.log"))
 
 celery_app = Celery(
     "celery_app",

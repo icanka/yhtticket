@@ -14,13 +14,6 @@ import pickle
 
 def main():
     """Main function to run the script."""
-    # Set up logging
-    # logging.basicConfig(
-    #     level=logging.INFO,
-    #     format="%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s",
-    #     handlers=[logging.FileHandler("trip_search.log"), logging.StreamHandler()],
-    # )
-
     tckn = "18700774442"
     name = "izzet can"
     surname = "karakuş"
