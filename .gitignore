@@ -4,3 +4,4 @@ temp/
 sonar-data/
 .vscode/
 *.json
+bot_data/
