@@ -3,5 +3,5 @@
 temp/
 .vscode/
 *.json
-bot_data/
-static/
+bot_data/**
+static/**
