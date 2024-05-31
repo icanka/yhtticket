@@ -1,0 +1,22 @@
+2024-06-01 00:51:18,640 - telegram_bot - <module> - INFO - Bot functions.
+2024-06-01 00:51:18,640 - telegram_bot - <module> - ERROR - Bot functions.
+2024-06-01 00:54:39,660 - telegram_bot - inline_funcs - INFO - cmd_args: []
+2024-06-01 00:54:41,784 - telegram_bot - inline_funcs - INFO - cmd_args: ['pendik', 'ankara']
+2024-06-01 00:54:45,038 - telegram_bot - inline_funcs - INFO - cmd_args: ['pendik', 'ankara', '10jun']
+2024-06-01 00:54:47,814 - telegram_bot - inline_funcs - INFO - cmd_args: ['pendik', 'ankara', '10june']
+2024-06-01 00:55:43,886 - telegram_bot - inline_funcs - INFO - query: query pendik a
+2024-06-01 00:55:43,886 - telegram_bot - inline_funcs - INFO - cmd_args: ['pendik', 'a']
+2024-06-01 00:55:46,415 - telegram_bot - inline_funcs - INFO - query: query pendik an
+2024-06-01 00:55:46,415 - telegram_bot - inline_funcs - INFO - cmd_args: ['pendik', 'an']
+2024-06-01 00:55:50,490 - telegram_bot - inline_funcs - INFO - query: query pendik ankar
+2024-06-01 00:55:50,490 - telegram_bot - inline_funcs - INFO - cmd_args: ['pendik', 'ankar']
+2024-06-01 00:55:52,877 - telegram_bot - inline_funcs - INFO - query: query pen
+2024-06-01 00:55:52,877 - telegram_bot - inline_funcs - INFO - cmd_args: ['pen']
+2024-06-01 00:55:52,877 - telegram_bot - inline_funcs - ERROR - TypeError: query() missing 1 required positional argument: 'to_'
+2024-06-01 00:55:56,092 - telegram_bot - inline_funcs - INFO - query: query pendik
+2024-06-01 00:55:56,092 - telegram_bot - inline_funcs - INFO - cmd_args: ['pendik']
+2024-06-01 00:55:56,092 - telegram_bot - inline_funcs - ERROR - TypeError: query() missing 1 required positional argument: 'to_'
+2024-06-01 00:56:37,576 - telegram_bot - inline_funcs - INFO - query: quer
+2024-06-01 00:56:43,478 - telegram_bot - inline_funcs - INFO - query: query
+2024-06-01 00:56:43,478 - telegram_bot - inline_funcs - INFO - cmd_args: []
+2024-06-01 00:58:32,077 - telegram_bot - inline_funcs - INFO - cmd_args: []

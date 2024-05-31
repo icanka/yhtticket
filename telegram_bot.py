@@ -46,6 +46,33 @@ for handler in handlers:
     logger.addHandler(handler)
 
 
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Start the conversation and ask the user about their"""
+    logger.info("Starting the conversation with chat_id: %s, user: %s", update.message.chat_id, update.message.from_user)
+    
+    text = "Add, update or show your information. To abort, simply type /stop"
+    keyboard = InlineKeyboardMarkup(MAIN_MENU_BUTTONS)
+
+    if context.user_data.get(IN_PROGRESS):
+        try:
+            await update.callback_query.answer()
+            await update.callback_query.edit_message_text(
+                text=text, reply_markup=keyboard
+            )
+        except AttributeError:
+            await update.message.reply_text(text=text, reply_markup=keyboard)
+    else:
+
+        await update.message.reply_text(
+            "Hi! I'm a YHTBot! I can help you with your ticket reservations and"
+            "purchases. But first, I need some information from you.",
+        )
+        await update.message.reply_text(text=text, reply_markup=keyboard)
+    context.user_data[IN_PROGRESS] = False
+    context.user_data[CURRENT_STATE] = SELECTING_MAIN_ACTION
+    return SELECTING_MAIN_ACTION
+
+
 async def inline_funcs(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle inline functions.
 
@@ -63,7 +90,7 @@ async def inline_funcs(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineQueryResultArticle(
                     id=uuid4(),
                     title=command,
-                    description=f"Write {command} to get inline results",
+                    description=f"Write {command} to see results",
                     input_message_content=InputTextMessageContent(command),
                 )
             )
@@ -92,32 +119,6 @@ async def inline_funcs(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await context.bot.answer_inline_query(update.inline_query.id, results)
         return
-
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Start the conversation and ask the user about their"""
-
-    text = "Add, update or show your information. To abort, simply type /stop"
-    keyboard = InlineKeyboardMarkup(MAIN_MENU_BUTTONS)
-
-    if context.user_data.get(IN_PROGRESS):
-        try:
-            await update.callback_query.answer()
-            await update.callback_query.edit_message_text(
-                text=text, reply_markup=keyboard
-            )
-        except AttributeError:
-            await update.message.reply_text(text=text, reply_markup=keyboard)
-    else:
-
-        await update.message.reply_text(
-            "Hi! I'm a YHTBot! I can help you with your ticket reservations and"
-            "purchases. But first, I need some information from you.",
-        )
-        await update.message.reply_text(text=text, reply_markup=keyboard)
-    context.user_data[IN_PROGRESS] = False
-    context.user_data[CURRENT_STATE] = SELECTING_MAIN_ACTION
-    return SELECTING_MAIN_ACTION
 
 
 async def show_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
