@@ -31,7 +31,7 @@ from tasks.tasks import (
 )
 from tasks.trip import Trip
 from tasks.trip_search import TripSearchApi
-from constants import *
+from constants import *  # pylint: disable=wildcard-import
 
 
 logger = logging.getLogger(__name__)

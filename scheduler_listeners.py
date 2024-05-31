@@ -1,4 +1,5 @@
-from apscheduler.schedulers.background import BackgroundScheduler
+""" This module contains the listeners for the scheduler events. """
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,12 +14,15 @@ for handler in handlers:
 
 
 def submit_listener(event):
+    """Log the job ID of the submitted job."""
     logger.info("Job SUBMITTED: ID: %s", event.job_id)
 
 
 def mis_listener(event):
+    """Log the job ID of the missed job."""
     logger.info("Job MISSED: ID: %s", event.job_id)
 
 
 def max_instances_listener(event):
+    """Log the job ID of the job that reached the maximum number of instances."""
     logger.info("Job MAX INSTANCES: ID: %s", event.job_id)

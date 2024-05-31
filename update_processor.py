@@ -21,8 +21,6 @@ formatter = logging.Formatter(
 for handler in handlers:
     handler.setFormatter(formatter)
     logger.addHandler(handler)
-logger = logging.getLogger(__name__)
-# logger.addHandler(logging.FileHandler("bot_data/logs/update_processor.log"))
 
 
 class CustomUpdateProcessor(BaseUpdateProcessor):
@@ -61,16 +59,19 @@ class CustomUpdateProcessor(BaseUpdateProcessor):
             except Exception as e:
                 logger.error("Error processing update: %s", e, exc_info=True)
 
+    def __init__(self, **kwargs) -> None:
+        super().__init__(max_concurrent_updates=kwargs.get("max_concurrent_updates", 1))
+        self.user_locks = {}
+
     async def initialize(self) -> None:
         logger.info("Initializing update processor")
-        self.user_locks = {}
 
     async def shutdown(self) -> None:
         logger.info("Shutting down update processor")
         self.user_locks = None
 
 
-async def say_hello(update: Update, context: ContextTypes) -> None:
+async def say_hello(update: Update, _: ContextTypes) -> None:
     """Send a message when the command /start is issued."""
     user = update.message.from_user
     await update.message.reply_text(f"Hello {user.first_name}!")
@@ -83,7 +84,7 @@ def main() -> None:
     application = (
         Application.builder()
         .token("***REMOVED***")
-        .concurrent_updates(CustomUpdateProcessor(5))
+        .concurrent_updates(CustomUpdateProcessor(max_concurrent_updates=3))
         .build()
     )
 

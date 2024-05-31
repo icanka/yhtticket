@@ -19,8 +19,8 @@ from apscheduler.events import (
 )
 from update_processor import CustomUpdateProcessor
 from scheduler_listeners import submit_listener, mis_listener, max_instances_listener
-from telegram_bot import *
-from constants import *
+from telegram_bot import *  # pylint: disable=wildcard-import
+from constants import *  # pylint: disable=wildcard-import
 
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -45,7 +45,7 @@ def main() -> None:
         .token("***REMOVED***")
         .arbitrary_callback_data(True)
         .persistence(persistence=my_persistance)
-        .concurrent_updates(CustomUpdateProcessor(3))
+        .concurrent_updates(CustomUpdateProcessor(max_concurrent_updates=3))
         .build()
     )
 
