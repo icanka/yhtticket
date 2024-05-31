@@ -1,7 +1,7 @@
 **/venv
 **/__pycache__
 temp/
-sonar-data/
 .vscode/
 *.json
 bot_data/
+static/
