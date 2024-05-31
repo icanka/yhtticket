@@ -56,7 +56,7 @@ class CustomUpdateProcessor(BaseUpdateProcessor):
             try:
                 # Simulate some processing time
                 await coroutine
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 logger.error("Error processing update: %s", e, exc_info=True)
 
     def __init__(self, **kwargs) -> None:

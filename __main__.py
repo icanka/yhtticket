@@ -19,7 +19,7 @@ from apscheduler.events import (
 )
 from update_processor import CustomUpdateProcessor
 from scheduler_listeners import submit_listener, mis_listener, max_instances_listener
-from telegram_bot import *  # pylint: disable=wildcard-import
+from telegram_bot import *  # pylint: disable=wildcard-import, unused-wildcard-import
 from constants import *  # pylint: disable=wildcard-import
 
 

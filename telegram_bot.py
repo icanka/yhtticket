@@ -31,7 +31,7 @@ from tasks.tasks import (
 )
 from tasks.trip import Trip
 from tasks.trip_search import TripSearchApi
-from constants import *  # pylint: disable=wildcard-import
+from constants import *  # pylint: disable=wildcard-import, unused-wildcard-import
 
 
 logger = logging.getLogger(__name__)
@@ -274,7 +274,7 @@ async def end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return END
 
 
-async def stop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def stop(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
     """End conversation by command."""
     await update.message.reply_text("Okay, bye!")
     return END
@@ -347,12 +347,12 @@ async def res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     try:
         for trip in trips:
-            time = datetime.strptime(trip["binisTarih"], my_trip.time_format)
+            _time = datetime.strptime(trip["binisTarih"], my_trip.time_format)
             inline_keyboard.append(
                 [
                     InlineKeyboardButton(
-                        text=datetime.strftime(time, my_trip.output_time_format),
-                        callback_data=time,
+                        text=datetime.strftime(_time, my_trip.output_time_format),
+                        callback_data=_time,
                     )
                 ]
             )
@@ -384,8 +384,8 @@ async def handle_datetime_type(
     logging.info("handle_datetime_type")
     logging.info("context.args: %s", update.callback_query.data)
     my_trip = context.user_data[TRIP]
-    time = datetime.strftime(update.callback_query.data, my_trip.output_time_format)
-    my_trip.to_date = time
+    _time = datetime.strftime(update.callback_query.data, my_trip.output_time_format)
+    my_trip.to_date = _time
     logging.info(
         "my_trip: from_date %s, to_date: %s", my_trip.from_date, my_trip.to_date
     )
@@ -928,7 +928,7 @@ async def delete_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return context.user_data[CURRENT_STATE]
 
 
-async def print_state(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def print_state(_: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Print the current state."""
 
     # p = SeleniumPayment()
@@ -1019,7 +1019,8 @@ async def check_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return context.user_data.get(CURRENT_STATE, END)
 
 
-async def test_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def test_task(_: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Test the celery task."""
     # create test_task celery task and print its id
     task = test_task_.delay()
     # set the task_id to the context
@@ -1028,7 +1029,8 @@ async def test_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return context.user_data.get(CURRENT_STATE, END)
 
 
-async def send_redis_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def send_redis_key(_: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Send the redis key."""
     # get chat_id
     stop_task_id = context.user_data.get("task_id")
 
@@ -1038,7 +1040,8 @@ async def send_redis_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def check_payment_test(context: ContextTypes.DEFAULT_TYPE) -> int:
-    chat_id = context.job.data.get("chat_id")
+    """Check the payment status."""
+    # chat_id = context.job.data.get("chat_id")
     logger.info("chat_data: %s", context.job.chat_id)
 
     logger.info("TEST METHOD.Sleeping for 60 seconds.")
@@ -1049,7 +1052,7 @@ async def check_payment_test(context: ContextTypes.DEFAULT_TYPE) -> int:
 async def start_test_check_payment(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
-
+    """Start the test check_payment."""
     for r in range(1):
         logger.info("RUNNING THE %sth TIME", r)
         context.job_queue.run_repeating(
