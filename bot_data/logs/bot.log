@@ -1,0 +1,60 @@
+2024-05-31 00:41:11,823 - __main__ - main - INFO - Starting the bot
+2024-05-31 00:41:12,043 - update_processor - initialize - INFO - Initializing update processor
+2024-05-31 00:41:12,113 - apscheduler.scheduler - start - INFO - Scheduler started
+2024-05-31 00:41:12,113 - telegram.ext.Application - start - INFO - Application started
+2024-05-31 00:41:19,143 - telegram_bot - start_res - INFO - checking task with task_id: 9e90bd73-9f25-4493-8675-60292d0c8749
+2024-05-31 00:41:20,163 - telegram.ext.Application - process_error - ERROR - No error handlers are registered, logging exception.
+Traceback (most recent call last):
+  File "/home/izzetcan/Documents/git-repos/selenium-bilet/venv/lib/python3.12/site-packages/telegram/ext/_application.py", line 1277, in process_update
+    await coroutine
+  File "/home/izzetcan/Documents/git-repos/selenium-bilet/venv/lib/python3.12/site-packages/telegram/ext/_handlers/basehandler.py", line 157, in handle_update
+    return await self.callback(update, context)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/izzetcan/Documents/git-repos/selenium-bilet/telegram_bot.py", line 406, in start_res
+    tasks = [t for task in i.active().values() for t in task if t["id"] == task_id]
+                           ^^^^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'values'
+2024-05-31 00:41:36,788 - __main__ - main - INFO - Starting the bot
+2024-05-31 00:41:37,011 - update_processor - initialize - INFO - Initializing update processor
+2024-05-31 00:41:37,079 - apscheduler.scheduler - start - INFO - Scheduler started
+2024-05-31 00:41:37,079 - telegram.ext.Application - start - INFO - Application started
+2024-05-31 00:41:38,576 - telegram_bot - start_res - INFO - checking task with task_id: 9e90bd73-9f25-4493-8675-60292d0c8749
+2024-05-31 00:41:39,603 - root - set_passenger - INFO - init_passenger
+2024-05-31 00:41:40,241 - tasks.trip_search - is_mernis_correct - INFO - Mernis verification succeeded.
+2024-05-31 00:41:40,242 - telegram_bot - init_passenger - INFO - passenger object set to context.user_data[PASSENGER].
+2024-05-31 00:41:40,242 - root - init_passenger - INFO - passenger: Passenger(tckn='18700774442', name='izzet can', surname='karakuş', birthday='14/07/1994', email='izzetcankarakus@gmail.com', phone='05340771521', sex='E', credit_card_no='4506347008156065', credit_card_ccv='035', credit_card_exp='2406', tariff=11750067704, seat_type=17002).
+2024-05-31 00:41:40,242 - telegram_bot - start_res - INFO - Setting trip.passenger
+2024-05-31 00:41:40,242 - root - start_res - INFO - user_trip: <tasks.trip.Trip object at 0x7f7362707830>
+2024-05-31 00:41:40,243 - apscheduler.scheduler - _real_add_job - INFO - Added job "start_search" to job store "default"
+2024-05-31 00:41:40,243 - apscheduler.scheduler - _real_add_job - INFO - Added job "check_search_status" to job store "default"
+2024-05-31 00:41:40,243 - telegram_bot - start_res - INFO - Job queue: (Job[id=221588341ed5437189b174da558736d3, name=start_search, callback=start_search, trigger=date[2024-05-30 21:41:41 UTC]], Job[id=a0a9cc56725740a784f75758fcb8d27b, name=check_search_status, callback=check_search_status, trigger=interval[0:00:30]]), len: 2
+2024-05-31 00:41:41,244 - apscheduler.scheduler - remove_job - INFO - Removed job 221588341ed5437189b174da558736d3
+2024-05-31 00:41:41,244 - scheduler_listeners - submit_listener - INFO - Job SUBMITTED: ID: 221588341ed5437189b174da558736d3
+2024-05-31 00:41:41,245 - apscheduler.executors.default - run_coroutine_job - INFO - Running job "start_search (trigger: date[2024-05-30 21:41:41 UTC], next run at: 2024-05-30 21:41:41 UTC)" (scheduled at 2024-05-30 21:41:41.242744+00:00)
+2024-05-31 00:41:42,249 - root - start_search - INFO - trip: <tasks.trip.Trip object at 0x7f7362707830>, type: <class 'tasks.trip.Trip'>
+2024-05-31 00:41:42,249 - telegram_bot - start_search - INFO - trip.passenger: Passenger(tckn='18700774442', name='izzet can', surname='karakuş', birthday='14/07/1994', email='izzetcankarakus@gmail.com', phone='05340771521', sex='E', credit_card_no='4506347008156065', credit_card_ccv='035', credit_card_exp='2406', tariff=11750067704, seat_type=17002)
+2024-05-31 00:41:42,262 - telegram_bot - start_search - INFO - SETTING TASK_ID: dabaef4f-8af5-4693-8b9f-1aa8d00c4971
+2024-05-31 00:41:42,460 - apscheduler.executors.default - run_coroutine_job - INFO - Job "start_search (trigger: date[2024-05-30 21:41:41 UTC], next run at: 2024-05-30 21:41:41 UTC)" executed successfully
+2024-05-31 00:42:10,252 - scheduler_listeners - submit_listener - INFO - Job SUBMITTED: ID: a0a9cc56725740a784f75758fcb8d27b
+2024-05-31 00:42:10,252 - apscheduler.executors.default - run_coroutine_job - INFO - Running job "check_search_status (trigger: interval[0:00:30], next run at: 2024-05-30 21:42:40 UTC)" (scheduled at 2024-05-30 21:42:10.243170+00:00)
+2024-05-31 00:42:11,256 - telegram_bot - check_search_status - INFO - active_tasks: 1
+2024-05-31 00:42:11,257 - telegram_bot - check_search_status - INFO - task is None.
+2024-05-31 00:42:11,258 - root - check_search_status - INFO - Task is ready
+2024-05-31 00:42:11,259 - telegram_bot - check_search_status - INFO - settin context.job.data[TRIP] to my_trip
+2024-05-31 00:42:11,596 - telegram_bot - check_search_status - WARNING - SETTING TASK_ID: None
+2024-05-31 00:42:11,596 - telegram_bot - check_search_status - INFO - Revoking task with id: dabaef4f-8af5-4693-8b9f-1aa8d00c4971
+2024-05-31 00:42:11,597 - telegram_bot - check_search_status - INFO - Starting job keep_seat_lock.
+2024-05-31 00:42:11,597 - apscheduler.scheduler - _real_add_job - INFO - Added job "keep_seat_lock" to job store "default"
+2024-05-31 00:42:11,599 - telegram_bot - check_search_status - INFO - Removing job with name: check_search_status
+2024-05-31 00:42:11,599 - apscheduler.scheduler - remove_job - INFO - Removed job a0a9cc56725740a784f75758fcb8d27b
+2024-05-31 00:42:11,599 - telegram_bot - check_search_status - INFO - Job queue: (Job[id=6e112f80a26e42539aeee148c4cb0820, name=keep_seat_lock, callback=keep_seat_lock, trigger=date[2024-05-30 21:42:14 UTC]],)
+2024-05-31 00:42:11,599 - telegram_bot - check_search_status - INFO - Execution time: 1.3468542098999023
+2024-05-31 00:42:11,599 - apscheduler.executors.default - run_coroutine_job - INFO - Job "check_search_status (trigger: interval[0:00:30], next run at: 2024-05-30 21:42:40 UTC)" executed successfully
+2024-05-31 00:42:14,598 - apscheduler.scheduler - remove_job - INFO - Removed job 6e112f80a26e42539aeee148c4cb0820
+2024-05-31 00:42:14,598 - scheduler_listeners - submit_listener - INFO - Job SUBMITTED: ID: 6e112f80a26e42539aeee148c4cb0820
+2024-05-31 00:42:14,598 - apscheduler.executors.default - run_coroutine_job - INFO - Running job "keep_seat_lock (trigger: date[2024-05-30 21:42:14 UTC], next run at: 2024-05-30 21:42:14 UTC)" (scheduled at 2024-05-30 21:42:14.597777+00:00)
+2024-05-31 00:42:14,600 - telegram_bot - keep_seat_lock - INFO - Setting task_id to context.user_data
+2024-05-31 00:42:14,600 - telegram_bot - keep_seat_lock - WARNING - SETTING TASK_ID: fa1c6811-1f8f-4c70-87ec-9866a8801e85
+2024-05-31 00:42:14,601 - apscheduler.executors.default - run_coroutine_job - INFO - Job "keep_seat_lock (trigger: date[2024-05-30 21:42:14 UTC], next run at: 2024-05-30 21:42:14 UTC)" executed successfully
+2024-05-31 00:43:06,616 - telegram_bot - reset_search - INFO - Revoking task with id: fa1c6811-1f8f-4c70-87ec-9866a8801e85
+2024-05-31 00:43:06,617 - telegram_bot - reset_search - WARNING - SETTING TASK_ID: None

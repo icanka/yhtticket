@@ -13,11 +13,13 @@ from selenium.webdriver.chrome.options import Options
 import api_constants
 from tasks.trip_search import TripSearchApi
 
+logger = logging.getLogger(__name__)
+# logger.addHandler(logging.FileHandler("bot_data/logs/payment.log"))
+
 
 # create a class which will be inherited from the SeleniumPayment class
 class MainSeleniumPayment:
     def __init__(self, *args) -> None:
-        self.logger = logging.getLogger(__name__)
         self.options = Options()
         self.options.add_argument("--disable-notifications")
         self.options.add_argument("--disable-geolocation")
@@ -74,7 +76,6 @@ class SeleniumPayment(MainSeleniumPayment):
             **kwargs: Variable keyword arguments.
         """
         super().__init__(*args)  # Call the __init__ method of the base class
-        self.logger = logging.getLogger(__name__)
 
         self.price = None
         self.normal_price = None
@@ -120,7 +121,7 @@ class SeleniumPayment(MainSeleniumPayment):
                 "ucret": self.price,
             }
         )
-        self.logger.info(
+        logger.info(
             "Ticket reservation request values set: %s", self.ticket_reservation_req
         )
 
@@ -155,7 +156,7 @@ class SeleniumPayment(MainSeleniumPayment):
                 "vagonTipi": vagon_tip_id,
             }
         )
-        self.logger.info("Price request: %s", json.dumps(req_body))
+        logger.info("Price request: %s", json.dumps(req_body))
         # send request
 
         retries = 0
@@ -169,12 +170,12 @@ class SeleniumPayment(MainSeleniumPayment):
                 )
             except RequestException as e:
                 retries += 1
-                self.logger.error("Price request failed: %s, retry: %s", e, retries)
+                logger.error("Price request failed: %s, retry: %s", e, retries)
                 time.sleep(self.retry_delay)
             break
 
         response_json = response.json()
-        self.logger.info("Price response: %s", response_json["anahatFiyatHesSonucDVO"])
+        logger.info("Price response: %s", response_json["anahatFiyatHesSonucDVO"])
         self.normal_price = int(
             response_json["anahatFiyatHesSonucDVO"]["indirimsizToplamUcret"]
         )
@@ -223,13 +224,13 @@ class SeleniumPayment(MainSeleniumPayment):
                 )
             except RequestException as e:
                 retries += 1
-                self.logger.error("Payment request failed: %s, retry: %s", e, retries)
+                logger.error("Payment request failed: %s, retry: %s", e, retries)
                 time.sleep(self.retry_delay)
             break
 
         response_json = response.json()
         if response_json["cevapBilgileri"]["cevapKodu"] != "000":
-            self.logger.error("Payment failed: %s", response_json["cevapBilgileri"])
+            logger.error("Payment failed: %s", response_json["cevapBilgileri"])
             raise ValueError(
                 f"{response_json['cevapBilgileri']['cevapMsj']} {response_json['cevapBilgileri']['detay']}"
             )
@@ -240,10 +241,10 @@ class SeleniumPayment(MainSeleniumPayment):
         term_url = response_json["paymentAuthRequest"]["termUrl"]
         # used in vb_odeme_sorgu to validate payment
         self.enroll_reference = response_json["enrollReference"]
-        # self.logger.info("response: %s", response_json)
+        # logger.info("response: %s", response_json)
 
-        self.logger.info("Enroll reference: %s", self.enroll_reference)
-        # self.logger.info("ACS URL: %s", acs_url)
+        logger.info("Enroll reference: %s", self.enroll_reference)
+        # logger.info("ACS URL: %s", acs_url)
 
         # form_data = {
         #     'PaReq': pareq,
@@ -265,7 +266,7 @@ class SeleniumPayment(MainSeleniumPayment):
     def is_payment_success(self):
         """set_is_payment_success"""
         retries = 0
-        self.logger.info("self.ode_sorgu: %s", self.odeme_sorgu)
+        logger.info("self.ode_sorgu: %s", self.odeme_sorgu)
         while retries < self.max_retries:
             try:
                 odeme_sorgu_response = requests.post(
@@ -277,21 +278,19 @@ class SeleniumPayment(MainSeleniumPayment):
                 odeme_sorgu_response.raise_for_status()
             except RequestException as e:
                 retries += 1
-                self.logger.error(
-                    "Odeme sorgu request failed: %s, retry: %s", e, retries
-                )
+                logger.error("Odeme sorgu request failed: %s, retry: %s", e, retries)
                 time.sleep(self.retry_delay)
             break
 
         odeme_sorgu_response_json = odeme_sorgu_response.json()
 
         if odeme_sorgu_response_json["cevapBilgileri"]["cevapKodu"] != "000":
-            self.logger.error("Response: %s", odeme_sorgu_response.text)
+            logger.error("Response: %s", odeme_sorgu_response.text)
             raise ValueError(
                 f"{odeme_sorgu_response_json['cevapBilgileri']['cevapMsj']} {odeme_sorgu_response_json['cevapBilgileri']['detay']}"
             )
         else:
-            self.logger.info("Response: %s", odeme_sorgu_response_json["vposReference"])
+            logger.info("Response: %s", odeme_sorgu_response_json["vposReference"])
             self.vpos_ref = odeme_sorgu_response_json["vposReference"]
             return True
 
@@ -336,7 +335,7 @@ class SeleniumPayment(MainSeleniumPayment):
         )
         req_body["koltukLockIdList"] = self.trip.koltuk_lock_id_list
 
-        self.logger.info("Ticket reservation request: %s", req_body)
+        logger.info("Ticket reservation request: %s", req_body)
         # send request
 
         retries = 0
@@ -351,7 +350,7 @@ class SeleniumPayment(MainSeleniumPayment):
                 response.raise_for_status()
             except requests.exceptions.RequestException as e:
                 retries += 1
-                self.logger.error(
+                logger.error(
                     "Ticket reservation request failed: %s, retry: %s", e, retries
                 )
                 time.sleep(self.retry_delay)
@@ -360,14 +359,14 @@ class SeleniumPayment(MainSeleniumPayment):
         response_json = response.json()
 
         if response_json["cevapBilgileri"]["cevapKodu"] != "000":
-            self.logger.error(
+            logger.error(
                 "Ticket reservation failed: %s", response_json["cevapBilgileri"]
             )
             raise ValueError(
                 f"{response_json['cevapBilgileri']['cevapMsj']} {response_json['cevapBilgileri']['detay']}"
             )
         else:
-            self.logger.info("Ticket reservation successful.")
+            logger.info("Ticket reservation successful.")
             self.ticket_reservation_info = response_json
-            self.logger.debug("Ticket reservation response: %s", response_json)
+            logger.debug("Ticket reservation response: %s", response_json)
             return True

@@ -21,7 +21,9 @@ VB_ODEME_SORGU = "https://api-yebsp.tcddtasimacilik.gov.tr/odeme/vbOdemeSorgu"
 TICKET_RESERVATION_ENDPOINT = (
     "https://api-yebsp.tcddtasimacilik.gov.tr/bilet/biletSatisRezervasyon"
 )
-MERNIS_DOGRULAMA_ENDPOINT = "https://api-yebsp.tcddtasimacilik.gov.tr/yebsp/tcNoMernisDogrula"
+MERNIS_DOGRULAMA_ENDPOINT = (
+    "https://api-yebsp.tcddtasimacilik.gov.tr/yebsp/tcNoMernisDogrula"
+)
 
 DISABLED_SEAT_IDS = [
     13485128303,

@@ -10,6 +10,7 @@ from passenger import Passenger, Seat
 
 logger = logging.getLogger(__name__)
 
+
 class Trip:
     """Trip class to store trip details."""
 
@@ -60,7 +61,7 @@ class Trip:
 
             # we have already reserved the seat check lock_end_time and if it is passed then reserve the seat again
             elif self.is_seat_reserved:
-                #if datetime.now().second % 10 == 0:
+                # if datetime.now().second % 10 == 0:
                 logger.info("logger name: %s", logger.name)
                 logger.info("Seat is already reserved.")
                 time_diff = self.lock_end_time - datetime.now()

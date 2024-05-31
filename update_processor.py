@@ -1,4 +1,5 @@
 """ Custom Update Processor """
+
 import logging
 from typing import Dict, Awaitable
 import asyncio
@@ -9,7 +10,10 @@ from telegram.ext import (
     ContextTypes,
     BaseUpdateProcessor,
 )
+
 logger = logging.getLogger(__name__)
+# logger.addHandler(logging.FileHandler("bot_data/logs/update_processor.log"))
+
 
 class CustomUpdateProcessor(BaseUpdateProcessor):
     """Simple implementation of a custom update processor that logs the updates."""
@@ -17,15 +21,17 @@ class CustomUpdateProcessor(BaseUpdateProcessor):
     async def do_process_update(self, update: Dict, coroutine: Awaitable[any]) -> None:
         """Sequential processing of updates for the same user.
         This method is called for each update that is received from the Telegram server
-        
-        We dont want to process multiple updates from the same user concurrently, 
+
+        We dont want to process multiple updates from the same user concurrently,
         to not to deal with all consequences comes with it such as race conditions.
-        
+
         But we also want to process updates from different users concurrently.
         """
         user_id = update.effective_user.id
         if user_id is None:
-            logger.error("Cannot process update: No user ID found in update: %s", update)
+            logger.error(
+                "Cannot process update: No user ID found in update: %s", update
+            )
             coroutine.close()
             return
 

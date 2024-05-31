@@ -33,6 +33,7 @@ from constants import *
 
 # set httpx logger to warning
 logger = logging.getLogger(__name__)
+# logger.addHandler(logging.FileHandler("bot_data/logs/bot.log"))
 
 
 async def inline_funcs(update: Update, context: ContextTypes.DEFAULT_TYPE):

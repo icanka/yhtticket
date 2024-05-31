@@ -1,21 +1,16 @@
+"""A simple bot for the Discord API."""
+
 import logging
 
-logger = logging.getLogger(__name__)
 
 default_settings = {
-    "log_path": "bot_data/logs/",
+    "LOG_LEVEL": logging.INFO,
+    "LOG_FORMAT": "%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s",
+    "LOG_FILE": "bot_data/logs/bot.log",
+    "LOG_STREAM": True,
 }
+globals().update(default_settings)
 
 __version__ = "0.0.1"
 __author__ = "izzet can karakus"
 __license__ = "MIT"
-
-
-def configure():
-    """Configure the bot with the given settings."""
-    default_settings.update(default_settings)
-    globals().update(default_settings)
-
-
-if __name__ == "__main__":
-    configure()

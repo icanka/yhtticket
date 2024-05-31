@@ -11,24 +11,30 @@ from telegram.ext import (
     CallbackQueryHandler,
     ConversationHandler,
 )
-from apscheduler.events import EVENT_JOB_SUBMITTED, EVENT_JOB_MISSED, EVENT_JOB_MAX_INSTANCES
+from apscheduler.events import (
+    EVENT_JOB_SUBMITTED,
+    EVENT_JOB_MISSED,
+    EVENT_JOB_MAX_INSTANCES,
+)
 from update_processor import CustomUpdateProcessor
 from scheduler_listeners import submit_listener, mis_listener, max_instances_listener
+import logging
 from telegram_bot import *
 from constants import *
 
-print("main.py is running")
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-    handlers=[logging.StreamHandler(), logging.FileHandler("bot_data/logs/trip_bot.log")],
-)
+
 logging.getLogger("httpx").setLevel(logging.WARNING)
-print("Logging is set up")
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+logger.addHandler(logging.FileHandler("bot_data/logs/main.log"))
+logger.addHandler(logging.StreamHandler())
 
 
 def main() -> None:
     """Run the bot."""
+    logger.info("Starting the bot")
     my_persistance = PicklePersistence(filepath="bot_data/my_persistence")
     app = (
         ApplicationBuilder()
@@ -39,10 +45,9 @@ def main() -> None:
         .build()
     )
 
-
     scheduler_configuration = {
         "coalesce": True,
-        "misfire_grace_time": 10, # default misfire time
+        "misfire_grace_time": 10,  # default misfire time
     }
     scheduler = app.job_queue.scheduler
     scheduler.configure()
@@ -235,7 +240,9 @@ def main() -> None:
     )
     app.add_handler(get_set_current_trip_handler)
 
-    check_payment_test_handler = CommandHandler("check_payment_test", start_test_check_payment)
+    check_payment_test_handler = CommandHandler(
+        "check_payment_test", start_test_check_payment
+    )
     app.add_handler(check_payment_test_handler)
 
     test_command_handler = CommandHandler("test", test_task)
@@ -243,7 +250,7 @@ def main() -> None:
 
     sen_task_id_handler = CommandHandler("send_task_id", send_redis_key)
     app.add_handler(sen_task_id_handler)
-    
+
     unknown_command_handler = MessageHandler(filters.COMMAND, unknown_command)
     app.add_handler(unknown_command_handler)
 

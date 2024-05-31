@@ -43,7 +43,9 @@ def query(from_, to_, from_date=None):
             InlineQueryResultArticle(
                 id=uuid4(),
                 title=f"{e.__class__.__name__}",
-                input_message_content=InputTextMessageContent("Error while listing stations"),
+                input_message_content=InputTextMessageContent(
+                    "Error while listing stations"
+                ),
             )
         ]
     # get the most closest station name to the given station name, fuzzy matching

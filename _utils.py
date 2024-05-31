@@ -1,5 +1,6 @@
 """Utility functions for the API."""
 
+
 def find_value(json_data, key):
     """Find the value of the given key in the JSON data."""
     result = None

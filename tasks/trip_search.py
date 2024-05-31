@@ -11,6 +11,8 @@ import api_constants
 from _utils import find_value
 from passenger import Passenger
 
+logger = logging.getLogger(__name__)
+
 
 class SeatLockedException(Exception):
     """Exception raised when a seat is already locked."""
@@ -24,12 +26,11 @@ class SeatLockedException(Exception):
 class TripSearchApi:
     """Class for searching for trips and selecting empty seats."""
 
-    logger = logging.getLogger(__name__)
     time_format = "%b %d, %Y %I:%M:%S %p"
 
     # def __init__(self) -> None:
     #     # set up class logger
-    #     TripSearchApi.logger = logging.getLogger(__name__)
+    #     logger = logging.getLogger(__name__)
     #     self.time_format = "%b %d, %Y %I:%M:%S %p"
 
     @staticmethod
@@ -119,9 +120,7 @@ class TripSearchApi:
         s_check = api_constants.seat_check.copy()
         if trip["empty_seats"]:
             empty_seat = trip["empty_seats"][0] if empty_seat is None else empty_seat
-            TripSearchApi.logger.info(
-                "Selecting empty seat: koltukNo: %s", empty_seat["koltukNo"]
-            )
+            logger.info("Selecting empty seat: koltukNo: %s", empty_seat["koltukNo"])
 
             seat_select_req["seferId"] = trip["seferId"]
             seat_select_req["vagonSiraNo"] = empty_seat["vagonSiraNo"]
@@ -146,7 +145,7 @@ class TripSearchApi:
                     s_response_json = s_response.json()
 
                     if s_response_json["cevapBilgileri"]["cevapKodu"] != "000":
-                        TripSearchApi.logger.error("response_json: %s", s_response_json)
+                        logger.error("response_json: %s", s_response_json)
                         raise ValueError(
                             f"Non zero response code: s_response_json: {s_response_json}"
                         )
@@ -163,7 +162,7 @@ class TripSearchApi:
                         response_json = response.json()
 
                         if response_json["cevapBilgileri"]["cevapKodu"] != "000":
-                            TripSearchApi.logger.error(
+                            logger.error(
                                 "Non zero response code: response_json: %s",
                                 response_json,
                             )
@@ -174,11 +173,9 @@ class TripSearchApi:
                     else:
                         raise SeatLockedException(empty_seat)
                 except RequestException as e:
-                    TripSearchApi.logger.error("Request exception: %s", e)
+                    logger.error("Request exception: %s", e)
                     retries += 1
-                    TripSearchApi.logger.error(
-                        "Retrying seat selection. Retry count: %s", retries
-                    )
+                    logger.error("Retrying seat selection. Retry count: %s", retries)
                     time.sleep(sleep)
                 break
 
@@ -200,8 +197,8 @@ class TripSearchApi:
         sleep = 10
         timeout = 10
 
-        TripSearchApi.logger.debug(vagon_map_req)
-        TripSearchApi.logger.debug(vagons)
+        logger.debug(vagon_map_req)
+        logger.debug(vagons)
         empty_seats = list()
 
         while retries < max_retries:
@@ -214,16 +211,14 @@ class TripSearchApi:
                 )
                 response.raise_for_status()
             except RequestException as e:
-                TripSearchApi.logger.error("Error while getting vagon map: %s", e)
+                logger.error("Error while getting vagon map: %s", e)
                 retries += 1
-                TripSearchApi.logger.error(
-                    "Retrying vagon map. Retry count: %s", retries
-                )
+                logger.error("Retrying vagon map. Retry count: %s", retries)
                 time.sleep(sleep)
             break
 
         response_json = response.json()
-        TripSearchApi.logger.debug(response_json)
+        logger.debug(response_json)
 
         for empty_seat in TripSearchApi.get_empty_vagon_seats(response_json):
             empty_seat["vagonTipId"] = next(
@@ -233,7 +228,7 @@ class TripSearchApi:
             )
             empty_seats.append(empty_seat)
 
-        TripSearchApi.logger.debug("empty_seats: %s", empty_seats)
+        logger.debug("empty_seats: %s", empty_seats)
         return empty_seats
 
     @staticmethod
@@ -262,18 +257,14 @@ class TripSearchApi:
             if seat_type is not None:
                 vagon_type = vagon["vagonTipId"]
                 if seat_type != vagon_type:
-                    TripSearchApi.logger.debug(
-                        "seat_type: %s, vagon_type: %s", seat_type, vagon_type
-                    )
+                    logger.debug("seat_type: %s, vagon_type: %s", seat_type, vagon_type)
                     continue
             empty_seats = TripSearchApi.get_detailed_vagon_info_empty_seats(
                 vagon_map_req, trip["vagons"]
             )
-            TripSearchApi.logger.debug(empty_seats)
+            logger.debug(empty_seats)
             trip_with_seats["empty_seats"].extend(empty_seats)
-        TripSearchApi.logger.info(
-            "Length of empty seats: %s", len(trip_with_seats["empty_seats"])
-        )
+        logger.info("Length of empty seats: %s", len(trip_with_seats["empty_seats"]))
 
         return trip_with_seats
 
@@ -294,11 +285,11 @@ class TripSearchApi:
         None
         """
         if from_station not in [station["station_name"] for station in stations]:
-            TripSearchApi.logger.error("%s is not a valid station", from_station)
+            logger.error("%s is not a valid station", from_station)
             raise ValueError(f"{from_station} is not a valid station")
 
         if to_station not in [station["station_name"] for station in stations]:
-            TripSearchApi.logger.error("%s is not a valid station", to_station)
+            logger.error("%s is not a valid station", to_station)
             raise ValueError(f"{to_station} is not a valid station")
 
     @staticmethod
@@ -341,7 +332,7 @@ class TripSearchApi:
         sleep = 10
         timeout = 3
 
-        TripSearchApi.logger.info(
+        logger.info(
             "Searching for trips. from_station: %s to_station: %s from_date: %s to_date: %s",
             from_station,
             to_station,
@@ -350,9 +341,7 @@ class TripSearchApi:
         )
 
         if not from_date:
-            TripSearchApi.logger.info(
-                "from_date is not provided. Using the current date."
-            )
+            logger.info("from_date is not provided. Using the current date.")
             from_date = datetime.now().strftime(TripSearchApi.time_format)
 
         vagon_req_body = api_constants.vagon_req_body.copy()
@@ -364,7 +353,7 @@ class TripSearchApi:
         try:
             TripSearchApi.check_stations(stations, from_station, to_station)
         except ValueError as e:
-            TripSearchApi.logger.error(e)
+            logger.error(e)
             raise e
 
         # Find the station that matches from_station
@@ -398,11 +387,9 @@ class TripSearchApi:
                 )
                 response.raise_for_status()
             except RequestException as e:
-                TripSearchApi.logger.error("Error while searching for trips: %s", e)
+                logger.error("Error while searching for trips: %s", e)
                 retries += 1
-                TripSearchApi.logger.error(
-                    "Retrying trip search. Retry count: %s", retries
-                )
+                logger.error("Retrying trip search. Retry count: %s", retries)
                 time.sleep(sleep)
             break
 
@@ -490,10 +477,8 @@ class TripSearchApi:
                     ]
                     trips.append(t)
                 except IndexError as e:  # no business class, just ignore
-                    TripSearchApi.logger.error("IndexError: %s", e)
-                    TripSearchApi.logger.error(
-                        "No business class for trip: %s", trip["seferId"]
-                    )
+                    logger.error("IndexError: %s", e)
+                    logger.error("No business class for trip: %s", trip["seferId"])
         return trips
 
     @staticmethod
@@ -550,11 +535,9 @@ class TripSearchApi:
                 return hst_stations
 
             except RequestException as e:
-                TripSearchApi.logger.error("Error while getting station list: %s", e)
+                logger.error("Error while getting station list: %s", e)
                 retries += 1
-                TripSearchApi.logger.error(
-                    "Retrying station list. Retry count: %s", retries
-                )
+                logger.error("Retrying station list. Retry count: %s", retries)
                 time.sleep(sleep)
             break
 
@@ -585,13 +568,13 @@ class TripSearchApi:
                 )
                 response.raise_for_status()
                 response_json = response.json()
-                TripSearchApi.logger.debug(response_json)
+                logger.debug(response_json)
 
                 if response_json["cevapBilgileri"]["cevapKodu"] != "000":
-                    TripSearchApi.logger.error(
+                    logger.error(
                         "Mernis verification failed. response_json: %s", response_json
                     )
-                    TripSearchApi.logger.error(
+                    logger.error(
                         "Passenger: %s %s TCKN: %s Birthday: %s",
                         passenger.name,
                         passenger.surname,
@@ -601,11 +584,9 @@ class TripSearchApi:
                     raise ValueError(response_json["cevapBilgileri"]["cevapMsj"])
             except (requests.RequestException, ValueError) as e:
                 retries += 1
-                TripSearchApi.logger.error("Error while verifying mernis: %s", e)
-                TripSearchApi.logger.error(
-                    "Retrying mernis verification. Retry count: %s", retries
-                )
+                logger.error("Error while verifying mernis: %s", e)
+                logger.error("Retrying mernis verification. Retry count: %s", retries)
                 time.sleep(sleep)
             break
-        TripSearchApi.logger.info("Mernis verification succeeded.")
+        logger.info("Mernis verification succeeded.")
         return True
