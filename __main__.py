@@ -1,6 +1,7 @@
 """ This module is the main module of the project. It creates the bot and runs it. """
 
 from datetime import datetime
+import logging
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -18,18 +19,21 @@ from apscheduler.events import (
 )
 from update_processor import CustomUpdateProcessor
 from scheduler_listeners import submit_listener, mis_listener, max_instances_listener
-import logging
 from telegram_bot import *
 from constants import *
 
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-logger.addHandler(logging.FileHandler("bot_data/logs/main.log"))
-logger.addHandler(logging.StreamHandler())
+handlers = [logging.FileHandler("bot_data/logs/main.log"), logging.StreamHandler()]
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s"
+)
+for handler in handlers:
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 
 def main() -> None:

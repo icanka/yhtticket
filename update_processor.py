@@ -12,6 +12,16 @@ from telegram.ext import (
 )
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+handlers = [logging.FileHandler("bot_data/logs/update_processor.log")]
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s"
+)
+for handler in handlers:
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+logger = logging.getLogger(__name__)
 # logger.addHandler(logging.FileHandler("bot_data/logs/update_processor.log"))
 
 

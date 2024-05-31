@@ -1,13 +1,15 @@
 """ Telegram bot functions. """
 
 import asyncio
-from datetime import datetime, timedelta
 import logging
 import pickle
-from uuid import uuid4
 import time
+from datetime import datetime, timedelta
+from uuid import uuid4
+
 import regex
 import requests
+from celery.result import AsyncResult
 from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
@@ -16,24 +18,32 @@ from telegram import (
     Update,
 )
 from telegram.ext import ContextTypes
-from celery.result import AsyncResult
+
 import inline_func
-from payment import SeleniumPayment
-from tasks.trip_search import TripSearchApi
-from tasks.trip import Trip
 from passenger import Passenger, Seat, Tariff
+from payment import SeleniumPayment
 from tasks.tasks import (
-    test_task_,
-    redis_client,
+    celery_app,
     find_trip_and_reserve,
     keep_reserving_seat,
-    celery_app,
+    redis_client,
+    test_task_,
 )
+from tasks.trip import Trip
+from tasks.trip_search import TripSearchApi
 from constants import *
 
-# set httpx logger to warning
+
 logger = logging.getLogger(__name__)
-# logger.addHandler(logging.FileHandler("bot_data/logs/bot.log"))
+logger.setLevel(logging.INFO)
+
+handlers = [logging.FileHandler("bot_data/logs/bot.log"), logging.StreamHandler()]
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s"
+)
+for handler in handlers:
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 
 async def inline_funcs(update: Update, context: ContextTypes.DEFAULT_TYPE):

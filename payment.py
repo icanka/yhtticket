@@ -14,7 +14,18 @@ import api_constants
 from tasks.trip_search import TripSearchApi
 
 logger = logging.getLogger(__name__)
-# logger.addHandler(logging.FileHandler("bot_data/logs/payment.log"))
+logger.setLevel(logging.INFO)
+
+handlers = [
+    logging.FileHandler("bot_data/logs/payment.log"),
+    logging.StreamHandler(),
+]
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s"
+)
+for handler in handlers:
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 
 # create a class which will be inherited from the SeleniumPayment class

@@ -2,7 +2,14 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import logging
 
 logger = logging.getLogger(__name__)
-logger.addHandler(logging.FileHandler("bot_data/logs/scheduler.log"))
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s"
+)
+handlers = [logging.FileHandler("bot_data/logs/scheduler_listeners.log")]
+for handler in handlers:
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 
 def submit_listener(event):

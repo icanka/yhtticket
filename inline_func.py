@@ -1,21 +1,23 @@
 from datetime import datetime
 import logging
-from pprint import pprint
 from uuid import uuid4
 import requests
-from thefuzz import fuzz
 from thefuzz import process
-from telegram import InlineQueryResultArticle, InputTextMessageContent, Update
-from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    ContextTypes,
-    MessageHandler,
-    filters,
-    InlineQueryHandler,
-)
-import dateparser
+from telegram import InlineQueryResultArticle, InputTextMessageContent
 import tasks.trip as trip
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handlers = [
+    logging.FileHandler("bot_data/logs/inline_funcs.log"),
+    logging.StreamHandler(),
+]
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s"
+)
+for handler in handlers:
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 
 def stations():
