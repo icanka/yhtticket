@@ -34,17 +34,18 @@ from tasks.trip_search import TripSearchApi
 from constants import *  # pylint: disable=wildcard-import, unused-wildcard-import
 
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger = logger.getLogger(__name__)
+logger.setLevel(logger.INFO)
 
-handlers = [logging.FileHandler("bot_data/logs/bot.log"), logging.StreamHandler()]
-formatter = logging.Formatter(
+handlers = [logger.FileHandler("bot_data/logs/bot.log"), logger.StreamHandler()]
+formatter = logger.Formatter(
     "%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s"
 )
 for handler in handlers:
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
+logger.info("Starting logger")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Start the conversation and ask the user about their"""
@@ -156,7 +157,7 @@ async def show_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     user_data[IN_PROGRESS] = True
     user_data[CURRENT_STATE] = SHOWING_INFO
-    logging.info("state: SHOWING_INFO")
+    logger.info("state: SHOWING_INFO")
     return SHOWING_INFO
 
 
@@ -181,7 +182,7 @@ async def adding_self(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
             )
 
     user_data[IN_PROGRESS] = False
-    logging.info("returning ADDING_PERSONAL_INFO")
+    logger.info("returning ADDING_PERSONAL_INFO")
     user_data[CURRENT_STATE] = ADDING_PERSONAL_INFO
     return ADDING_PERSONAL_INFO
 
@@ -200,7 +201,7 @@ async def adding_credit_card(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text(text=text, reply_markup=keyboard)
 
     user_data[IN_PROGRESS] = False
-    logging.info("returning ADDING_CREDIT_CARD_INFO")
+    logger.info("returning ADDING_CREDIT_CARD_INFO")
     user_data[CURRENT_STATE] = ADDING_CREDIT_CARD_INFO
     return ADDING_CREDIT_CARD_INFO
 
@@ -208,11 +209,12 @@ async def adding_credit_card(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def ask_for_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Ask the user for the information."""
     context.user_data[CURRENT_FEATURE] = update.callback_query.data
-    logging.info("current_feature: %s", context.user_data[CURRENT_FEATURE])
+    logger.info("current_feature: %s", context.user_data[CURRENT_FEATURE])
     text = FEATURE_HELP_MESSAGES[update.callback_query.data]
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text)
-    logging.info("setting previous state to: %s", context.user_data[CURRENT_STATE])
+    logger.info("current_state: TYPING_REPLY, previous_state: %s", context.user_data[CURRENT_STATE])
+    logger.info("setting previous state to: %s", context.user_data[CURRENT_STATE])
     context.user_data[PREVIOUS_STATE] = context.user_data[CURRENT_STATE]
     context.user_data[CURRENT_STATE] = TYPING_REPLY
     return TYPING_REPLY
@@ -222,7 +224,7 @@ async def save_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Save the user input."""
     feature = context.user_data[CURRENT_FEATURE]
     prev_state = context.user_data[PREVIOUS_STATE]
-    logging.info("feature: %s", feature)
+    logger.info("feature: %s", feature)
     try:
         re: str
         input_text = update.message.text
@@ -250,7 +252,7 @@ async def save_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 # MMYY to YYMM
                 input_text = input_text[2:] + input_text[:2]
         if not regex.fullmatch(re, update.message.text):
-            logging.error("ValueError: %s", update.message.text)
+            logger.error("ValueError: %s", update.message.text)
             raise ValueError
     except ValueError:
         text = FEATURE_HELP_MESSAGES[feature]
@@ -259,14 +261,14 @@ async def save_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     except AttributeError:
         # no update.message.text get callback_query.data
         input_text = update.callback_query.data
-        logging.info("input_text: %s", input_text)
+        logger.info("input_text: %s", input_text)
 
     input_text = input_text.strip()
     user_data = context.user_data
     user_data[user_data[CURRENT_FEATURE]] = input_text
     user_data[IN_PROGRESS] = True
 
-    logging.info("prev_state: %s", prev_state)
+    logger.info("prev_state: %s", prev_state)
     if prev_state == ADDING_PERSONAL_INFO:
         return await adding_self(update, context)
     elif prev_state == ADDING_CREDIT_CARD_INFO:
@@ -275,7 +277,7 @@ async def save_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def end(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """End conversation from InlineKeyboardButton."""
-    # logging.info("End conversation from InlineKeyboardButton. callbackquery_data: %s",
+    # logger.info("End conversation from InlineKeyboardButton. callbackquery_data: %s",
     #             update.callback_query.data)
     text = "See you next time!"
     await update.callback_query.answer()
@@ -295,14 +297,14 @@ async def back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Return to the previous state."""
     context.user_data[IN_PROGRESS] = True
     level = context.user_data[CURRENT_STATE]
-    logging.info("level: %s", level)
+    logger.info("level: %s", level)
     if level == ADDING_PERSONAL_INFO or level == ADDING_CREDIT_CARD_INFO:
         logger.info("ADDING_PERSONAL_INFO or ADDING_CREDIT_CARD_INFO")
         await start(update, context)
     elif level == SELECTING_TARIFF or level == SELECTING_SEAT_TYPE:
         logger.info("SELECTING_TARIFF or SELECTING_SEAT_TYPE")
         await adding_self(update, context)
-    logging.info("state: BACK")
+    logger.info("state: BACK")
     return BACK
 
 
@@ -317,17 +319,15 @@ async def unimplemented(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     context.user_data[IN_PROGRESS] = True
     context.user_data[CURRENT_STATE] = UNIMPLEMENTED
-    logging.info("state: UNIMPLEMENTED")
+    logger.info("state: UNIMPLEMENTED")
     return UNIMPLEMENTED
 
 
 async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Return END to end the conversation."""
     text = "Sorry, I didn't understand that command."
-    # if context.user_data.get(CURRENT_FEATURE):
-    #     text = FEATURE_HELP_MESSAGES[context.user_data[CURRENT_FEATURE]]
     state = context.user_data.get(CURRENT_STATE)
-    logging.info("unknown command: current_state: %s", state)
+    logger.info("unknown command: current_state: %s", state)
     await update.message.reply_text(text=text)
     if state is not None:
         return state
@@ -337,7 +337,7 @@ async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """handle the query result from inline query."""
     # get the message coming from command
-    logging.info("context.args: %s", context.args)
+    logger.info("context.args: %s", context.args)
     # check if the required information is provided
     await set_passenger(update, context)
     passenger = context.user_data.get(PASSENGER, None)
@@ -350,7 +350,7 @@ async def res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     from_, to_, from_date = args
 
     my_trip = Trip(from_, to_, from_date, passenger=passenger)
-    logging.info("my_trip: from_date: %s,", my_trip.from_date)
+    logger.info("my_trip: from_date: %s,", my_trip.from_date)
     context.user_data[TRIP] = my_trip
 
     trips = my_trip.get_trips(check_satis_durum=False)
@@ -368,7 +368,7 @@ async def res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 ]
             )
     except TypeError as exc:
-        logging.error("TypeError: %s", exc)
+        logger.error("TypeError: %s", exc)
         await update.message.reply_text("No trips found.")
         return context.user_data[CURRENT_STATE]
 
@@ -380,7 +380,7 @@ async def res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         do_quote=True,
         reply_markup=inline_keyboard_markup,
     )
-    logging.info(
+    logger.info(
         "returning context.user_data[CURRENT_STATE]: %s",
         context.user_data[CURRENT_STATE],
     )
@@ -392,12 +392,12 @@ async def handle_datetime_type(
 ) -> int:
     """Handle the datetime type."""
 
-    logging.info("handle_datetime_type")
-    logging.info("context.args: %s", update.callback_query.data)
+    logger.info("handle_datetime_type")
+    logger.info("context.args: %s", update.callback_query.data)
     my_trip = context.user_data[TRIP]
     _time = datetime.strftime(update.callback_query.data, my_trip.output_time_format)
     my_trip.to_date = _time
-    logging.info(
+    logger.info(
         "my_trip: from_date %s, to_date: %s", my_trip.from_date, my_trip.to_date
     )
 
@@ -409,7 +409,7 @@ async def handle_datetime_type(
 # async def second_date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 #     """handle the query result from inline query."""
 #     # get the message coming from command
-#     logging.info("context.args: %s", context.args)
+#     logger.info("context.args: %s", context.args)
 #     # context.args as one string
 #     arg_string = update.message.text.partition(" ")[2]
 
@@ -453,7 +453,7 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         logger.info("Setting trip.passenger")
         trip.passenger = passenger
 
-    logging.info("user_trip: %s", trip)
+    logger.info("user_trip: %s", trip)
     chat_id = update.message.chat_id
     # run the callback_1 function after 3 seconds once
 
@@ -496,7 +496,7 @@ async def start_search(context: ContextTypes.DEFAULT_TYPE) -> int:
                 return context.job.data.get(CURRENT_STATE, END)
 
     trip = context.job.data.get(TRIP)
-    logging.info("trip: %s, type: %s", trip, type(trip))
+    logger.info("trip: %s, type: %s", trip, type(trip))
     logger.info("trip.passenger: %s", trip.passenger)
     # serialize the trip object
     trip_ = pickle.dumps(trip)
@@ -554,7 +554,7 @@ async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
         task_ = AsyncResult(task_id)
 
     if task_.ready():
-        logging.info("Task is ready")
+        logger.info("Task is ready")
         if not task_.successful():
             # get the exception
             logger.info("Task failed.")
@@ -790,25 +790,25 @@ async def set_passenger(
 ) -> Passenger:
     """Wrapper for init_passenger. Handles exceptions. See: init_passenger()"""
     try:
-        logging.info("init_passenger")
+        logger.info("init_passenger")
         init_passenger(update, context, mernis_check)
 
     except KeyError as feature:
-        logging.error("KeyError: %s", feature)
+        logger.error("KeyError: %s", feature)
         await update.message.reply_text(
             f"{feature} is required, please update your information first."
         )
         return context.user_data.get(CURRENT_STATE, END)
 
     except ValueError as exc:
-        logging.error("ValueError: %s", exc)
+        logger.error("ValueError: %s", exc)
         await update.message.reply_text(
             "Mernis verification failed. Please update your information first.",
         )
         return context.user_data.get(CURRENT_STATE, END)
 
     except requests.exceptions.HTTPError as exc:
-        logging.error("HTTPError: %s", exc)
+        logger.error("HTTPError: %s", exc)
         await update.message.reply_text(
             "Mernis verification failed. Please update your information first.",
         )
@@ -822,7 +822,7 @@ def init_passenger(_: Update, context: ContextTypes.DEFAULT_TYPE, mernis_check=T
     # make sure all the required information is provided
     for feature in FEATURE_HELP_MESSAGES:
         if context.user_data.get(feature) is None:
-            logging.info("KeyError: %s", feature)
+            logger.info("KeyError: %s", feature)
             raise KeyError(feature)
 
     match context.user_data.get("seat_type"):
@@ -864,12 +864,12 @@ def init_passenger(_: Update, context: ContextTypes.DEFAULT_TYPE, mernis_check=T
 
     context.user_data[PASSENGER] = passenger
     logger.info("passenger object set to context.user_data[PASSENGER].")
-    logging.info("passenger: %s.", context.user_data[PASSENGER])
+    logger.info("passenger: %s.", context.user_data[PASSENGER])
 
 
 async def selecting_tariff(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Select the tariff."""
-    logging.info("Selecting tariff.")
+    logger.info("Selecting tariff.")
     # set this to ADDING_PERSONAL_INFO to return to the previous state
     context.user_data[PREVIOUS_STATE] = ADDING_PERSONAL_INFO
     context.user_data[CURRENT_STATE] = SELECTING_TARIFF
@@ -885,7 +885,7 @@ async def selecting_seat_type(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
     """Select the seat type."""
-    logging.info("Selecting seat type.")
+    logger.info("Selecting seat type.")
     # set this to ADDING_PERSONAL_INFO to return to the previous state
     context.user_data[PREVIOUS_STATE] = ADDING_PERSONAL_INFO
     context.user_data[CURRENT_STATE] = SELECTING_SEAT_TYPE
@@ -942,8 +942,8 @@ async def delete_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def print_state(_: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Print the current state."""
 
-    logging.info("current_state: %s", context.user_data.get(CURRENT_STATE))
-    logging.info("previous_State: %s", context.user_data.get(PREVIOUS_STATE))
+    logger.info("current_state: %s", context.user_data.get(CURRENT_STATE))
+    logger.info("previous_State: %s", context.user_data.get(PREVIOUS_STATE))
     trip = context.user_data.get(TRIP)
     payment = context.user_data.get(PAYMENT, None)
 
@@ -1078,7 +1078,7 @@ async def start_test_check_payment(
 # async def test_method(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 #     """Return END to end the conversation."""
 #     text = "You are in the test method."
-#     logging.info("You are in the test method. callback_query_data: %s",
+#     logger.info("You are in the test method. callback_query_data: %s",
 #                  update.callback_query.data)
 #     await update.callback_query.answer()
 #     await update.callback_query.edit_message_text(text=text)
