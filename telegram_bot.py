@@ -48,12 +48,18 @@ for handler in handlers:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Start the conversation and ask the user about their"""
-    logger.info(
-        "Starting the conversation with chat_id: %s, user: %s",
-        update.message.chat_id,
-        update.message.from_user,
-    )
-
+    if update.callback_query:
+        logger.info(
+            "Conversation with user_id: %s, chat_id: %s",
+            update.callback_query.from_user.id,
+            update.callback_query.message.chat_id,
+        )
+    else:
+        logger.info(
+            "Conversation with user_id: %s, chat_id: %s",
+            update.message.from_user.id,
+            update.message.chat_id,
+        )
     text = "Add, update or show your information. To abort, simply type /stop"
     keyboard = InlineKeyboardMarkup(MAIN_MENU_BUTTONS)
 
