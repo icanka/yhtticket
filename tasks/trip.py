@@ -158,6 +158,7 @@ class Trip:
 
 def list_stations():
     """List all the stations that support high-speed train."""
+    logger.info("Listing stations")
     try:
         stations_json = TripSearchApi.get_station_list()
         stations = []
@@ -165,7 +166,6 @@ def list_stations():
             stations.append(station["station_name"])
         return stations
     except requests.exceptions.HTTPError as e:
-        logger = logging.getLogger(__name__)
         logger.error("Error while listing stations: %s", e)
         raise
 

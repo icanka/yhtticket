@@ -1,22 +1,5 @@
-Searching for trips. from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: None to_date: None
-from_date is not provided. Using the current date.
-Total of 16 trips found
-returning trips
-Searching for trips. from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: 10jun to_date: None
-Total of 16 trips found
-returning trips
-Searching for trips. from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: 10june to_date: None
-Total of 16 trips found
-returning trips
-Searching for trips. from_station: İstanbul(Pendik) to_station: Arifiye from_date: None to_date: None
-from_date is not provided. Using the current date.
-Total of 15 trips found
-returning trips
-Searching for trips. from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: None to_date: None
-from_date is not provided. Using the current date.
-Total of 16 trips found
-returning trips
-Searching for trips. from_station: İstanbul(Pendik) to_station: Ankara Gar from_date: None to_date: None
-from_date is not provided. Using the current date.
-Total of 16 trips found
-returning trips
+2024-06-01 03:40:30,606 - tasks.trip - list_stations - INFO - Listing stations
+2024-06-01 03:41:00,998 - tasks.trip - list_stations - INFO - Listing stations
+2024-06-01 03:41:31,369 - tasks.trip - list_stations - INFO - Listing stations
+2024-06-01 03:42:01,787 - tasks.trip - list_stations - INFO - Listing stations
+2024-06-01 03:42:32,147 - tasks.trip - list_stations - INFO - Listing stations

@@ -1,15 +1,11 @@
 import logging
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
-
+logger = logging.getLogger("tasks")
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler("bot_data/logs/tasks.log")
 formatter = logging.Formatter(
     "%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s"
 )
-
-stream_handler = logging.StreamHandler()
-file_handler = logging.FileHandler("bot_data/logs/tasks.log")
-
-logger.addHandler(stream_handler)
-logger.addHandler(file_handler)
+handler.setFormatter(formatter)
+logger.addHandler(handler)

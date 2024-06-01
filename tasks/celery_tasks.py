@@ -3,17 +3,24 @@ import time
 import logging
 import pickle
 import redis
-from tasks.trip import Trip
 from celery import Celery
+from celery.utils.log import get_task_logger
+from tasks.trip import Trip
 
-logger = logging.getLogger(__name__)
-logger.addHandler(logging.FileHandler("bot_data/logs/celery.log"))
+logger = get_task_logger(__name__)
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.FileHandler("bot_data/logs/celery_tasks.log"))
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s"
+)
+for handler in logger.handlers:
+    handler.setFormatter(formatter)
 
 celery_app = Celery(
-    "celery_app",
+    "celery_tasks",
     backend="redis://localhost:6379/0",
     broker="redis://localhost:6379/0",
-    include=["tasks"],
+    include=["tasks.celery_tasks"],
 )
 
 redis_client = redis.Redis(host="localhost", port=6379, db=0)
@@ -29,7 +36,7 @@ def find_trip_and_reserve(self, my_trip: Trip):
         my_trip.trip_json = trips[0]
         logger.info("Reserving: %s", trips[0].get("binisTarih"))
         my_trip.reserve_seat()
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         logger.error("Error while reserving seat: %s", e)
         count += 1
         logger.info("Retrying... %s", count)
@@ -49,7 +56,7 @@ def keep_reserving_seat(self, my_trip: Trip):
         my_trip.empty_seat_json.get('koltukNo')}"
     logger.info(text)
     while True:
-        logger.info("logger name: %s", logger.name)
+        # logger.info("logger name: %s", logger.name)
         if should_stop(self):
             return pickle.dumps(my_trip)
 
@@ -58,7 +65,7 @@ def keep_reserving_seat(self, my_trip: Trip):
 
         try:
             my_trip.reserve_seat()
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             logger.error("Error while reserving seat: %s", e)
             # retry indefinitely
             self.retry(countdown=0)
@@ -69,9 +76,9 @@ def keep_reserving_seat(self, my_trip: Trip):
 @celery_app.task(bind=True)
 def test_task_(self):
     """Test task."""
-    logger.info("Test task is running")
     # byte request id
     while True:
+        logger.info("Task is running")
         if should_stop(self):
             break
         logger.info("redis keys: %s", redis_client.keys())

@@ -8,7 +8,7 @@ from payment import SeleniumPayment
 from tasks.trip import Trip
 from passenger import Passenger, Seat, Tariff
 from inline_func import query
-from tasks.tasks import find_trip_and_reserve
+from tasks.celery import find_trip_and_reserve
 import pickle
 
 

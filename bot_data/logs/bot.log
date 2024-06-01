@@ -20,3 +20,102 @@
 2024-06-01 00:56:43,478 - telegram_bot - inline_funcs - INFO - query: query
 2024-06-01 00:56:43,478 - telegram_bot - inline_funcs - INFO - cmd_args: []
 2024-06-01 00:58:32,077 - telegram_bot - inline_funcs - INFO - cmd_args: []
+2024-06-01 01:03:02,283 - telegram_bot - start - INFO - Starting the conversation with chat_id: 976904284, user: User(first_name='can', id=976904284, is_bot=False, language_code='en', username='raflman')
+2024-06-01 01:04:03,187 - telegram_bot - check_task - INFO - Job queue: (), len: 0
+2024-06-01 01:04:03,187 - telegram_bot - check_task - INFO - task_id: None
+2024-06-01 01:04:38,418 - telegram_bot - proceed_to_payment - INFO - task_id: None
+2024-06-01 01:04:38,419 - telegram_bot - proceed_to_payment - INFO - We cannot proceed to payment. No seat is currently reserved
+2024-06-01 01:05:41,800 - telegram_bot - init_passenger - INFO - passenger object set to context.user_data[PASSENGER].
+2024-06-01 01:05:41,800 - telegram_bot - start_res - INFO - Setting trip.passenger
+2024-06-01 01:05:41,801 - telegram_bot - start_res - INFO - Job queue: (Job[id=57a30bd573234ab58d910db5b98b3e5d, name=start_search, callback=start_search, trigger=date[2024-05-31 22:05:42 UTC]], Job[id=be8e253e16784d84882f4d0dbd9ee1ae, name=check_search_status, callback=check_search_status, trigger=interval[0:00:30]]), len: 2
+2024-06-01 01:05:42,802 - telegram_bot - start_search - INFO - trip.passenger: Passenger(tckn='18700774442', name='izzet can', surname='karakuş', birthday='14/07/1994', email='izzetcankarakus@gmail.com', phone='05340771521', sex='E', credit_card_no='4506347008156065', credit_card_ccv='035', credit_card_exp='2406', tariff=11750067704, seat_type=17002)
+2024-06-01 01:05:42,823 - telegram_bot - start_search - INFO - SETTING TASK_ID: 94d01901-476f-4ee7-97e8-5e05173e7d26
+2024-06-01 01:06:12,819 - telegram_bot - check_search_status - INFO - active_tasks: 1
+2024-06-01 01:06:12,819 - telegram_bot - check_search_status - INFO - task is None.
+2024-06-01 01:06:12,821 - telegram_bot - check_search_status - INFO - settin context.job.data[TRIP] to my_trip
+2024-06-01 01:06:13,195 - telegram_bot - check_search_status - WARNING - SETTING TASK_ID: None
+2024-06-01 01:06:13,196 - telegram_bot - check_search_status - INFO - Revoking task with id: 94d01901-476f-4ee7-97e8-5e05173e7d26
+2024-06-01 01:06:13,196 - telegram_bot - check_search_status - INFO - Starting job keep_seat_lock.
+2024-06-01 01:06:13,199 - telegram_bot - check_search_status - INFO - Removing job with name: check_search_status
+2024-06-01 01:06:13,199 - telegram_bot - check_search_status - INFO - Job queue: (Job[id=51e667dc6a5243608e78871190375fe9, name=keep_seat_lock, callback=keep_seat_lock, trigger=date[2024-05-31 22:06:16 UTC]],)
+2024-06-01 01:06:13,199 - telegram_bot - check_search_status - INFO - Execution time: 1.387007474899292
+2024-06-01 01:06:16,203 - telegram_bot - keep_seat_lock - INFO - Setting task_id to context.user_data
+2024-06-01 01:06:16,203 - telegram_bot - keep_seat_lock - WARNING - SETTING TASK_ID: d2cb5ac7-1473-4f04-be7d-209bd13d95b2
+2024-06-01 01:10:09,800 - telegram_bot - start_res - INFO - checking task with task_id: d2cb5ac7-1473-4f04-be7d-209bd13d95b2
+2024-06-01 01:10:10,807 - telegram_bot - start_res - INFO - found celery task with task_id: d2cb5ac7-1473-4f04-be7d-209bd13d95b2
+2024-06-01 01:10:22,987 - telegram_bot - reset_search - INFO - Revoking task with id: d2cb5ac7-1473-4f04-be7d-209bd13d95b2
+2024-06-01 01:10:22,988 - telegram_bot - reset_search - WARNING - SETTING TASK_ID: None
+2024-06-01 01:10:48,779 - telegram_bot - start_res - INFO - checking task with task_id: d2cb5ac7-1473-4f04-be7d-209bd13d95b2
+2024-06-01 01:10:50,313 - telegram_bot - init_passenger - INFO - passenger object set to context.user_data[PASSENGER].
+2024-06-01 01:10:50,314 - telegram_bot - start_res - INFO - Setting trip.passenger
+2024-06-01 01:10:50,315 - telegram_bot - start_res - INFO - Job queue: (Job[id=f08cd1c91d574592a301444a019e2cdb, name=start_search, callback=start_search, trigger=date[2024-05-31 22:10:51 UTC]], Job[id=65b3b4159aa44ae9ba2e18b1ff9610c1, name=check_search_status, callback=check_search_status, trigger=interval[0:00:30]]), len: 2
+2024-06-01 01:10:52,321 - telegram_bot - start_search - INFO - trip.passenger: Passenger(tckn='18700774442', name='izzet can', surname='karakuş', birthday='14/07/1994', email='izzetcankarakus@gmail.com', phone='05340771521', sex='E', credit_card_no='4506347008156065', credit_card_ccv='035', credit_card_exp='2406', tariff=11750067704, seat_type=17002)
+2024-06-01 01:10:52,334 - telegram_bot - start_search - INFO - SETTING TASK_ID: c5c58a29-9945-4692-b2f8-e48e92417b23
+2024-06-01 01:11:21,331 - telegram_bot - check_search_status - INFO - active_tasks: 1
+2024-06-01 01:11:21,332 - telegram_bot - check_search_status - INFO - task is None.
+2024-06-01 01:11:21,335 - telegram_bot - check_search_status - INFO - settin context.job.data[TRIP] to my_trip
+2024-06-01 01:11:21,688 - telegram_bot - check_search_status - WARNING - SETTING TASK_ID: None
+2024-06-01 01:11:21,688 - telegram_bot - check_search_status - INFO - Revoking task with id: c5c58a29-9945-4692-b2f8-e48e92417b23
+2024-06-01 01:11:21,689 - telegram_bot - check_search_status - INFO - Starting job keep_seat_lock.
+2024-06-01 01:11:21,691 - telegram_bot - check_search_status - INFO - Removing job with name: check_search_status
+2024-06-01 01:11:21,691 - telegram_bot - check_search_status - INFO - Job queue: (Job[id=a4aa32af85b14f9baa800580679ae689, name=keep_seat_lock, callback=keep_seat_lock, trigger=date[2024-05-31 22:11:24 UTC]],)
+2024-06-01 01:11:21,691 - telegram_bot - check_search_status - INFO - Execution time: 1.3653740882873535
+2024-06-01 01:11:24,693 - telegram_bot - keep_seat_lock - INFO - Setting task_id to context.user_data
+2024-06-01 01:11:24,693 - telegram_bot - keep_seat_lock - WARNING - SETTING TASK_ID: 3af5f3dd-91a4-46c1-9a1d-6898da2ce2a3
+2024-06-01 01:12:39,019 - telegram_bot - reset_search - INFO - Revoking task with id: 3af5f3dd-91a4-46c1-9a1d-6898da2ce2a3
+2024-06-01 01:12:39,020 - telegram_bot - reset_search - WARNING - SETTING TASK_ID: None
+2024-06-01 01:13:45,365 - telegram_bot - init_passenger - INFO - passenger object set to context.user_data[PASSENGER].
+2024-06-01 01:13:45,366 - telegram_bot - start_res - INFO - Setting trip.passenger
+2024-06-01 01:13:45,366 - telegram_bot - start_res - INFO - Job queue: (Job[id=f1d2d0f1957c448bb17c889c41275e55, name=start_search, callback=start_search, trigger=date[2024-05-31 22:13:46 UTC]], Job[id=1c777aae62194e70a0f2dccb777f170b, name=check_search_status, callback=check_search_status, trigger=interval[0:00:30]]), len: 2
+2024-06-01 01:13:46,369 - telegram_bot - start_search - INFO - trip.passenger: Passenger(tckn='18700774442', name='izzet can', surname='karakuş', birthday='14/07/1994', email='izzetcankarakus@gmail.com', phone='05340771521', sex='E', credit_card_no='4506347008156065', credit_card_ccv='035', credit_card_exp='2406', tariff=11750067704, seat_type=17002)
+2024-06-01 01:13:46,370 - telegram_bot - start_search - INFO - SETTING TASK_ID: 5635b556-276a-48ec-8a65-e2f744bdc83a
+2024-06-01 01:14:16,381 - telegram_bot - check_search_status - INFO - active_tasks: 1
+2024-06-01 01:14:16,381 - telegram_bot - check_search_status - INFO - task is None.
+2024-06-01 01:14:16,383 - telegram_bot - check_search_status - INFO - settin context.job.data[TRIP] to my_trip
+2024-06-01 01:14:16,878 - telegram_bot - check_search_status - WARNING - SETTING TASK_ID: None
+2024-06-01 01:14:16,878 - telegram_bot - check_search_status - INFO - Revoking task with id: 5635b556-276a-48ec-8a65-e2f744bdc83a
+2024-06-01 01:14:16,878 - telegram_bot - check_search_status - INFO - Starting job keep_seat_lock.
+2024-06-01 01:14:16,879 - telegram_bot - check_search_status - INFO - Removing job with name: check_search_status
+2024-06-01 01:14:16,879 - telegram_bot - check_search_status - INFO - Job queue: (Job[id=28afe54ceb664444a7c98c2c1471f096, name=keep_seat_lock, callback=keep_seat_lock, trigger=date[2024-05-31 22:14:19 UTC]],)
+2024-06-01 01:14:16,879 - telegram_bot - check_search_status - INFO - Execution time: 1.5017971992492676
+2024-06-01 01:14:19,885 - telegram_bot - keep_seat_lock - INFO - Setting task_id to context.user_data
+2024-06-01 01:14:19,885 - telegram_bot - keep_seat_lock - WARNING - SETTING TASK_ID: 49d0bebd-91ee-41dd-86c4-51c3ab6c6129
+2024-06-01 01:14:52,728 - telegram_bot - reset_search - INFO - Revoking task with id: 49d0bebd-91ee-41dd-86c4-51c3ab6c6129
+2024-06-01 01:14:52,729 - telegram_bot - reset_search - WARNING - SETTING TASK_ID: None
+2024-06-01 01:25:23,343 - telegram_bot - test_task - INFO - task_id: 258f2340-2251-41d3-8ef8-2381f5a8b574
+2024-06-01 01:27:35,273 - telegram_bot - test_task - INFO - task_id: 60efe7bb-3d30-4738-8fb2-e80ef16ebbdb
+2024-06-01 01:28:58,712 - telegram_bot - test_task - INFO - task_id: 50a5bea4-72d6-4885-9b3a-47c1450b877f
+2024-06-01 01:31:33,556 - telegram_bot - test_task - INFO - task_id: 1059e40a-e760-4a79-883f-d2c552c53f35
+2024-06-01 01:33:13,489 - telegram_bot - test_task - INFO - task_id: 12965dba-7f61-4e09-a49a-f5887875b5df
+2024-06-01 01:34:35,352 - telegram_bot - test_task - INFO - task_id: ea65fe7e-c538-44a8-aba5-377117f7cfd9
+2024-06-01 01:36:55,132 - telegram_bot - test_task - INFO - task_id: d926d8c5-af14-4462-a14b-a5968b148a9c
+2024-06-01 01:37:52,280 - telegram_bot - test_task - INFO - task_id: fd3d29a3-2e47-42b5-8e23-6301f56e12c2
+2024-06-01 01:41:04,306 - telegram_bot - test_task - INFO - task_id: 275be4ed-4b39-4450-879b-7bdf69c55912
+2024-06-01 01:42:53,525 - telegram_bot - test_task - INFO - task_id: f644cec1-ec12-4287-8ab4-6d4154d85aee
+2024-06-01 01:44:06,784 - telegram_bot - test_task - INFO - task_id: c147556d-9bbf-4869-b707-75331f3f98ab
+2024-06-01 01:51:48,687 - telegram_bot - test_task - INFO - task_id: 461418c7-7f18-419a-a1bd-a6018cac47a9
+2024-06-01 01:52:42,399 - telegram_bot - test_task - INFO - task_id: 4e790950-e796-4b9a-a860-94f5072edaf6
+2024-06-01 01:53:27,537 - telegram_bot - test_task - INFO - task_id: 52b3aee4-122a-4d3d-aa69-bcbc3a9fcb78
+2024-06-01 01:56:09,944 - telegram_bot - test_task - INFO - task_id: cdc1587c-6fda-49d5-9659-f9e0019ed5dc
+2024-06-01 01:57:32,086 - telegram_bot - test_task - INFO - task_id: b473fd8c-f1bd-4058-b506-a9b2789cff25
+2024-06-01 02:04:18,995 - telegram_bot - test_task - INFO - task_id: 54bc34a4-c75c-45d3-b239-d5ceae202180
+2024-06-01 02:11:04,048 - telegram_bot - test_task - INFO - task_id: fb1de1a1-8d2c-4347-8666-8ea6a2b2d56e
+2024-06-01 02:13:12,979 - telegram_bot - test_task - INFO - task_id: 3ba1305e-d808-4cfc-b004-78d6d6d51f2c
+2024-06-01 02:13:48,243 - telegram_bot - test_task - INFO - task_id: 71098d45-ffe0-4706-a640-c1e686d6cec2
+2024-06-01 02:14:54,324 - telegram_bot - test_task - INFO - task_id: e7465cfd-0acb-4ef2-a8dd-335f8785ee46
+2024-06-01 02:27:05,157 - telegram_bot - test_task - INFO - task_id: 55c65212-396d-4cbd-a7e0-e44e057d745e
+2024-06-01 02:27:32,836 - telegram_bot - test_task - INFO - task_id: d082d7b7-bc15-44b9-ba39-603e27a4101f
+2024-06-01 02:46:08,960 - telegram_bot - test_task - INFO - task_id: bae7625c-5934-4942-8b6f-fd6b5565dcc7
+2024-06-01 02:49:10,003 - telegram_bot - test_task - INFO - task_id: 12f0087d-8bd0-4e64-b2f2-bbe79c6bd5f1
+2024-06-01 02:57:26,731 - telegram_bot - test_task - INFO - task_id: 0eadb996-ae18-4afa-b4ae-b3614e9ffc6d
+2024-06-01 03:03:43,578 - telegram_bot - test_task - INFO - task_id: 8d26173d-dc28-4950-9af5-c8fc4bdd9066
+2024-06-01 03:05:06,855 - telegram_bot - test_task - INFO - task_id: fbcb68eb-6459-4d61-bafc-84dc71bbf4e5
+2024-06-01 03:07:22,464 - telegram_bot - test_task - INFO - task_id: cd7bc611-333d-4418-8668-955124e7bed7
+2024-06-01 03:08:02,153 - telegram_bot - test_task - INFO - task_id: a5db8224-e2d9-42b9-8271-0959e79eeb79
+2024-06-01 03:10:07,067 - telegram_bot - test_task - INFO - task_id: a9fcac91-8ad2-43e8-86ae-f7947d41f7a5
+2024-06-01 03:12:17,399 - telegram_bot - test_task - INFO - task_id: 3e05c15d-0aa8-4ee4-8fb6-3d5bd521f8c3
+2024-06-01 03:18:06,442 - telegram_bot - test_task - INFO - task_id: 0bfd2820-94c6-4832-8eb8-8564c24d10d6
+2024-06-01 03:25:03,374 - telegram_bot - test_task - INFO - task_id: 51dd878c-e924-4e32-9d77-179f2d5c7ad3
+2024-06-01 03:27:55,099 - telegram_bot - test_task - INFO - task_id: 7169ac03-2d8a-44c4-8d8c-c1c5b865922e
+2024-06-01 03:34:18,229 - telegram_bot - test_task - INFO - task_id: f21a0ead-99c7-45a1-9165-043958ec7f47
+2024-06-01 03:40:30,602 - telegram_bot - test_task - INFO - task_id: 567cd9c9-bea1-45a3-a575-5a3af822e811

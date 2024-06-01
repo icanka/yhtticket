@@ -22,7 +22,7 @@ from telegram.ext import ContextTypes
 import inline_func
 from passenger import Passenger, Seat, Tariff
 from payment import SeleniumPayment
-from tasks.tasks import (
+from tasks.celery_tasks import (
     celery_app,
     find_trip_and_reserve,
     keep_reserving_seat,
@@ -48,8 +48,12 @@ for handler in handlers:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Start the conversation and ask the user about their"""
-    logger.info("Starting the conversation with chat_id: %s, user: %s", update.message.chat_id, update.message.from_user)
-    
+    logger.info(
+        "Starting the conversation with chat_id: %s, user: %s",
+        update.message.chat_id,
+        update.message.from_user,
+    )
+
     text = "Add, update or show your information. To abort, simply type /stop"
     keyboard = InlineKeyboardMarkup(MAIN_MENU_BUTTONS)
 

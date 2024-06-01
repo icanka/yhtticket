@@ -226,9 +226,7 @@ def main() -> None:
     print_trip_handler = CommandHandler("print_trip", print_trip)
     app.add_handler(print_trip_handler)
 
-    proceed_to_payment_handler = CommandHandler(
-        "proceed_to_payment", proceed_to_payment
-    )
+    proceed_to_payment_handler = CommandHandler("to_payment", proceed_to_payment)
     app.add_handler(proceed_to_payment_handler)
 
     set_passenger_handler = CommandHandler("set_passenger", set_passenger)
