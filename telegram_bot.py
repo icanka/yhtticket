@@ -34,7 +34,7 @@ from tasks.trip_search import TripSearchApi
 from constants import *  # pylint: disable=wildcard-import, unused-wildcard-import
 
 
-logger = logger.getLogger(__name__)
+logger = logging.getLogger(__name__)
 logger.setLevel(logger.INFO)
 
 handlers = [logger.FileHandler("bot_data/logs/bot.log"), logger.StreamHandler()]
