@@ -1,4 +1,4 @@
-""" This module contains the SeleniumPayment class for handling Selenium-based payment operations."""
+""" This module contains the Payment class for handling payment operations."""
 
 import json
 import logging
@@ -7,8 +7,6 @@ from datetime import datetime
 
 import requests
 from requests.exceptions import RequestException
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 
 import api_constants
 from tasks.trip_search import TripSearchApi
@@ -27,39 +25,7 @@ for handler in handlers:
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
-
-# create a class which will be inherited from the SeleniumPayment class
-class MainSeleniumPayment:
-    def __init__(self, *args) -> None:
-        self.options = Options()
-        self.options.add_argument("--disable-notifications")
-        self.options.add_argument("--disable-geolocation")
-        # self.options.add_argument("--disable-application-cache")
-        # self.options.add_argument("--disable-cache")
-        self.options.add_argument("--headless")
-        self.options.add_argument("--disable-infobars")
-        self.options.add_argument("--mute-audio")
-        # self.options.add_argument("--disable-gpu")
-        # self.options.add_argument("--no-sandbox")
-        # self.options.add_argument("--disable-dev-shm-usage")
-        self.options.add_argument("--disable-extensions")
-        # self.options.add_argument("--disable-software-rasterizer")
-        # self.options.add_argument("--disable-setuid-sandbox")
-        # self.options.add_argument("--disable-sandbox")
-        # self.options.add_argument("--single-process")
-        # self.options.add_argument("--ignore-certificate-errors")
-        # self.options.add_argument("--ignore-ssl-errors")
-        self.options.add_argument("--disable-logging")
-        self.options.page_load_strategy = "eager"
-        # add args values to options
-        for arg in args:
-            self.options.add_argument(arg)
-        self.driver = webdriver.Chrome(options=self.options)
-        self.driver.implicitly_wait(10)
-
-
-#
-class SeleniumPayment(MainSeleniumPayment):
+class Payment():
     """
     A class for handling Selenium-based payment operations.
 
@@ -77,7 +43,7 @@ class SeleniumPayment(MainSeleniumPayment):
 
     """
 
-    def __init__(self, *args, trip=None, **kwargs):
+    def __init__(self, trip=None, **kwargs):
         """
         Initialize the Payment class.
 
@@ -86,7 +52,6 @@ class SeleniumPayment(MainSeleniumPayment):
             trip: Trip object.
             **kwargs: Variable keyword arguments.
         """
-        super().__init__(*args)  # Call the __init__ method of the base class
 
         self.price = None
         self.normal_price = None

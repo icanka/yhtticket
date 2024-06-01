@@ -21,7 +21,7 @@ from telegram.ext import ContextTypes
 
 import inline_func
 from passenger import Passenger, Seat, Tariff
-from payment import SeleniumPayment
+from payment import Payment
 from tasks.celery_tasks import (
     celery_app,
     find_trip_and_reserve,
@@ -677,7 +677,7 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
         # set the passenger object for trip
         trip.passenger = context.user_data.get(PASSENGER)
 
-        p = SeleniumPayment()
+        p = Payment()
         logger.info("Setting payment object to context.user_data[PAYMENT]")
         context.user_data[PAYMENT] = p
         p.trip = trip
@@ -935,9 +935,6 @@ async def delete_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def print_state(_: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Print the current state."""
-
-    # p = SeleniumPayment()
-    # context.user_data[PAYMENT] = p
 
     logging.info("current_state: %s", context.user_data.get(CURRENT_STATE))
     logging.info("previous_State: %s", context.user_data.get(PREVIOUS_STATE))
