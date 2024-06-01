@@ -2,8 +2,7 @@
 
 import logging
 from typing import Optional
-import api_constants
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 

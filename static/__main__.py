@@ -1,15 +1,12 @@
-import json
-import logging
-from datetime import datetime
-from pprint import pprint
-import api_constants
-import time
-from payment import SeleniumPayment
-from tasks.trip import Trip
-from passenger import Passenger, Seat, Tariff
-from inline_func import query
-from tasks.celery import find_trip_and_reserve
+""" Main module to run the script. """
 import pickle
+import time
+from pprint import pprint
+
+from passenger import Passenger, Seat, Tariff
+from payment import SeleniumPayment
+from tasks.celery_tasks import find_trip_and_reserve
+from tasks.trip import Trip
 
 
 def main():
@@ -48,7 +45,7 @@ def main():
     to_station = "Ankara Gar"
     from_date = "30 May 20:00"
     to_date = None  # '27 April 17:00'
-    seat_type = "buss"
+    #seat_type = "buss"
 
     # query(from_station, to_station, from_date)
 
