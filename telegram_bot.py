@@ -35,10 +35,10 @@ from constants import *  # pylint: disable=wildcard-import, unused-wildcard-impo
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logger.INFO)
+logger.setLevel(logging.INFO)
 
-handlers = [logger.FileHandler("bot_data/logs/bot.log"), logger.StreamHandler()]
-formatter = logger.Formatter(
+handlers = [logging.FileHandler("bot_data/logs/bot.log"), logging.StreamHandler()]
+formatter = logging.Formatter(
     "%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s"
 )
 for handler in handlers:
