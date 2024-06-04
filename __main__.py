@@ -200,9 +200,13 @@ def main() -> None:
                     unimplemented, pattern=f"^{ADDING_CREDIT_CARD_INFO}$"
                 ),
                 CallbackQueryHandler(show_info, pattern=f"^{SHOWING_INFO}$"),
+                CallbackQueryHandler(show_trip_info, pattern=f"^{SHOWING_TRIP_INFO}$"),
                 CallbackQueryHandler(end, pattern=f"^{END}$"),
             ],
             SHOWING_INFO: [
+                CallbackQueryHandler(start, pattern=f"^{BACK}$"),
+            ],
+            SHOWING_TRIP_INFO: [
                 CallbackQueryHandler(start, pattern=f"^{BACK}$"),
             ],
             UNIMPLEMENTED: [

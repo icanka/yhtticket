@@ -55,8 +55,6 @@ semap = asyncio.Semaphore(5)
 asyncio.run(my_trip.find_trips_test())
 
 
-
-
 # my_trip_ = pickle.dumps(my_trip)
 # task = find_trip_and_reserve.delay(my_trip_)
 # print(task.id)

@@ -162,6 +162,33 @@ async def show_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return SHOWING_INFO
 
 
+async def show_trip_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Show configure trip information"""
+    keyboard = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("Back", callback_data=str(BACK))]]
+    )
+    user_data = context.user_data
+    trip = context.user_data.get(TRIP)
+    if trip is None:
+        text = "No trip is configured."
+        await update.callback_query.answer()
+        await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
+        return context.user_data.get(CURRENT_STATE, END)
+    text = (
+        f"From: {trip.from_station}\n"
+        f"To: {trip.to_station}\n"
+        f"From Date: {trip.from_date}\n"
+        f"To Date: {trip.to_date}\n"
+        f"Is Seat Reserved: {trip.is_seat_reserved}\n"
+        f"Reserved Seat: {trip.empty_seat_json.get('koltukNo')}\n"
+    )
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
+    user_data[IN_PROGRESS] = True
+    user_data[CURRENT_STATE] = SHOWING_TRIP_INFO
+    return context.user_data.get(CURRENT_STATE, END)
+
+
 async def adding_self(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Add information about the user."""
     text = "Please provide me with your information."
@@ -408,14 +435,6 @@ async def handle_datetime_type(
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text="Okay!.")
     return context.user_data[CURRENT_STATE]
-
-
-# async def second_date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-#     """handle the query result from inline query."""
-#     # get the message coming from command
-#     logger.info("context.args: %s", context.args)
-#     # context.args as one string
-#     arg_string = update.message.text.partition(" ")[2]
 
 
 async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -1101,8 +1120,3 @@ async def start_test_check_payment(
 #     await update.callback_query.answer()
 #     await update.callback_query.edit_message_text(text=text)
 #     return TEST
-
-
-
-
-

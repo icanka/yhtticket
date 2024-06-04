@@ -99,63 +99,6 @@ class Trip:
         logger.info("returning trips")
         return trips
 
-    # def find_trip(self):
-    #     """Find a trip based on the given parameters.
-    #     This function will keep searching for trips until it finds a trip with empty seats.
-    #     """
-    #     trips_with_empty_seats = []
-
-    #     logger.info("Searching for trips with empty seat.")
-
-    #     while len(trips_with_empty_seats) == 0:
-    #         time.sleep(1)
-    #         if datetime.now().second % 60 == 0:
-    #             # log method parameters
-    #             logger.info(
-    #                 "from_station: %s, to_station: %s, from_date: %s, to_date: %s",
-    #                 self.from_station,
-    #                 self.to_station,
-    #                 self.from_date,
-    #                 self.to_date,
-    #             )
-    #         trips = self.get_trips()
-    #         try:
-    #             for trip in trips:
-
-    #                 logging.info(
-    #                     "Checking trip for empty seats: %s", trip.get("binisTarih")
-    #                 )
-    #                 trip = TripSearchApi.get_empty_seats_trip(
-    #                     trip,
-    #                     self.from_station,
-    #                     self.to_station,
-    #                     self.passenger.seat_type,
-    #                 )
-
-    #                 if self.passenger.seat_type:
-    #                     if self.passenger.seat_type == Seat.BUSS:
-    #                         empty_seat_count = trip["buss_empty_seat_count"]
-    #                     elif self.passenger.seat_type == Seat.ECO:
-    #                         empty_seat_count = trip["eco_empty_seat_count"]
-    #                 else:
-    #                     empty_seat_count = trip["empty_seat_count"]
-
-    #                 if empty_seat_count > 0:
-    #                     logging.info(
-    #                         "Found trip with empty seats. trip: %s",
-    #                         trip.get("binisTarih"),
-    #                     )
-    #                     trips_with_empty_seats.append(trip)
-    #                     # return the trip as soon as we find a trip with empty seats
-    #                     return trips_with_empty_seats
-
-    #                 logging.info("empty_seat_count: %s", empty_seat_count)
-
-    #         except TypeError as e:
-    #             logger.error("Error while finding trip: %s", e)
-
-    #     return trips_with_empty_seats
-
     async def find_trips(self):
         """Find a trip based on the given parameters.
         This function will keep searching for trips until it finds a trip with empty seats.
