@@ -71,6 +71,25 @@ def main() -> None:
         MessageHandler(filters.COMMAND, unknown_command),
     ]
 
+    sex_conv_handler = ConversationHandler(
+        entry_points=[CallbackQueryHandler(selecting_sex, pattern="^sex$")],
+        states={
+            SELECTING_SEX: [
+                CallbackQueryHandler(back, pattern=f"^{BACK}$"),
+                CallbackQueryHandler(save_input),
+            ],
+        },
+        fallbacks=fallback_handlers,
+        map_to_parent={
+            # End the child conversation and return to SELECTING_MAIN_ACTION state
+            BACK: ADDING_PERSONAL_INFO,
+            # End the whole conversation from within the child conversation.
+            END: END,
+            # save_input returnes this state so we need to map it
+            ADDING_PERSONAL_INFO: ADDING_PERSONAL_INFO,
+        },
+    )
+
     seat_type_conv_handler = ConversationHandler(
         entry_points=[CallbackQueryHandler(selecting_seat_type, pattern="^seat_type$")],
         states={
@@ -121,6 +140,7 @@ def main() -> None:
             ADDING_PERSONAL_INFO: [
                 tariff_conv_handler,
                 seat_type_conv_handler,
+                sex_conv_handler,
                 CallbackQueryHandler(ask_for_input, pattern="^name$"),
                 CallbackQueryHandler(ask_for_input, pattern="^surname$"),
                 CallbackQueryHandler(ask_for_input, pattern="^tckn$"),

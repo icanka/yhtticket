@@ -1,4 +1,5 @@
 from datetime import datetime
+import asyncio
 import time
 import logging
 import pickle
@@ -32,7 +33,7 @@ def find_trip_and_reserve(self, my_trip: Trip):
     count = 0
     my_trip = pickle.loads(my_trip)
     try:
-        trips = my_trip.find_trip()
+        trips = asyncio.run(my_trip.find_trips())
         my_trip.trip_json = trips[0]
         logger.info("Reserving: %s", trips[0].get("binisTarih"))
         my_trip.reserve_seat()

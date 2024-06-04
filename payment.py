@@ -25,7 +25,8 @@ for handler in handlers:
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
-class Payment():
+
+class Payment:
     """
     A class for handling Selenium-based payment operations.
 

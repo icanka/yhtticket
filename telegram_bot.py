@@ -47,6 +47,7 @@ for handler in handlers:
 
 logger.info("Starting logger")
 
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Start the conversation and ask the user about their"""
     if update.callback_query:
@@ -213,7 +214,10 @@ async def ask_for_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     text = FEATURE_HELP_MESSAGES[update.callback_query.data]
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text)
-    logger.info("current_state: TYPING_REPLY, previous_state: %s", context.user_data[CURRENT_STATE])
+    logger.info(
+        "current_state: TYPING_REPLY, previous_state: %s",
+        context.user_data[CURRENT_STATE],
+    )
     logger.info("setting previous state to: %s", context.user_data[CURRENT_STATE])
     context.user_data[PREVIOUS_STATE] = context.user_data[CURRENT_STATE]
     context.user_data[CURRENT_STATE] = TYPING_REPLY
@@ -535,7 +539,7 @@ async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
     for task in active_tasks.values():
         for t in task:
             logger.info("task_name : %s", t["name"])
-            if t["name"] != "tasks.find_trip_and_reserve":
+            if t["name"] != "tasks.celery_tasks.find_trip_and_reserve":
                 await context.bot.send_message(
                     chat_id=context.job.chat_id, text="No search task in progress."
                 )
@@ -592,7 +596,7 @@ async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
             3,
             data=context.job.data,
             chat_id=context.job.chat_id,
-            job_kwargs={"misfire_grace_time": 30},
+            job_kwargs={"misfire_grace_time": 60},
         )
         context.bot.send_message(
             chat_id=context.job.chat_id,
@@ -637,7 +641,7 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if task["id"] == task_id:
             task_ = AsyncResult(task_id)
 
-            if task["name"] == "tasks.keep_reserving_seat":
+            if task["name"] == "tasks.celery_tasks.keep_reserving_seat":
 
                 # stop the keep_seat_lock job to get the trip object
                 # then start it again to keep the seat lock in case payment fails
@@ -656,7 +660,7 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     0,
                     data=context.user_data,
                     chat_id=update.message.chat_id,
-                    job_kwargs={"misfire_grace_time": 30},
+                    job_kwargs={"misfire_grace_time": 60},
                 )
 
     trip = context.user_data.get(TRIP)
@@ -897,6 +901,19 @@ async def selecting_seat_type(
     return SELECTING_SEAT_TYPE
 
 
+async def selecting_sex(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Select sex"""
+    logger.info("Selecting sex.")
+    context.user_data[PREVIOUS_STATE] = ADDING_PERSONAL_INFO
+    context.user_data[CURRENT_STATE] = SELECTING_SEX
+    context.user_data[CURRENT_FEATURE] = update.callback_query.data
+    text = "Select your sex."
+    keyboard = InlineKeyboardMarkup(SEX_MENU_BUTTONS)
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
+    return SELECTING_SEX
+
+
 async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Reset the search task."""
     trip = context.user_data.get(TRIP)
@@ -1019,7 +1036,8 @@ async def check_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 logger.info("active_task id: %s", t["id"])
                 if t["id"] == task_id:
                     task_ = AsyncResult(task_id)
-                    task_name = t["name"].split(".")[1]
+                    logger.info("task name: %s", t["name"])
+                    task_name = t["name"].split(".")[2]
                     text = f"You have currently running a task: {
                         task_name}, status: {task_.status}."
                     break
@@ -1083,3 +1101,8 @@ async def start_test_check_payment(
 #     await update.callback_query.answer()
 #     await update.callback_query.edit_message_text(text=text)
 #     return TEST
+
+
+
+
+

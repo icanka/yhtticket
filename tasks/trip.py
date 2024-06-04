@@ -1,6 +1,6 @@
 """This script is used to automate the ticket purchase process from TCDD website."""
 
-import time
+import asyncio
 from datetime import datetime
 import logging
 import requests
@@ -35,6 +35,7 @@ class Trip:
         self.koltuk_lock_id_list = []
         self.lock_end_time = None
         self.is_seat_reserved = False
+        self.semaphore_count = 5
 
     def set_seat_lock_id(self):
         """Get the lock id of the seat."""
@@ -61,11 +62,11 @@ class Trip:
 
             # we have already reserved the seat check lock_end_time and if it is passed then reserve the seat again
             elif self.is_seat_reserved:
-                # if datetime.now().second % 10 == 0:
-                logger.info("logger name: %s", logger.name)
-                logger.info("Seat is already reserved.")
+                if datetime.now().second % 30 == 0:
+                    logger.info("Seat is already reserved.")
                 time_diff = self.lock_end_time - datetime.now()
-                if time_diff.total_seconds() < 0:
+                # server doesnt seem to release the lock at least 15-20 seconds after the lock_end_time
+                if time_diff.total_seconds() < -10:
                     logger.info(time_diff.total_seconds())
                     logger.info(
                         "Lock time ending is approaching. Starting to reserve the seat again"
@@ -98,62 +99,124 @@ class Trip:
         logger.info("returning trips")
         return trips
 
-    def find_trip(self):
+    # def find_trip(self):
+    #     """Find a trip based on the given parameters.
+    #     This function will keep searching for trips until it finds a trip with empty seats.
+    #     """
+    #     trips_with_empty_seats = []
+
+    #     logger.info("Searching for trips with empty seat.")
+
+    #     while len(trips_with_empty_seats) == 0:
+    #         time.sleep(1)
+    #         if datetime.now().second % 60 == 0:
+    #             # log method parameters
+    #             logger.info(
+    #                 "from_station: %s, to_station: %s, from_date: %s, to_date: %s",
+    #                 self.from_station,
+    #                 self.to_station,
+    #                 self.from_date,
+    #                 self.to_date,
+    #             )
+    #         trips = self.get_trips()
+    #         try:
+    #             for trip in trips:
+
+    #                 logging.info(
+    #                     "Checking trip for empty seats: %s", trip.get("binisTarih")
+    #                 )
+    #                 trip = TripSearchApi.get_empty_seats_trip(
+    #                     trip,
+    #                     self.from_station,
+    #                     self.to_station,
+    #                     self.passenger.seat_type,
+    #                 )
+
+    #                 if self.passenger.seat_type:
+    #                     if self.passenger.seat_type == Seat.BUSS:
+    #                         empty_seat_count = trip["buss_empty_seat_count"]
+    #                     elif self.passenger.seat_type == Seat.ECO:
+    #                         empty_seat_count = trip["eco_empty_seat_count"]
+    #                 else:
+    #                     empty_seat_count = trip["empty_seat_count"]
+
+    #                 if empty_seat_count > 0:
+    #                     logging.info(
+    #                         "Found trip with empty seats. trip: %s",
+    #                         trip.get("binisTarih"),
+    #                     )
+    #                     trips_with_empty_seats.append(trip)
+    #                     # return the trip as soon as we find a trip with empty seats
+    #                     return trips_with_empty_seats
+
+    #                 logging.info("empty_seat_count: %s", empty_seat_count)
+
+    #         except TypeError as e:
+    #             logger.error("Error while finding trip: %s", e)
+
+    #     return trips_with_empty_seats
+
+    async def find_trips(self):
         """Find a trip based on the given parameters.
         This function will keep searching for trips until it finds a trip with empty seats.
         """
         trips_with_empty_seats = []
-
+        event = asyncio.Event()
+        # lock for shared resource trips_with_empty_seats
+        sem = asyncio.Semaphore(self.semaphore_count)
+        lock = asyncio.Lock()
         logger.info("Searching for trips with empty seat.")
 
+        # if trips_with_empty_seats is empty keep searching for trips
         while len(trips_with_empty_seats) == 0:
-            time.sleep(1)
-            if datetime.now().second % 60 == 0:
-                # log method parameters
-                logger.info(
-                    "from_station: %s, to_station: %s, from_date: %s, to_date: %s",
-                    self.from_station,
-                    self.to_station,
-                    self.from_date,
-                    self.to_date,
-                )
             trips = self.get_trips()
-            try:
-                for trip in trips:
-
-                    logging.info(
-                        "Checking trip for empty seats: %s", trip.get("binisTarih")
-                    )
-                    trip = TripSearchApi.get_empty_seats_trip(
-                        trip,
-                        self.from_station,
-                        self.to_station,
-                        self.passenger.seat_type,
-                    )
-
-                    if self.passenger.seat_type:
-                        if self.passenger.seat_type == Seat.BUSS:
-                            empty_seat_count = trip["buss_empty_seat_count"]
-                        elif self.passenger.seat_type == Seat.ECO:
-                            empty_seat_count = trip["eco_empty_seat_count"]
-                    else:
-                        empty_seat_count = trip["empty_seat_count"]
-
-                    if empty_seat_count > 0:
-                        logging.info(
-                            "Found trip with empty seats. trip: %s",
-                            trip.get("binisTarih"),
-                        )
-                        trips_with_empty_seats.append(trip)
-                        # return the trip as soon as we find a trip with empty seats
-                        return trips_with_empty_seats
-
-                    logging.info("empty_seat_count: %s", empty_seat_count)
-
-            except TypeError as e:
-                logger.error("Error while finding trip: %s", e)
+            tasks = [
+                self.check_trip_for_empty_seats(
+                    trip, trips_with_empty_seats, lock, sem, event
+                )
+                for trip in trips
+            ]
+            await asyncio.gather(*tasks)
+            logger.info("Trips with empty seats len: %s", len(trips_with_empty_seats))
 
         return trips_with_empty_seats
+
+    async def check_trip_for_empty_seats(
+        self, trip, trips_with_empty_seats, lock, sem, event
+    ):
+        """test"""
+        # await asyncio.sleep(100)
+        # logger.info("Checking trip for empty seats: %s", trip.get("binisTarih"))
+
+        # lock for running only a certain amount of tasks concurrently
+        async with sem:
+            logger.info("Aquired semaphore")
+            while not event.is_set():
+                trip = await TripSearchApi.get_empty_seats_trip(
+                    trip,
+                    self.from_station,
+                    self.to_station,
+                    self.passenger.seat_type,
+                )
+                empty_seat_count = await self.get_trip_empty_seat_count(trip)
+                if empty_seat_count > 0:
+                    # onyl one  task should access the shared resources below at a time
+                    async with lock:
+                        while not event.is_set():
+                            event.set()
+                            trips_with_empty_seats.append(trip)
+
+    async def get_trip_empty_seat_count(self, trip):
+        """test"""
+        empty_seat_count = 0
+        if self.passenger.seat_type:
+            if self.passenger.seat_type == Seat.BUSS:
+                empty_seat_count = trip["buss_empty_seat_count"]
+            elif self.passenger.seat_type == Seat.ECO:
+                empty_seat_count = trip["eco_empty_seat_count"]
+        else:
+            empty_seat_count = trip["empty_seat_count"]
+        return empty_seat_count
 
 
 def list_stations():

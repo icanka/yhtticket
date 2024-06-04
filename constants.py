@@ -8,10 +8,11 @@ from telegram.ext import ConversationHandler
     ADDING_CREDIT_CARD_INFO,
     SELECTING_TARIFF,
     SELECTING_SEAT_TYPE,
+    SELECTING_SEX,
     SHOWING_INFO,
     BACK,
     TYPING_REPLY,
-) = range(0, 8)
+) = range(0, 9)
 
 END = ConversationHandler.END
 
@@ -96,6 +97,16 @@ SEAT_TYPE_MENU_BUTTONS = [
     ],
     [
         InlineKeyboardButton("Any", callback_data="Any"),
+        InlineKeyboardButton("Back", callback_data=str(BACK)),
+    ],
+]
+
+SEX_MENU_BUTTONS = [
+    [
+        InlineKeyboardButton("Male", callback_data="E"),
+        InlineKeyboardButton("Female", callback_data="K"),
+    ],
+    [
         InlineKeyboardButton("Back", callback_data=str(BACK)),
     ],
 ]

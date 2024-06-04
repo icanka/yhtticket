@@ -1,6 +1,8 @@
 """ This module contains the functions for searching for trips and selecting empty seats."""
 
+import asyncio
 import json
+import aiohttp
 import logging
 from datetime import datetime, timedelta
 import time
@@ -112,9 +114,9 @@ class TripSearchApi:
         """
 
         retries = 0
-        max_retries = 3
+        max_retries = 2
         sleep = 3
-        timeout = 3
+        timeout = 5
         # Select the first empty seat
         seat_select_req = api_constants.koltuk_sec_req_body.copy()
         s_check = api_constants.seat_check.copy()
@@ -182,7 +184,7 @@ class TripSearchApi:
             return end_time, empty_seat, response_json
 
     @staticmethod
-    def get_detailed_vagon_info_empty_seats(vagon_map_req, vagons):
+    async def get_detailed_vagon_info_empty_seats(vagon_map_req, vagons):
         """
         Retrieves the empty seats for a given vagon.
 
@@ -193,46 +195,55 @@ class TripSearchApi:
             list: The list of dictionaries containing the empty seat information.
         """
         retries = 0
-        max_retries = 10
-        sleep = 10
-        timeout = 10
+        max_retries = 2
+        sleep = 1
+        timeout = 3
 
-        logger.debug(vagon_map_req)
-        logger.debug(vagons)
         empty_seats = list()
+        response_json = None
 
         while retries < max_retries:
             try:
-                response = requests.post(
-                    api_constants.VAGON_HARITA_ENDPOINT,
-                    headers=api_constants.REQUEST_HEADER,
-                    data=json.dumps(vagon_map_req),
-                    timeout=timeout,
-                )
-                response.raise_for_status()
-            except RequestException as e:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        api_constants.VAGON_HARITA_ENDPOINT,
+                        headers=api_constants.REQUEST_HEADER,
+                        data=json.dumps(vagon_map_req),
+                        timeout=timeout,
+                    ) as resp:
+                        resp.raise_for_status()
+                        response_json = await resp.json()
+                break
+            # except timeout error
+            except asyncio.TimeoutError as e:
+                logger.error("Timeout error while getting vagon map: %s", e)
+                retries += 1
+                logger.error("Retrying vagon map. Retry count: %s", retries)
+                await asyncio.sleep(sleep)
+            except aiohttp.ClientError as e:
                 logger.error("Error while getting vagon map: %s", e)
                 retries += 1
                 logger.error("Retrying vagon map. Retry count: %s", retries)
-                time.sleep(sleep)
-            break
+                await asyncio.sleep(sleep)
 
-        response_json = response.json()
-        logger.debug(response_json)
+        # logger.info(
+        #     "retries: %s, response_json: %s",
+        #     retries,
+        #     None if response_json is None else "not None",
+        # )
+        if response_json:
+            for empty_seat in TripSearchApi.get_empty_vagon_seats(response_json):
+                empty_seat["vagonTipId"] = next(
+                    vagon["vagonTipId"]
+                    for vagon in vagons
+                    if vagon["vagonSiraNo"] == vagon_map_req["vagonSiraNo"]
+                )
+                empty_seats.append(empty_seat)
 
-        for empty_seat in TripSearchApi.get_empty_vagon_seats(response_json):
-            empty_seat["vagonTipId"] = next(
-                vagon["vagonTipId"]
-                for vagon in vagons
-                if vagon["vagonSiraNo"] == vagon_map_req["vagonSiraNo"]
-            )
-            empty_seats.append(empty_seat)
-
-        logger.debug("empty_seats: %s", empty_seats)
         return empty_seats
 
     @staticmethod
-    def get_empty_seats_trip(trip, from_station, to_station, seat_type=None):
+    async def get_empty_seats_trip(trip, from_station, to_station, seat_type=None):
         """
         Retrieves the empty seats for a given trip.
 
@@ -246,7 +257,6 @@ class TripSearchApi:
         # clone trip object
         trip_with_seats = trip.copy()
         vagon_map_req = api_constants.vagon_harita_req_body.copy()
-
         trip_with_seats["empty_seats"] = list()
 
         for vagon in trip["vagons"]:
@@ -257,14 +267,12 @@ class TripSearchApi:
             if seat_type is not None:
                 vagon_type = vagon["vagonTipId"]
                 if seat_type != vagon_type:
-                    logger.debug("seat_type: %s, vagon_type: %s", seat_type, vagon_type)
                     continue
-            empty_seats = TripSearchApi.get_detailed_vagon_info_empty_seats(
+            empty_seats = await TripSearchApi.get_detailed_vagon_info_empty_seats(
                 vagon_map_req, trip["vagons"]
             )
-            logger.debug(empty_seats)
             trip_with_seats["empty_seats"].extend(empty_seats)
-        logger.info("Length of empty seats: %s", len(trip_with_seats["empty_seats"]))
+        # logger.info("Length of empty seats: %s", len(trip_with_seats["empty_seats"]))
 
         return trip_with_seats
 
