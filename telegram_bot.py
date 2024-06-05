@@ -167,26 +167,42 @@ async def show_trip_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     keyboard = InlineKeyboardMarkup(
         [[InlineKeyboardButton("Back", callback_data=str(BACK))]]
     )
-    user_data = context.user_data
+    context.user_data[IN_PROGRESS] = True
+    context.user_data[CURRENT_STATE] = SHOWING_TRIP_INFO
     trip = context.user_data.get(TRIP)
     if trip is None:
         text = "No trip is configured."
         await update.callback_query.answer()
         await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-        return context.user_data.get(CURRENT_STATE, END)
-    text = (
-        f"From: {trip.from_station}\n"
-        f"To: {trip.to_station}\n"
-        f"From Date: {trip.from_date}\n"
-        f"To Date: {trip.to_date}\n"
-        f"Is Seat Reserved: {trip.is_seat_reserved}\n"
-        f"Reserved Seat: {trip.empty_seat_json.get('koltukNo')}\n"
-    )
-    await update.callback_query.answer()
-    await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
-    user_data[IN_PROGRESS] = True
-    user_data[CURRENT_STATE] = SHOWING_TRIP_INFO
-    return context.user_data.get(CURRENT_STATE, END)
+        return SHOWING_TRIP_INFO
+
+    trip.update_fields()
+    if trip.is_seat_reserved is False:
+        text = (
+            f"From: {trip.from_station}\n"
+            f"To: {trip.to_station}\n"
+            f"From Date: {trip.from_date}\n"
+            f"To Date: {trip.to_date}\n"
+            "Seat is not reserved yet or reservation is expired."
+        )
+        await update.callback_query.answer()
+        await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
+        return SHOWING_TRIP_INFO
+    else:
+        time_diff = trip.lock_end_time - datetime.now()
+        time_diff = time_diff.total_seconds() // 60
+        text = (
+            f"From: {trip.from_station}\n"
+            f"To: {trip.to_station}\n"
+            f"From Date: {trip.from_date}\n"
+            f"To Date: {trip.to_date}\n"
+            f"Reserved Vagon: {trip.empty_seat_json.get('vagonSiraNo')}\n"
+            f"Reserved Seat: {trip.empty_seat_json.get('koltukNo')}\n"
+            f"Remaining Reserve Time: {time_diff} min.\n"
+        )
+        await update.callback_query.answer()
+        await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
+        return SHOWING_TRIP_INFO
 
 
 async def adding_self(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -619,7 +635,7 @@ async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
         )
         context.bot.send_message(
             chat_id=context.job.chat_id,
-            text="Started keep_seat_lock job.",
+            text="Keeping the seat locked.",
         )
 
         logger.info("Removing job with name: %s", context.job.name)
@@ -684,7 +700,7 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     trip = context.user_data.get(TRIP)
     if trip is None:
-        text = "No trip is found."
+        text = "No trip is configured yet. Please search for a trip first."
         logger.info(text)
         await update.message.reply_text(text=text)
         return context.user_data.get(CURRENT_STATE, END)

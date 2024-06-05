@@ -57,7 +57,6 @@ def keep_reserving_seat(self, my_trip: Trip):
         my_trip.empty_seat_json.get('koltukNo')}"
     logger.info(text)
     while True:
-        # logger.info("logger name: %s", logger.name)
         if should_stop(self):
             return pickle.dumps(my_trip)
 

@@ -56,7 +56,6 @@ FEATURE_HELP_MESSAGES = {
     "seat_type": "Select your seat type",
 }
 
-
 MAIN_MENU_BUTTONS = [
     [
         InlineKeyboardButton("Personal Info", callback_data=str(ADDING_PERSONAL_INFO)),
@@ -65,8 +64,8 @@ MAIN_MENU_BUTTONS = [
         ),
     ],
     [
-        InlineKeyboardButton("Show Passenger Info", callback_data=str(SHOWING_INFO)),
-        InlineKeyboardButton("Show Trip Info", callback_data=str(SHOWING_TRIP_INFO)),
+        InlineKeyboardButton("Passenger Info", callback_data=str(SHOWING_INFO)),
+        InlineKeyboardButton("Trip Info", callback_data=str(SHOWING_TRIP_INFO)),
         InlineKeyboardButton("Done", callback_data=str(END)),
     ],
 ]

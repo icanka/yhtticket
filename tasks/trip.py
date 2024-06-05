@@ -37,6 +37,30 @@ class Trip:
         self.is_seat_reserved = False
         self.semaphore_count = 5
 
+    def is_reservation_expired(self):
+        """Check if the seat reservation is expired."""
+        if self.lock_end_time and self.is_seat_reserved:
+            time_diff = self.lock_end_time - datetime.now()
+            if time_diff.total_seconds() < 60:
+                # lock time is passed, seat reserveation is expired
+                return True
+        return False
+
+    def reset_reservation_data(self):
+        """Reset the reservation status."""
+        self.trip_json = None
+        self.empty_seat_json = None
+        self.seat_lock_response = None
+        self.lock_end_time = None
+        self.koltuk_lock_id_list = []
+        self.is_seat_reserved = False
+
+    def update_fields(self):
+        """Check if the reservation is expired and reset the reservation related fields."""
+        if self.is_reservation_expired():
+            logger.info("Reservation is expired. Resetting the reservation data.")
+            self.reset_reservation_data()
+
     def set_seat_lock_id(self):
         """Get the lock id of the seat."""
         self.koltuk_lock_id_list.clear()
