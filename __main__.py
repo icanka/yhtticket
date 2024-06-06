@@ -189,16 +189,38 @@ def main() -> None:
         },
     )
 
+    search_menu_conv_handler = ConversationHandler(
+        entry_points=[CallbackQueryHandler(search_menu, pattern=f"^{SEARCH_MENU}$")],
+        states={
+            SEARCH_MENU: [
+                CallbackQueryHandler(unimplemented, pattern="^start_search$"),
+                CallbackQueryHandler(unimplemented, pattern="^stop_search$"),
+                CallbackQueryHandler(unimplemented, pattern="^seat_status$"),
+                CallbackQueryHandler(reset_search, pattern="^reset_search$"),
+                CallbackQueryHandler(back, pattern=f"^{BACK}$"),
+            ],
+        },
+        fallbacks=fallback_handlers,
+        map_to_parent={
+            # End the child conversation and return to SELECTING_MAIN_ACTION state
+            BACK: SELECTING_MAIN_ACTION,
+            UNIMPLEMENTED: UNIMPLEMENTED,
+            # End the whole conversation from within the child conversation.
+            END: END,
+        },
+    )
+
     main_conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
             SELECTING_MAIN_ACTION: [
                 adding_self_conv_handler,
                 adding_credit_card_conv_handler,
+                search_menu_conv_handler,
                 # CallbackQueryHandler(adding_self, pattern=f"^{ADDING_PERSONAL_INFO}$"),
-                CallbackQueryHandler(
-                    unimplemented, pattern=f"^{ADDING_CREDIT_CARD_INFO}$"
-                ),
+                # CallbackQueryHandler(
+                #     unimplemented, pattern=f"^{ADDING_CREDIT_CARD_INFO}$"
+                # ),
                 CallbackQueryHandler(show_info, pattern=f"^{SHOWING_INFO}$"),
                 CallbackQueryHandler(show_trip_info, pattern=f"^{SHOWING_TRIP_INFO}$"),
                 CallbackQueryHandler(end, pattern=f"^{END}$"),

@@ -345,12 +345,12 @@ async def back(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data[IN_PROGRESS] = True
     level = context.user_data[CURRENT_STATE]
     logger.info("level: %s", level)
-    if level == ADDING_PERSONAL_INFO or level == ADDING_CREDIT_CARD_INFO:
-        logger.info("ADDING_PERSONAL_INFO or ADDING_CREDIT_CARD_INFO")
-        await start(update, context)
-    elif level == SELECTING_TARIFF or level == SELECTING_SEAT_TYPE:
+    if level == SELECTING_TARIFF or level == SELECTING_SEAT_TYPE:
         logger.info("SELECTING_TARIFF or SELECTING_SEAT_TYPE")
         await adding_self(update, context)
+    else:
+        logger.info("default case: start(update, context)")
+        await start(update, context)
     logger.info("state: BACK")
     return BACK
 
@@ -382,7 +382,7 @@ async def unknown_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 async def res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """handle the query result from inline query."""
+    """handle the query result from inline query. This let's you set the trip information."""
     # get the message coming from command
     logger.info("context.args: %s", context.args)
     # check if the required information is provided
@@ -417,7 +417,6 @@ async def res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     except TypeError as exc:
         logger.error("TypeError: %s", exc)
         await update.message.reply_text("No trips found.")
-        return context.user_data[CURRENT_STATE]
 
     inline_keyboard_markup = InlineKeyboardMarkup(inline_keyboard)
 
@@ -431,13 +430,13 @@ async def res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         "returning context.user_data[CURRENT_STATE]: %s",
         context.user_data[CURRENT_STATE],
     )
-    return context.user_data[CURRENT_STATE]
+    return context.user_data.get(CURRENT_STATE, END)
 
 
 async def handle_datetime_type(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
-    """Handle the datetime type."""
+    """Handle the datetime type from the inline query selection."""
 
     logger.info("handle_datetime_type")
     logger.info("context.args: %s", update.callback_query.data)
@@ -450,7 +449,7 @@ async def handle_datetime_type(
 
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text="Okay!.")
-    return context.user_data[CURRENT_STATE]
+    return context.user_data.get(CURRENT_STATE, END)
 
 
 async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -937,7 +936,15 @@ async def selecting_sex(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Reset the search task."""
+    await update.callback_query.answer()
+
+    logger.info("Resetting search.")
     trip = context.user_data.get(TRIP)
+    keyboard = InlineKeyboardMarkup(SEARCH_MENU_BUTTONS)
+
+    await update.callback_query.edit_message_text(
+        text="Stopping tasks and jobs...", reply_markup=keyboard
+    )
 
     # reset the fields
     if trip:
@@ -948,20 +955,25 @@ async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         trip.is_seat_reserved = False
         trip.koltuk_lock_id_list = []
 
-    # remove all jobs
+    # remove all jobs in the job queue
     for job in context.job_queue.jobs():
         job.schedule_removal()
 
-    # revoke the user task
-    if context.user_data.get("task_id") is not None:
+    # revoke the user task if any
+    if context.user_data.get("task_id"):
         task_id = context.user_data.get("task_id")
         logger.info("Revoking task with id: %s", task_id)
         task = AsyncResult(task_id)
         task.revoke(terminate=True)
         logger.warning("SETTING TASK_ID: None")
         context.user_data["task_id"] = None
+    else:
+        logger.info("No task_id found. Sleeping for 2 seconds.")
+        await asyncio.sleep(2)
 
-    await update.message.reply_text("Search is reset. You can start a new search.")
+    await update.callback_query.edit_message_text(
+        text="Search is reset, you can start again.", reply_markup=keyboard
+    )
     return context.user_data.get(CURRENT_STATE, END)
 
 
@@ -1112,6 +1124,18 @@ async def start_test_check_payment(
             job_kwargs={"misfire_grace_time": 3},
         )
     return context.user_data.get(CURRENT_STATE, END)
+
+
+async def search_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Start the search menu."""
+    context.user_data[IN_PROGRESS] = True
+    context.user_data[CURRENT_STATE] = SEARCH_MENU
+    text = "Select your search option."
+    keyboard = InlineKeyboardMarkup(SEARCH_MENU_BUTTONS)
+
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
+    return SEARCH_MENU
 
 
 # async def test_method(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:

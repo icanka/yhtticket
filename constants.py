@@ -10,10 +10,11 @@ from telegram.ext import ConversationHandler
     SELECTING_SEAT_TYPE,
     SELECTING_SEX,
     SHOWING_INFO,
+    SEARCH_MENU,
     SHOWING_TRIP_INFO,
     BACK,
     TYPING_REPLY,
-) = range(0, 10)
+) = range(0, 11)
 
 END = ConversationHandler.END
 
@@ -62,6 +63,7 @@ MAIN_MENU_BUTTONS = [
         InlineKeyboardButton(
             "Credit Card Info", callback_data=str(ADDING_CREDIT_CARD_INFO)
         ),
+        InlineKeyboardButton("Search", callback_data=str(SEARCH_MENU)),
     ],
     [
         InlineKeyboardButton("Passenger Info", callback_data=str(SHOWING_INFO)),
@@ -87,6 +89,18 @@ PERSON_MENU_BUTTONS = [
         InlineKeyboardButton("Phone", callback_data="phone"),
         InlineKeyboardButton("Email", callback_data="email"),
         InlineKeyboardButton("Sex", callback_data="sex"),
+        InlineKeyboardButton("Back", callback_data=str(BACK)),
+    ],
+]
+
+SEARCH_MENU_BUTTONS = [
+    [
+        InlineKeyboardButton("Start Search", callback_data="start_search"),
+        InlineKeyboardButton("My Seat Lock", callback_data="seat_status"),
+    ],
+    [
+        InlineKeyboardButton("Stop Search", callback_data="stop_search"),
+        InlineKeyboardButton("Reset", callback_data="reset_search"),
         InlineKeyboardButton("Back", callback_data=str(BACK)),
     ],
 ]
