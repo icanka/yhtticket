@@ -242,7 +242,7 @@ class Payment:
 
     def is_payment_success(self):
         """set_is_payment_success"""
-        retries = 0
+        retries = 1
         logger.info("self.ode_sorgu: %s", self.odeme_sorgu)
         while retries < self.max_retries:
             try:

@@ -703,22 +703,17 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
         text = "No trip is configured yet. Please search for a trip first."
         logger.info(text)
         await update.message.reply_text(text=text)
-        return context.user_data.get(CURRENT_STATE, END)
 
-    elif not trip.is_seat_reserved:
-        text = "We cannot proceed to payment. No seat is currently reserved"
-        logger.info(text)
+    elif trip.is_reservation_expired:
+        text = "We cannot proceed to payment. Seat lock is expired or not reserved yet."
         await update.message.reply_text(text=text)
-        return context.user_data.get(CURRENT_STATE, END)
+        logger.info(text)
 
     # dont allow to proceed to payment if the seat lock time is about to expire
-    elif trip.is_seat_reserved and datetime.now() < trip.lock_end_time - timedelta(
-        seconds=60
-    ):
+    else:
         # set the passenger object, for if the user has changed some information
         await set_passenger(update, context)
         logger.info("We can proceed to payment. Everything looks fine.")
-
         # set the passenger object for trip
         trip.passenger = context.user_data.get(PASSENGER)
 
@@ -758,12 +753,7 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
             last=300,
             job_kwargs={"misfire_grace_time": 30},
         )
-
-    else:
-        text = "We cannot proceed to payment. Seat lock has timed out. Please reserve a seat again."
-        await update.message.reply_text(text=text)
-        logger.info(text)
-        return context.user_data.get(CURRENT_STATE, END)
+    return context.user_data.get(CURRENT_STATE, END)
 
 
 async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -779,8 +769,7 @@ async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
     task_id = context.job.data.get("task_id")
 
     logger.info("task_id: %s", task_id)
-    logger.info("p.trip: %s", p.trip)
-    logger.info("p.trip.passenger: %s", p.trip.passenger)
+    logger.info("p.trip.passenger: %s", p.trip.passenger.name)
 
     try:
         if p.is_payment_success():
@@ -807,20 +796,17 @@ async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
                     chat_id=context.job.chat_id,
                     text=f"Ticket is created. {p.ticket_reservation_info}",
                 )
-                return context.job.data.get(CURRENT_STATE, END)
 
     except ValueError as exc:
-        logger.info("%s", exc)
+        logger.error("%s", exc)
         if "hata" in exc.args[0]:
             logger.info("Sending error message to user.")
             await context.bot.send_message(
                 chat_id=context.job.chat_id, text=exc.args[0]
             )
             context.job.schedule_removal()
-        return context.job.data.get(CURRENT_STATE, END)
     except requests.exceptions.RequestException as rexc:
-        logger.info("%s", rexc)
-        return context.job.data.get(CURRENT_STATE, END)
+        logger.error("%s", rexc)
     return context.job.data.get(CURRENT_STATE, END)
 
 
