@@ -194,9 +194,9 @@ def main() -> None:
         states={
             SEARCH_MENU: [
                 CallbackQueryHandler(unimplemented, pattern="^start_search$"),
-                CallbackQueryHandler(unimplemented, pattern="^stop_search$"),
                 CallbackQueryHandler(unimplemented, pattern="^seat_status$"),
                 CallbackQueryHandler(reset_search, pattern="^reset_search$"),
+                CallbackQueryHandler(reset_search, pattern="^stop_search$"),
                 CallbackQueryHandler(back, pattern=f"^{BACK}$"),
             ],
         },

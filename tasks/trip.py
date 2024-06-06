@@ -55,8 +55,11 @@ class Trip:
         self.koltuk_lock_id_list = []
         self.is_seat_reserved = False
 
-    def update_fields(self):
+    def update_fields(self, update_anyway=False):
         """Check if the reservation is expired and reset the reservation related fields."""
+        if update_anyway:
+            self.reset_reservation_data()
+            return
         if self.is_reservation_expired():
             logger.info("Reservation is expired. Resetting the reservation data.")
             self.reset_reservation_data()

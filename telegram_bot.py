@@ -939,27 +939,32 @@ async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     await update.callback_query.answer()
 
     logger.info("Resetting search.")
-    trip = context.user_data.get(TRIP)
     keyboard = InlineKeyboardMarkup(SEARCH_MENU_BUTTONS)
 
     await update.callback_query.edit_message_text(
         text="Stopping tasks and jobs...", reply_markup=keyboard
     )
+    await remove_user_job(update, context)
 
-    # reset the fields
-    if trip:
-        trip.trip_json = None
-        trip.empty_seat_json = None
-        trip.seat_lock_response = None
-        trip.lock_end_time = None
-        trip.is_seat_reserved = False
-        trip.koltuk_lock_id_list = []
+    if update.callback_query.data == "reset_search":
+        if context.user_data.get(TRIP):
+            await update.callback_query.edit_message_text(
+                text="Clearing trip reservation data.", reply_markup=keyboard
+            )
+            await asyncio.sleep(3)
+            context.user_data.get(TRIP).reset_reservation_data()
 
-    # remove all jobs in the job queue
+    await update.callback_query.edit_message_text(text="Done.", reply_markup=keyboard)
+    return context.user_data.get(CURRENT_STATE, END)
+
+
+async def remove_user_job(_: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Remove the user jobs and tasks."""
+    logger.info("Removing user job.")
+
     for job in context.job_queue.jobs():
         job.schedule_removal()
 
-    # revoke the user task if any
     if context.user_data.get("task_id"):
         task_id = context.user_data.get("task_id")
         logger.info("Revoking task with id: %s", task_id)
@@ -968,12 +973,9 @@ async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         logger.warning("SETTING TASK_ID: None")
         context.user_data["task_id"] = None
     else:
-        logger.info("No task_id found. Sleeping for 2 seconds.")
-        await asyncio.sleep(2)
+        logger.info("No task_id found. Sleeping for 3 seconds.")
+        await asyncio.sleep(3)
 
-    await update.callback_query.edit_message_text(
-        text="Search is reset, you can start again.", reply_markup=keyboard
-    )
     return context.user_data.get(CURRENT_STATE, END)
 
 
