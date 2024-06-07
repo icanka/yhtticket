@@ -176,29 +176,31 @@ async def show_trip_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
         return SHOWING_TRIP_INFO
 
-    trip.update_fields()
-    if trip.is_seat_reserved is False:
+    if trip.is_reservation_expired():
+        trip.reset_reservation_data()
         text = (
-            f"From: {trip.from_station}\n"
-            f"To: {trip.to_station}\n"
-            f"From Date: {trip.from_date}\n"
-            f"To Date: {trip.to_date}\n"
-            "Seat is not reserved yet or reservation is expired."
+            f"From: *{trip.from_station}*\n"
+            f"To: *{trip.to_station}*\n"
+            f"From Date: *{trip.from_date}*\n"
+            f"To Date: *{trip.to_date}*\n"
+            "*Seat is not reserved yet or reservation is expired*"
         )
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
+        await update.callback_query.edit_message_text(
+            text=text, reply_markup=keyboard, parse_mode="Markdown"
+        )
         return SHOWING_TRIP_INFO
     else:
         time_diff = trip.lock_end_time - datetime.now()
         time_diff = time_diff.total_seconds() // 60
         text = (
-            f"From: {trip.from_station}\n"
-            f"To: {trip.to_station}\n"
-            f"From Date: {trip.from_date}\n"
-            f"To Date: {trip.to_date}\n"
-            f"Reserved Vagon: {trip.empty_seat_json.get('vagonSiraNo')}\n"
-            f"Reserved Seat: {trip.empty_seat_json.get('koltukNo')}\n"
-            f"Remaining Reserve Time: {time_diff} min.\n"
+            f"From: *{trip.from_station}*\n"
+            f"To: *{trip.to_station}*\n"
+            f"From Date: *{trip.from_date}*\n"
+            f"To Date: *{trip.to_date}*\n"
+            f"Reserved Vagon: *{trip.empty_seat_json.get('vagonSiraNo')}*\n"
+            f"Reserved Seat: *{trip.empty_seat_json.get('koltukNo')}*\n"
+            f"Remaining Reserve Time: *{time_diff}* min.\n"
         )
         await update.callback_query.answer()
         await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
@@ -739,7 +741,7 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
             p.set_payment_url()
         except ValueError as exc:
             # propably credit card information is not correct
-            await asyncio.sleep(1)
+            await asyncio.sleep(2)
             await update.callback_query.edit_message_text(
                 text=f"{exc}", reply_markup=keyboard
             )
@@ -1096,11 +1098,10 @@ async def check_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return context.user_data.get(CURRENT_STATE, END)
 
 
-async def start_res_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Start the search process."""
-    await update.callback_query.answer()
-
     keyboard = InlineKeyboardMarkup(SEARCH_MENU_BUTTONS)
+    await update.callback_query.answer()
     await update.callback_query.edit_message_text(
         text="*Starting search process*", reply_markup=keyboard, parse_mode="Markdown"
     )
@@ -1114,7 +1115,7 @@ async def start_res_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.callback_query.edit_message_text(
             text="*Please search for a trip first*",
             reply_markup=keyboard,
-            parse_mode="Markdown",
+            parse_mode="Markdownv2",
         )
         return context.user_data.get(CURRENT_STATE, END)
     elif task_id:
@@ -1124,7 +1125,7 @@ async def start_res_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             await update.callback_query.edit_message_text(
                 text="*You already have a task in progress*",
                 reply_markup=keyboard,
-                parse_mode="Markdown",
+                parse_mode="Markdownv2",
             )
         else:
             # just stale task_id, log it
@@ -1151,7 +1152,7 @@ async def start_res_(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.info("user_trip: %s", trip)
 
     await update.callback_query.edit_message_text(
-        text="*Queueing search process*", reply_markup=keyboard, parse_mode="Markdown"
+        text="*Queueing search process*", reply_markup=keyboard, parse_mode="Markdownv2"
     )
 
     # run the search job and accompanying check_search_status job

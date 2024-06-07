@@ -44,7 +44,7 @@ def find_trip_and_reserve(self, my_trip: Trip):
         self.retry(countdown=10)
 
     logger.info("Seat is reserved: %s", my_trip.empty_seat_json.get("koltukNo"))
-    if my_trip.is_seat_reserved:
+    if my_trip.lock_end_time:
         logger.info("Seat is reserved")
         return pickle.dumps(my_trip)
 

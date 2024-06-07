@@ -34,12 +34,11 @@ class Trip:
         self.seat_lock_response = None
         self.koltuk_lock_id_list = []
         self.lock_end_time = None
-        self.is_seat_reserved = False
         self.semaphore_count = 5
 
     def is_reservation_expired(self):
         """Check if the seat reservation is expired."""
-        if self.lock_end_time and self.is_seat_reserved:
+        if self.lock_end_time:
             time_diff = self.lock_end_time - datetime.now()
             if time_diff.total_seconds() < 60:
                 # lock time is passed, seat reserveation is expired
@@ -53,16 +52,6 @@ class Trip:
         self.seat_lock_response = None
         self.lock_end_time = None
         self.koltuk_lock_id_list = []
-        self.is_seat_reserved = False
-
-    def update_fields(self, update_anyway=False):
-        """Check if the reservation is expired and reset the reservation related fields."""
-        if update_anyway:
-            self.reset_reservation_data()
-            return
-        if self.is_reservation_expired():
-            logger.info("Reservation is expired. Resetting the reservation data.")
-            self.reset_reservation_data()
 
     def set_seat_lock_id(self):
         """Get the lock id of the seat."""
@@ -77,37 +66,40 @@ class Trip:
 
         try:
             # first reserving of the seat
-            if not self.is_seat_reserved:
+            if not self.lock_end_time:
                 logger.info("Seat is not reserved, reserving the seat.")
-                lock_end_time, self.empty_seat_json, self.seat_lock_response = (
-                    TripSearchApi.select_first_empty_seat(self.trip_json)
-                )
-                self.lock_end_time = datetime.strptime(lock_end_time, self.time_format)
-                self.set_seat_lock_id()
-                self.is_seat_reserved = True
-                logger.info("lock_end_time: %s", self.lock_end_time)
 
-            # we have already reserved the seat check lock_end_time and if it is passed then reserve the seat again
-            elif self.is_seat_reserved:
-                if datetime.now().second % 30 == 0:
-                    logger.info("Seat is already reserved.")
-                time_diff = self.lock_end_time - datetime.now()
-                # server doesnt seem to release the lock at least 15-20 seconds after the lock_end_time
-                if time_diff.total_seconds() < -10:
-                    logger.info(time_diff.total_seconds())
-                    logger.info(
-                        "Lock time ending is approaching. Starting to reserve the seat again"
-                    )
+                # check if we have already reserved the seat before
+                if self.empty_seat_json:
                     lock_end_time, _, self.seat_lock_response = (
                         TripSearchApi.select_first_empty_seat(
                             self.trip_json, self.empty_seat_json
                         )
                     )
-                    self.lock_end_time = datetime.strptime(
-                        lock_end_time, self.time_format
+
+                # First time reserving the seat
+                else:
+                    lock_end_time, self.empty_seat_json, self.seat_lock_response = (
+                        TripSearchApi.select_first_empty_seat(self.trip_json)
                     )
-                    self.set_seat_lock_id()
-                    logger.info("lock_end_time: %s", self.lock_end_time)
+
+                self.lock_end_time = datetime.strptime(lock_end_time, self.time_format)
+                self.set_seat_lock_id()
+                logger.info("lock_end_time: %s", self.lock_end_time)
+
+            # we have already reserved the seat check lock_end_time and
+            # if it is passed then reserve the seat again
+            elif self.lock_end_time:
+                if datetime.now().second % 30 == 0:
+                    logger.info("Seat is already reserved.")
+                time_diff = self.lock_end_time - datetime.now()
+                # server doesnt seem to release the lock at least 15-20 seconds
+                # after the lock_end_time so we are starting to reserve
+                #  the seat again 10 seconds after the lock_end_time
+                if time_diff.total_seconds() < -10:
+                    self.lock_end_time = None
+
+            logger.info("lock_end_time: %s", self.lock_end_time)
 
         except SeatLockedException as e:
             logging.error("Error while reserving the seat: %s", e)
