@@ -14,11 +14,18 @@ from telegram.ext import (
 )
 from apscheduler.events import (
     EVENT_JOB_SUBMITTED,
+    EVENT_JOB_EXECUTED,
+    EVENT_JOB_ERROR,
     EVENT_JOB_MISSED,
     EVENT_JOB_MAX_INSTANCES,
 )
 from update_processor import CustomUpdateProcessor
-from scheduler_listeners import submit_listener, mis_listener, max_instances_listener
+from scheduler_listeners import (
+    submit_listener,
+    mis_listener,
+    max_instances_listener,
+    job_executed_listener,
+)
 from telegram_bot import *  # pylint: disable=wildcard-import, unused-wildcard-import
 from constants import *  # pylint: disable=wildcard-import
 
@@ -45,11 +52,14 @@ def main() -> None:
         .token("***REMOVED***")
         .arbitrary_callback_data(True)
         .persistence(persistence=my_persistance)
-        .concurrent_updates(CustomUpdateProcessor(max_concurrent_updates=3))
+        .concurrent_updates(
+            CustomUpdateProcessor(max_concurrent_updates=BOT_MAX_CONCURRENT_UPTADES)
+        )
         .build()
     )
 
     scheduler_configuration = {
+        "max_instances": APS_SCHEDULER_MAX_INSTANCES,  # default is 1
         "coalesce": True,
         "misfire_grace_time": 10,  # default misfire time
     }
@@ -61,6 +71,7 @@ def main() -> None:
     scheduler.add_listener(submit_listener, EVENT_JOB_SUBMITTED)
     scheduler.add_listener(mis_listener, EVENT_JOB_MISSED)
     scheduler.add_listener(max_instances_listener, EVENT_JOB_MAX_INSTANCES)
+    scheduler.add_listener(job_executed_listener, EVENT_JOB_EXECUTED | EVENT_JOB_ERROR)
     # logger.info("scheduler configuration: %s", scheduler.__dict__)
 
     fallback_handlers = [
@@ -193,8 +204,7 @@ def main() -> None:
         entry_points=[CallbackQueryHandler(search_menu, pattern=f"^{SEARCH_MENU}$")],
         states={
             SEARCH_MENU: [
-                CallbackQueryHandler(unimplemented, pattern="^start_search$"),
-                CallbackQueryHandler(unimplemented, pattern="^seat_status$"),
+                CallbackQueryHandler(test_job, pattern="^start_search$"),
                 CallbackQueryHandler(reset_search, pattern="^reset_search$"),
                 CallbackQueryHandler(reset_search, pattern="^stop_search$"),
                 CallbackQueryHandler(back, pattern=f"^{BACK}$"),

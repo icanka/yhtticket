@@ -41,6 +41,8 @@ END = ConversationHandler.END
     PAYMENT_IN_PROGRESS,
 ) = range(10, 28)
 
+APS_SCHEDULER_MAX_INSTANCES = 1
+BOT_MAX_CONCURRENT_UPTADES = 3
 
 FEATURE_HELP_MESSAGES = {
     "birthday": "Please enter your birthday in the format dd/mm/yyyy.",
@@ -96,10 +98,9 @@ PERSON_MENU_BUTTONS = [
 SEARCH_MENU_BUTTONS = [
     [
         InlineKeyboardButton("Start Search", callback_data="start_search"),
-        InlineKeyboardButton("My Seat Lock", callback_data="seat_status"),
+        InlineKeyboardButton("Stop Search", callback_data="stop_search"),
     ],
     [
-        InlineKeyboardButton("Stop Search", callback_data="stop_search"),
         InlineKeyboardButton("Reset", callback_data="reset_search"),
         InlineKeyboardButton("Back", callback_data=str(BACK)),
     ],
