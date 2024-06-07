@@ -102,6 +102,9 @@ SEARCH_MENU_BUTTONS = [
     ],
     [
         InlineKeyboardButton("Reset", callback_data="reset_search"),
+        InlineKeyboardButton("Search Status", callback_data="search_status"),
+    ],
+    [
         InlineKeyboardButton("Back", callback_data=str(BACK)),
     ],
 ]

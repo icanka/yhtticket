@@ -3,7 +3,6 @@
 import asyncio
 import logging
 import pickle
-import time
 from datetime import datetime, timedelta
 from uuid import uuid4
 
@@ -14,6 +13,7 @@ from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     InlineQueryResultArticle,
+    InputMediaAnimation,
     InputTextMessageContent,
     Update,
 )
@@ -973,6 +973,7 @@ async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         text="Stopping tasks and jobs...", reply_markup=keyboard
     )
     await remove_user_job(update, context)
+    await asyncio.sleep(3)
 
     if update.callback_query.data == "reset_search":
         if context.user_data.get(TRIP):
@@ -1000,9 +1001,6 @@ async def remove_user_job(_: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         task.revoke(terminate=True)
         logger.warning("SETTING TASK_ID: None")
         context.user_data["task_id"] = None
-    else:
-        logger.info("No task_id found. Sleeping for 3 seconds.")
-        await asyncio.sleep(3)
 
     return context.user_data.get(CURRENT_STATE, END)
 
@@ -1120,24 +1118,58 @@ async def search_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     return SEARCH_MENU
 
 
+async def search_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Check the search status."""
+    task_id = context.user_data.get("task_id")
+    keyboard = InlineKeyboardMarkup(SEARCH_MENU_BUTTONS)
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text(
+        text="*Checking search status*", reply_markup=keyboard, parse_mode="Markdownv2"
+    )
+    await asyncio.sleep(2)
+
+    jobs = context.job_queue.jobs()
+    text = ""
+    if jobs:
+        text += f"*Queued Jobs*\n"
+        for job in jobs:
+            text += f"  {job.name}\n"
+    else:
+        text += "*No queued jobs*\n"
+
+    if task_id:
+        i = celery_app.control.inspect()
+        tasks = [t for task in i.active().values() for t in task if t["id"] == task_id]
+        if tasks:
+            text += f"*Active Tasks*\n"
+            for task in tasks:
+                name = task["name"].split(".")[-1]  # get the last part of the task name
+                text += f"  {name}\n"
+        else:
+            text += "*No active tasks*\n"
+
+    await update.callback_query.edit_message_text(
+        text=text, reply_markup=keyboard, parse_mode="Markdownv2"
+    )
+
+    return context.user_data.get(CURRENT_STATE, END)
+
+
 ########################################################################################
 # create a test function that starts a job that runs every 10 seconds
 async def test_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Test the job."""
-    update.callback_query.answer()
+    await update.callback_query.answer()
     chat_id = update.callback_query.message.chat_id
     logger.info("Starting test job.")
     for i in range(1):
         logger.info("RUNNING THE %sth TIME", i)
-        job = context.job_queue.run_repeating(
-            test_job_callback,
-            first=0,
-            interval=5,
+        job = context.job_queue.run_once(
+            callback=test_task,
+            when=0,
             data=context.user_data,
             chat_id=chat_id,
-            job_kwargs={"misfire_grace_time": 1},
         )
-        time.sleep(10)
         logger.info("Job id: %s", job.id)
     # wait until the job is actually executed
     return context.user_data.get(CURRENT_STATE, END)
@@ -1146,11 +1178,8 @@ async def test_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 # create test_job_callback that sends a message to the user
 async def test_job_callback(context: ContextTypes.DEFAULT_TYPE) -> int:
     """Test the job callback."""
-    logger.info("Running test job callback.")
-    await asyncio.sleep(100)
-    await context.bot.send_message(
-        chat_id=context.job.chat_id, text="This is a test job callback."
-    )
+    # run
+    await asyncio.sleep(10)
     return context.job.data.get(CURRENT_STATE, END)
 
 
@@ -1172,14 +1201,15 @@ async def start_test_check_payment(
     return context.user_data.get(CURRENT_STATE, END)
 
 
-async def test_task(_: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def test_task(context: ContextTypes.DEFAULT_TYPE) -> int:
     """Test the celery task."""
     # create test_task celery task and print its id
     task = test_task_.delay()
     # set the task_id to the context
-    context.user_data["task_id"] = task.id
-    logger.info("task_id: %s", task.id)
-    return context.user_data.get(CURRENT_STATE, END)
+    logger.info("SETTING TASK_ID: %s", task.id)
+    context.job.data["task_id"] = task.id
+    logger.info("task_id: %s", context.job.data["task_id"])
+    return context.job.data.get(CURRENT_STATE, END)
 
 
 async def send_redis_key(_: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
