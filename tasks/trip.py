@@ -3,6 +3,7 @@
 import asyncio
 from datetime import datetime
 import logging
+import random
 import requests
 from tasks.trip_search import TripSearchApi
 from tasks.trip_search import SeatLockedException
@@ -34,7 +35,7 @@ class Trip:
         self.seat_lock_response = None
         self.koltuk_lock_id_list = []
         self.lock_end_time = None
-        self.semaphore_count = 5
+        self.semaphore_count = 3
 
     def is_reservation_expired(self):
         """Check if the seat reservation is expired."""
@@ -87,7 +88,8 @@ class Trip:
 
                 self.lock_end_time = datetime.strptime(lock_end_time, self.time_format)
                 self.set_seat_lock_id()
-                logger.info("lock_end_time: %s", self.lock_end_time)
+                if datetime.now().second % 30 == 0:
+                    logger.info("lock_end_time: %s", self.lock_end_time)
 
             # we have already reserved the seat check lock_end_time and
             # if it is passed then reserve the seat again
@@ -133,6 +135,7 @@ class Trip:
 
         # if trips_with_empty_seats is empty keep searching for trips
         while len(trips_with_empty_seats) == 0:
+            logger.info("Getting trips.")
             trips = self.get_trips()
             tasks = [
                 self.check_trip_for_empty_seats(
@@ -140,9 +143,10 @@ class Trip:
                 )
                 for trip in trips
             ]
+            logger.info("Waiting for tasks to complete: len: %s", len(tasks))
             await asyncio.gather(*tasks)
-            logger.info("Trips with empty seats len: %s", len(trips_with_empty_seats))
-
+            logger.info("All tasks completed.")
+        logger.info(" YUPPI! Trips with empty seats len: %s", len(trips_with_empty_seats))
         return trips_with_empty_seats
 
     async def check_trip_for_empty_seats(
@@ -153,22 +157,33 @@ class Trip:
         # logger.info("Checking trip for empty seats: %s", trip.get("binisTarih"))
 
         # lock for running only a certain amount of tasks concurrently
+        if event.is_set():
+            logger.info("Event is set returning.")
+            return
         async with sem:
-            logger.info("Aquired semaphore")
-            while not event.is_set():
-                trip = await TripSearchApi.get_empty_seats_trip(
+            logger.info("Sem count: %s", sem._value)
+            # sleep random first before starting, because of concurrent requests
+            # we dont want to start all requests at the same time
+            sleep = random.uniform(0, 1)
+            logger.info("Sleeping: %s before getting empty seats for trip", sleep)
+            await asyncio.sleep(sleep)
+            #while not event.is_set():
+            trip = await TripSearchApi.get_empty_seats_trip(
                     trip,
                     self.from_station,
                     self.to_station,
                     self.passenger.seat_type,
-                )
-                empty_seat_count = await self.get_trip_empty_seat_count(trip)
-                if empty_seat_count > 0:
-                    # onyl one  task should access the shared resources below at a time
-                    async with lock:
-                        while not event.is_set():
-                            event.set()
-                            trips_with_empty_seats.append(trip)
+                    event=event,
+            )
+            empty_seat_count = await self.get_trip_empty_seat_count(trip)
+            if empty_seat_count > 0:
+                # onyl one  task should access the shared resources below at a time
+                async with lock:
+                        #while not event.is_set():
+                    if not event.is_set():
+                        logger.info("Empty seat found setting EVENT. Appending trip to trips_with_empty_seats")
+                        event.set()
+                        trips_with_empty_seats.append(trip)
 
     async def get_trip_empty_seat_count(self, trip):
         """Get the empty seat count for the given trip."""

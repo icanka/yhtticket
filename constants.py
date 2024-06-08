@@ -105,6 +105,7 @@ SEARCH_MENU_BUTTONS = [
         InlineKeyboardButton("Search Status", callback_data="search_status"),
     ],
     [
+        InlineKeyboardButton("Payment", callback_data="proceed_to_payment"),
         InlineKeyboardButton("Back", callback_data=str(BACK)),
     ],
 ]

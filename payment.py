@@ -76,7 +76,7 @@ class Payment:
         self.odeme_sorgu = {
             "kanalKodu": "3",
             "dil": 0,
-            "enrollReference": self.enroll_reference,
+            "enrollReference": None,
         }
 
         # add kwargs as instance attributes, you can override the default values
@@ -243,6 +243,7 @@ class Payment:
     def is_payment_success(self):
         """set_is_payment_success"""
         retries = 1
+        self.odeme_sorgu["enrollReference"] = self.enroll_reference
         logger.info("self.ode_sorgu: %s", self.odeme_sorgu)
         while retries < self.max_retries:
             try:

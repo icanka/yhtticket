@@ -115,9 +115,9 @@ class TripSearchApi:
         """
 
         retries = 0
-        max_retries = 2
+        max_retries = 3
         sleep = 3
-        timeout = 5
+        timeout = 10
         # Select the first empty seat
         seat_select_req = api_constants.koltuk_sec_req_body.copy()
         s_check = api_constants.seat_check.copy()
@@ -173,6 +173,8 @@ class TripSearchApi:
                                 f"Non zero response code: response_json: {response_json}"
                             )
                         end_time = response_json["koltuklarimListesi"][0]["bitisZamani"]
+                        logger.info("Breaking, Response status code: %s", response.status_code)
+                        break
                     else:
                         raise SeatLockedException(empty_seat)
                 except RequestException as e:
@@ -180,12 +182,11 @@ class TripSearchApi:
                     retries += 1
                     logger.error("Retrying seat selection. Retry count: %s", retries)
                     time.sleep(sleep)
-                break
 
             return end_time, empty_seat, response_json
 
     @staticmethod
-    async def get_detailed_vagon_info_empty_seats(vagon_map_req, vagons):
+    async def get_detailed_vagon_info_empty_seats(vagon_map_req, vagons, event: asyncio.Event = None):
         """
         Retrieves the empty seats for a given vagon.
 
@@ -196,19 +197,18 @@ class TripSearchApi:
             list: The list of dictionaries containing the empty seat information.
         """
         retries = 0
-        max_retries = 3
-        sleep = 30
-        timeout = 10
+        max_retries = 0
+        sleep = 3
+        timeout = 3
 
         empty_seats = list()
         response_json = None
 
         while retries < max_retries:
+            if event and event.is_set():
+                logger.info("Event is set. Exiting.")
+                break
             sleep_ = random.randint(int(sleep/3), sleep)
-            # sleep random first before starting, because of concurrent requests
-            # we dont want to start all requests at the same time
-            logger.info("Sleeping: %s before starting vagon map request", sleep_)
-            await asyncio.sleep(sleep_)
             try:
                 async with aiohttp.ClientSession() as session:
                     async with session.post(
@@ -217,9 +217,10 @@ class TripSearchApi:
                         data=json.dumps(vagon_map_req),
                         timeout=timeout,
                     ) as resp:
-                        resp.raise_for_status()
+                        #resp.raise_for_status()
                         response_json = await resp.json()
-                break
+                        logger.info("Breaking, Response status code: %s", resp.status)
+                    break
             # except timeout error
             except asyncio.TimeoutError as e:
                 logger.error("Timeout error while getting vagon map: %s", e)
@@ -233,11 +234,6 @@ class TripSearchApi:
                 logger.error("Sleeping: %s before Retrying vagon map. Retry count: %s", sleep_, retries)
                 await asyncio.sleep(sleep_)
 
-        # logger.info(
-        #     "retries: %s, response_json: %s",
-        #     retries,
-        #     None if response_json is None else "not None",
-        # )
         if response_json:
             for empty_seat in TripSearchApi.get_empty_vagon_seats(response_json):
                 empty_seat["vagonTipId"] = next(
@@ -246,11 +242,11 @@ class TripSearchApi:
                     if vagon["vagonSiraNo"] == vagon_map_req["vagonSiraNo"]
                 )
                 empty_seats.append(empty_seat)
-
+        logger.info("sefer: %s, vagon: %s, empty seats: %s", vagon_map_req["seferBaslikId"], vagon_map_req["vagonSiraNo"], len(empty_seats))
         return empty_seats
 
     @staticmethod
-    async def get_empty_seats_trip(trip, from_station, to_station, seat_type=None):
+    async def get_empty_seats_trip(trip, from_station, to_station, seat_type=None, event: asyncio.Event = None):
         """
         Retrieves the empty seats for a given trip.
 
@@ -262,6 +258,7 @@ class TripSearchApi:
             containing the list of empty seats or an empty list if no empty seats are found.
         """
         # clone trip object
+
         trip_with_seats = trip.copy()
         vagon_map_req = api_constants.vagon_harita_req_body.copy()
         trip_with_seats["empty_seats"] = list()
@@ -276,7 +273,7 @@ class TripSearchApi:
                 if seat_type != vagon_type:
                     continue
             empty_seats = await TripSearchApi.get_detailed_vagon_info_empty_seats(
-                vagon_map_req, trip["vagons"]
+                vagon_map_req, trip["vagons"], event=event
             )
             trip_with_seats["empty_seats"].extend(empty_seats)
         # logger.info("Length of empty seats: %s", len(trip_with_seats["empty_seats"]))
@@ -402,13 +399,14 @@ class TripSearchApi:
                     timeout=timeout,
                 )
                 response.raise_for_status()
+                logger.info("Breaking, Response status code: %s", response.status_code)
+                break
             except RequestException as e:
                 logger.error("Error while searching for trips: %s", e)
                 retries += 1
                 logger.error("Retrying trip search. Retry count: %s", retries)
                 time.sleep(sleep)
-            break
-
+            
         response_json = response.json()
 
         sorted_trips = sorted(
@@ -419,7 +417,7 @@ class TripSearchApi:
         )
 
         # filter trips based on to_date
-        logging.info("trip count: %s", len(sorted_trips))
+        logger.info("total trip count: %s", len(sorted_trips))
         if to_date:
             to_date = dateparser.parse(to_date)
             # add one minute to the to_date in case the trip is at the same time
@@ -431,7 +429,7 @@ class TripSearchApi:
                 < to_date
             ]
 
-        logging.info("trip count after sort: %s", len(sorted_trips))
+        logger.info("trip count after sort: %s", len(sorted_trips))
         for trip in sorted_trips:
             if trip["vagonHaritasindanKoltukSecimi"] == 1 and (
                 trip["satisDurum"] == 1 or not check_satis_durum
@@ -547,7 +545,7 @@ class TripSearchApi:
                             and station["is_purchasable"] is True
                         ):
                             hst_stations.append(station)
-
+                logger.info("Breaking, Response status code: %s", response.status_code)
                 return hst_stations
 
             except RequestException as e:
@@ -555,7 +553,6 @@ class TripSearchApi:
                 retries += 1
                 logger.error("Retrying station list. Retry count: %s", retries)
                 time.sleep(sleep)
-            break
 
     @staticmethod
     def is_mernis_correct(passenger: Passenger, date_format: str = "%d/%m/%Y") -> bool:
@@ -598,11 +595,13 @@ class TripSearchApi:
                         date,
                     )
                     raise ValueError(response_json["cevapBilgileri"]["cevapMsj"])
+                logger.info("Breaking, Response status code: %s", response.status_code)
+                break
             except (requests.RequestException, ValueError) as e:
                 retries += 1
                 logger.error("Error while verifying mernis: %s", e)
                 logger.error("Retrying mernis verification. Retry count: %s", retries)
                 time.sleep(sleep)
-            break
+                
         logger.info("Mernis verification succeeded.")
         return True

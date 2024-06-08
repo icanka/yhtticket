@@ -606,6 +606,7 @@ async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
             logger.error("Search task failed. Removing this job.")
             context.job.schedule_removal()
 
+        logger.info("Getting the result of the task.")
         result = task_.get()
         my_trip = pickle.loads(result)
 
@@ -666,7 +667,7 @@ async def keep_seat_lock(context: ContextTypes.DEFAULT_TYPE) -> int:
 async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Proceed to payment."""
     # get currently running tasks
-    update.callback_query.answer()
+    await update.callback_query.answer()
     keyboard = InlineKeyboardMarkup(SEARCH_MENU_BUTTONS)
     task_id = context.user_data.get("task_id")
     logger.info("task_id: %s", task_id)
@@ -675,63 +676,59 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
         text = "No trip is configured yet. Please search for a trip first."
         await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
         return context.user_data.get(CURRENT_STATE, END)
-
     tasks = get_user_task(task_id)
 
-    for task in tasks:
-        if task["name"] == "tasks.celery_tasks.find_trip_and_reserve":
-            logger.info("You still have a task in progress.")
-            await update.callback_query.edit_message_text(
-                text="*You still have an ongoing search in progress.*",
-                reply_markup=keyboard,
-                parse_mode="Markdownv2",
-            )
-            return context.user_data.get(CURRENT_STATE, END)
+    if tasks:    
+        for task in tasks:
+            if task["name"] == "tasks.celery_tasks.find_trip_and_reserve":
+                logger.info("You still have a task in progress.")
+                await update.callback_query.edit_message_text(
+                    text="*You still have an ongoing search in progress.*",
+                    reply_markup=keyboard,
+                    parse_mode="Markdown",
+                )
+                return context.user_data.get(CURRENT_STATE, END)
 
-        elif task["name"] == "tasks.celery_tasks.keep_reserving_seat":
-            # stop the keep_seat_lock job to get the trip object
-            # then start it again to keep the seat lock in case payment fails
-            redis_client.set(task_id, 1, ex=600)
-            # wait for the task to finish but also with a timeout
-            task_ = AsyncResult(task_id)
-            trip_ = task_.get(timeout=30)
-            trip = pickle.loads(trip_)
+            elif task["name"] == "tasks.celery_tasks.keep_reserving_seat":
+                # stop the keep_seat_lock job to get the trip object
+                # then start it again to keep the seat lock in case payment fails
+                redis_client.set(task_id, 1, ex=600)
+                # wait for the task to finish but also with a timeout
+                task_ = AsyncResult(task_id)
+                trip_ = task_.get(timeout=30)
+                trip = pickle.loads(trip_)
 
-            logger.info("Trip from keep_reserving_seat aquired.")
-            logger.info("Setting context trip.")
+                logger.info("Trip from keep_reserving_seat aquired.")
+                logger.info("Setting context trip.")
 
-            context.user_data[TRIP] = trip
-            # keep the seat lock
-            job = context.job_queue.run_once(
-                keep_seat_lock,
-                3,
-                data=context.user_data,
-                chat_id=update.message.chat_id,
-                job_kwargs={"misfire_grace_time": 60},
-            )
+                context.user_data[TRIP] = trip
+                # keep the seat lock
+                job = context.job_queue.run_once(
+                    keep_seat_lock,
+                    3,
+                    data=context.user_data,
+                    chat_id=update.callback_query.message.chat_id,
+                    job_kwargs={"misfire_grace_time": 60},
+                )
 
-            # wait until job is actually started
+                # wait until job is actually started
 
     trip = context.user_data.get(TRIP)
     # dont allow to proceed to payment if the seat lock time is about to expire
-    if trip.is_reservation_expired:
-        text = (
-            "*We cannot proceed to payment. Seat lock is expired or not reserved yet.*"
-        )
+    if trip.is_reservation_expired():
+        if trip.empty_seat_json is not None:
+            text = "*Reservation Expired.*"
+        else:
+            text = "*No seat is reserved.*"
         await update.callback_query.edit_message_text(
-            text=text, reply_markup=keyboard, parse_mode="Markdownv2"
+            text=text, reply_markup=keyboard, parse_mode="Markdown"
         )
         return context.user_data.get(CURRENT_STATE, END)
     else:
         # set the passenger object, for if the user has changed some information
         logger.info("We can proceed to payment. Everything looks fine.")
-        await update.callback_query.edit_message_text(
-            "Confirming passenger information."
-        )
-        await asyncio.sleep(2)
+
         await set_passenger(update, context)
-        await update.callback_query.edit_message_text("Proceeding to payment.")
-        await asyncio.sleep(2)
 
         p = Payment()
         p.trip = trip
@@ -739,15 +736,11 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
         context.user_data[PAYMENT] = p
 
         try:
-            await update.callback_query.edit_message_text("Confirming ticket price.")
-            await asyncio.sleep(2)
             p.set_price()
-            await update.callback_query.edit_message_text("Setting payment url.")
-            await asyncio.sleep(2)
             p.set_payment_url()
         except ValueError as exc:
             # propably credit card information is not correct
-            await asyncio.sleep(2)
+            await asyncio.sleep(1)
             await update.callback_query.edit_message_text(
                 text=f"{exc}", reply_markup=keyboard
             )
@@ -755,6 +748,7 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
         await update.callback_query.edit_message_text(
             f' Here is your <a href="{p.current_payment_url}">Payment Link</a>',
+            reply_markup=keyboard,
             parse_mode="HTML",
         )
         # we have succesfully created the payment url, now we can check the payment status
@@ -771,8 +765,8 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
         # now start checking payment run every 10 seconds until 3 minutes have passed
         context.job_queue.run_repeating(
             check_payment,
-            data=[context.user_data, update.message],
-            chat_id=update.message.chat_id,
+            data=context.user_data,
+            chat_id=update.callback_query.message.chat_id,
             interval=10,
             first=30,
             last=300,
@@ -819,7 +813,8 @@ async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
                     chat_id=context.job.chat_id,
                     text=f"Ticket is created. {p.ticket_reservation_info}",
                 )
-
+                context.job.data[TRIP] = None
+                
     except ValueError as exc:
         logger.error("%s", exc)
         if "hata" in exc.args[0]:
@@ -830,7 +825,6 @@ async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
             context.job.schedule_removal()
     except requests.exceptions.RequestException as rexc:
         logger.error("%s", rexc)
-    return context.job.data.get(CURRENT_STATE, END)
 
 
 async def set_passenger(
@@ -965,15 +959,17 @@ async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
     logger.info("Resetting search.")
     keyboard = InlineKeyboardMarkup(SEARCH_MENU_BUTTONS)
-
+    text = ""
+    
     await remove_user_job(update, context)
-
     if update.callback_query.data == "reset_search":
+        text = "Search has been reset."
         if context.user_data.get(TRIP):
             context.user_data.get(TRIP).reset_reservation_data()
-            
+    else:
+        text = "Search has been cancelled."
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(text="*Success*", reply_markup=keyboard, parse_mode="Markdownv2")
+    await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     return context.user_data.get(CURRENT_STATE, END)
 
 
@@ -1178,28 +1174,30 @@ async def search_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     keyboard = InlineKeyboardMarkup(SEARCH_MENU_BUTTONS)
 
     jobs = context.job_queue.jobs()
-    text = ("")
+    text = ""
     if jobs:
-        text += "*Queued Jobs*\n"
+        text += "Queued Jobs\n"
         for job in jobs:
             text += f"  {job.name}\n"
     else:
-        text += "*No queued jobs*\n"
+        text += "No queued jobs\n"
 
     if task_id:
         i = celery_app.control.inspect()
         tasks = [t for task in i.active().values() for t in task if t["id"] == task_id]
         if tasks:
-            text += "*Active Tasks*\n"
+            text += "Active Tasks\n"
             for task in tasks:
                 name = task["name"].split(".")[-1]  # get the last part of the task name
                 text += f"  {name}\n"
         else:
-            text += "*No active tasks*\n"
+            text += "No active tasks\n"
+    else:
+        text += "No active tasks\n"
     text = text.strip()
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-        text=text, reply_markup=keyboard, parse_mode="Markdown"
+        text=text, reply_markup=keyboard
     )
 
     return context.user_data.get(CURRENT_STATE, END)
@@ -1246,17 +1244,15 @@ async def start_test_check_payment(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> int:
     """Start the test check_payment."""
-    for r in range(1):
-        logger.info("RUNNING THE %sth TIME", r)
-        context.job_queue.run_repeating(
-            check_payment_test,
+    context.job_queue.run_repeating(
+            check_payment,
             data=context.user_data,
             chat_id=update.message.chat_id,
             interval=10,
             first=0,
             last=300,
-            job_kwargs={"misfire_grace_time": 3},
-        )
+            job_kwargs={"misfire_grace_time": 30},
+    )
     return context.user_data.get(CURRENT_STATE, END)
 
 
