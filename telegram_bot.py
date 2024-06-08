@@ -177,14 +177,17 @@ async def show_trip_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return SHOWING_TRIP_INFO
 
     if trip.is_reservation_expired():
-        trip.reset_reservation_data()
+        #trip.reset_reservation_data()
         text = (
             f"From: *{trip.from_station}*\n"
             f"To: *{trip.to_station}*\n"
             f"From Date: *{trip.from_date}*\n"
             f"To Date: *{trip.to_date}*\n"
-            "*Seat is not reserved yet or reservation is expired*"
         )
+        if trip.empty_seat_json is not None:
+            text += "*Reservation Expired*\n"
+        else:
+            text += "*No seat is reserved.*\n"
         await update.callback_query.answer()
         await update.callback_query.edit_message_text(
             text=text, reply_markup=keyboard, parse_mode="Markdown"
@@ -520,28 +523,31 @@ async def handle_datetime_type(
 
 async def start_search(context: ContextTypes.DEFAULT_TYPE) -> int:
     """Callback for the reservation process."""
-    task_id = context.job.data.get("task_id")
-    trip = context.job.data.get(TRIP)
+    user_data = context.job.data
+    task_id = user_data.get("task_id")
+    trip = user_data.get(TRIP)
 
     await context.bot.send_message(
         chat_id=context.job.chat_id,
-        text=f"BEEEP, starting to search for trip with id {
-            trip.from_station} to {trip.to_station} on {trip.from_date}.",
+        text=f"*BEEEP*, starting to search for trip *{
+            trip.from_station}* to *{trip.to_station}* on *{trip.from_date}*.",
+        parse_mode="Markdown",
     )
-    await asyncio.sleep(2)
+    await asyncio.sleep(3)
 
     if task_id:
         # get active tasks
-        i = celery_app.control.inspect()
-        tasks = [t for task in i.active().values() for t in task if t["id"] == task_id]
-        for task in tasks:
-
-            logger.info("Found celery task with id: %s", task_id)
-            await context.bot.send_message(
-                chat_id=context.job.chat_id,
-                text=f"Oops, You already have a running task in progress: {task['name']}",
-            )
-            return context.job.data.get(CURRENT_STATE, END)
+        tasks = get_user_task(task_id)
+        if tasks:
+            for task in tasks:
+                logger.info("Found celery task with id: %s", task_id)
+                await context.bot.send_message(
+                    chat_id=context.job.chat_id,
+                    text=f"*Oops*, You already have a running task in progress: *{task['name']}*",
+                    parse_mode="Markdown",
+                )
+                await asyncio.sleep(3)
+                return user_data.get(CURRENT_STATE, END)
 
     logger.info("trip: %s, type: %s", trip, type(trip))
     logger.info("trip.passenger: %s", trip.passenger)
@@ -552,13 +558,13 @@ async def start_search(context: ContextTypes.DEFAULT_TYPE) -> int:
     task = find_trip_and_reserve.delay(trip_)
     # save the task id to the context
     logger.info("SETTING TASK_ID: %s", task.id)
-    context.job.data["task_id"] = task.id
+    user_data["task_id"] = task.id
     await context.bot.send_message(
         chat_id=context.job.chat_id,
         text="Search task started.",
     )
 
-    return context.job.data.get(CURRENT_STATE, END)
+    return user_data.get(CURRENT_STATE, END)
 
 
 async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -956,26 +962,18 @@ async def selecting_sex(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Reset the search task."""
-    await update.callback_query.answer()
 
     logger.info("Resetting search.")
     keyboard = InlineKeyboardMarkup(SEARCH_MENU_BUTTONS)
 
-    await update.callback_query.edit_message_text(
-        text="Stopping tasks and jobs...", reply_markup=keyboard
-    )
     await remove_user_job(update, context)
-    await asyncio.sleep(3)
 
     if update.callback_query.data == "reset_search":
         if context.user_data.get(TRIP):
-            await update.callback_query.edit_message_text(
-                text="Clearing trip reservation data.", reply_markup=keyboard
-            )
-            await asyncio.sleep(3)
             context.user_data.get(TRIP).reset_reservation_data()
-
-    await update.callback_query.edit_message_text(text="Done.", reply_markup=keyboard)
+            
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text(text="*Success*", reply_markup=keyboard, parse_mode="Markdownv2")
     return context.user_data.get(CURRENT_STATE, END)
 
 
@@ -1102,9 +1100,6 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Start the search process."""
     keyboard = InlineKeyboardMarkup(SEARCH_MENU_BUTTONS)
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
-        text="*Starting search process*", reply_markup=keyboard, parse_mode="Markdown"
-    )
 
     task_id = context.user_data.get("task_id")
     trip = context.user_data.get(TRIP)
@@ -1121,21 +1116,19 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     elif task_id:
         tasks = get_user_task(task_id)
         if tasks:
-            await asyncio.sleep(2)
             await update.callback_query.edit_message_text(
                 text="*You already have a task in progress*",
                 reply_markup=keyboard,
                 parse_mode="Markdownv2",
             )
+            return context.user_data.get(CURRENT_STATE, END)
         else:
             # just stale task_id, log it
             logger.warning(
                 "No task found associated with task_id: %s",
                 context.user_data["task_id"],
             )
-        return context.user_data.get(CURRENT_STATE, END)
     elif not trip.is_reservation_expired:
-        await asyncio.sleep(2)
         text = (
             f"*{trip.empty_seat_json['koltukNo']}* in vagon *{trip.empty_seat_json['vagonSiraNo']}*"
             f"is already reserved. Seat lock will expire at: *{trip.lock_end_time}*"
@@ -1148,13 +1141,6 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return context.user_data.get(CURRENT_STATE, END)
 
     await set_passenger(update, context)
-
-    logger.info("user_trip: %s", trip)
-
-    await update.callback_query.edit_message_text(
-        text="*Queueing search process*", reply_markup=keyboard, parse_mode="Markdownv2"
-    )
-
     # run the search job and accompanying check_search_status job
     context.job_queue.run_once(
         start_search,
@@ -1190,16 +1176,11 @@ async def search_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     """Check the search status."""
     task_id = context.user_data.get("task_id")
     keyboard = InlineKeyboardMarkup(SEARCH_MENU_BUTTONS)
-    await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
-        text="*Checking search status*", reply_markup=keyboard, parse_mode="Markdownv2"
-    )
-    await asyncio.sleep(2)
 
     jobs = context.job_queue.jobs()
-    text = ""
+    text = ("")
     if jobs:
-        text += f"*Queued Jobs*\n"
+        text += "*Queued Jobs*\n"
         for job in jobs:
             text += f"  {job.name}\n"
     else:
@@ -1209,15 +1190,16 @@ async def search_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         i = celery_app.control.inspect()
         tasks = [t for task in i.active().values() for t in task if t["id"] == task_id]
         if tasks:
-            text += f"*Active Tasks*\n"
+            text += "*Active Tasks*\n"
             for task in tasks:
                 name = task["name"].split(".")[-1]  # get the last part of the task name
                 text += f"  {name}\n"
         else:
             text += "*No active tasks*\n"
-
+    text = text.strip()
+    await update.callback_query.answer()
     await update.callback_query.edit_message_text(
-        text=text, reply_markup=keyboard, parse_mode="Markdownv2"
+        text=text, reply_markup=keyboard, parse_mode="Markdown"
     )
 
     return context.user_data.get(CURRENT_STATE, END)

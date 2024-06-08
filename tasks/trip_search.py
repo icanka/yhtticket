@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import random
 import aiohttp
 import logging
 from datetime import datetime, timedelta
@@ -195,14 +196,19 @@ class TripSearchApi:
             list: The list of dictionaries containing the empty seat information.
         """
         retries = 0
-        max_retries = 2
-        sleep = 1
-        timeout = 3
+        max_retries = 3
+        sleep = 30
+        timeout = 10
 
         empty_seats = list()
         response_json = None
 
         while retries < max_retries:
+            sleep_ = random.randint(int(sleep/3), sleep)
+            # sleep random first before starting, because of concurrent requests
+            # we dont want to start all requests at the same time
+            logger.info("Sleeping: %s before starting vagon map request", sleep_)
+            await asyncio.sleep(sleep_)
             try:
                 async with aiohttp.ClientSession() as session:
                     async with session.post(
@@ -218,13 +224,14 @@ class TripSearchApi:
             except asyncio.TimeoutError as e:
                 logger.error("Timeout error while getting vagon map: %s", e)
                 retries += 1
-                logger.error("Retrying vagon map. Retry count: %s", retries)
-                await asyncio.sleep(sleep)
+                logger.error("Sleeping: %s before Retrying vagon map. Retry count: %s", sleep_, retries)
+                await asyncio.sleep(sleep_)
             except aiohttp.ClientError as e:
                 logger.error("Error while getting vagon map: %s", e)
                 retries += 1
-                logger.error("Retrying vagon map. Retry count: %s", retries)
-                await asyncio.sleep(sleep)
+                # random number between 0 and 30
+                logger.error("Sleeping: %s before Retrying vagon map. Retry count: %s", sleep_, retries)
+                await asyncio.sleep(sleep_)
 
         # logger.info(
         #     "retries: %s, response_json: %s",
@@ -337,8 +344,8 @@ class TripSearchApi:
         # log the method parameters
         retries = 0
         max_retries = 10
-        sleep = 10
-        timeout = 3
+        sleep = 30
+        timeout = 10
 
         logger.info(
             "Searching for trips. from_station: %s to_station: %s from_date: %s to_date: %s",
@@ -385,6 +392,7 @@ class TripSearchApi:
             from_date, TripSearchApi.time_format
         )
 
+        response = None
         while retries < max_retries:
             try:
                 response = requests.post(

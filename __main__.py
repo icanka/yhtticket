@@ -204,7 +204,7 @@ def main() -> None:
         entry_points=[CallbackQueryHandler(search_menu, pattern=f"^{SEARCH_MENU}$")],
         states={
             SEARCH_MENU: [
-                CallbackQueryHandler(test_job, pattern="^start_search$"),
+                CallbackQueryHandler(start_res, pattern="^start_search$"),
                 CallbackQueryHandler(reset_search, pattern="^reset_search$"),
                 CallbackQueryHandler(reset_search, pattern="^stop_search$"),
                 CallbackQueryHandler(search_status, pattern="^search_status$"),

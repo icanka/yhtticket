@@ -41,7 +41,7 @@ def find_trip_and_reserve(self, my_trip: Trip):
         logger.error("Error while reserving seat: %s", e)
         count += 1
         logger.info("Retrying... %s", count)
-        self.retry(countdown=10)
+        self.retry(countdown=60)
 
     logger.info("Seat is reserved: %s", my_trip.empty_seat_json.get("koltukNo"))
     if my_trip.lock_end_time:

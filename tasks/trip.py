@@ -38,7 +38,9 @@ class Trip:
 
     def is_reservation_expired(self):
         """Check if the seat reservation is expired."""
-        if self.lock_end_time:
+        if self.lock_end_time is None:
+            return True
+        elif self.lock_end_time:
             time_diff = self.lock_end_time - datetime.now()
             if time_diff.total_seconds() < 60:
                 # lock time is passed, seat reserveation is expired
@@ -146,7 +148,7 @@ class Trip:
     async def check_trip_for_empty_seats(
         self, trip, trips_with_empty_seats, lock, sem, event
     ):
-        """test"""
+        """Check if the given trip has empty seats."""
         # await asyncio.sleep(100)
         # logger.info("Checking trip for empty seats: %s", trip.get("binisTarih"))
 
@@ -169,7 +171,7 @@ class Trip:
                             trips_with_empty_seats.append(trip)
 
     async def get_trip_empty_seat_count(self, trip):
-        """test"""
+        """Get the empty seat count for the given trip."""
         empty_seat_count = 0
         if self.passenger.seat_type:
             if self.passenger.seat_type == Seat.BUSS:
