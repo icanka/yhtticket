@@ -607,11 +607,23 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
     keyboard = InlineKeyboardMarkup(SEARCH_MENU_BUTTONS)
     task_id = context.user_data.get("task_id")
     logger.info("task_id: %s", task_id)
+    trip = context.user_data.get(TRIP)
 
-    if context.user_data.get(TRIP) is None:
+    if trip and trip.is_reservation_expired():
+        if trip.empty_seat_json is not None:
+            text = "*Reservation Expired.*"
+        else:
+            text = "*No seat is currently reserved.*"
+        await update.callback_query.edit_message_text(
+            text=text, reply_markup=keyboard, parse_mode="Markdown"
+        )
+        return context.user_data.get(CURRENT_STATE, END)
+        
+    if trip is None:
         text = "No trip is configured yet. Please search for a trip first."
         await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
         return context.user_data.get(CURRENT_STATE, END)
+    
     tasks = await get_user_task(task_id)
 
     if tasks:
@@ -647,67 +659,54 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     job_kwargs={"misfire_grace_time": 60},
                 )
 
-                # wait until job is actually started
 
-    trip = context.user_data.get(TRIP)
-    # dont allow to proceed to payment if the seat lock time is about to expire
-    if trip.is_reservation_expired():
-        if trip.empty_seat_json is not None:
-            text = "*Reservation Expired.*"
-        else:
-            text = "*No seat is currently reserved.*"
+    logger.info("We can proceed to payment. Everything looks fine.")
+    # set the passenger object, for if the user has changed some information
+    await set_passenger(update, context)
+
+    p = Payment()
+    p.trip = trip
+    logger.info("Setting context payment object.")
+    context.user_data[PAYMENT] = p
+
+    try:
+        p.set_price()
+        p.set_payment_url()
+    except ValueError as exc:
+        # propably credit card information is not correct
+        await asyncio.sleep(1)
         await update.callback_query.edit_message_text(
-            text=text, reply_markup=keyboard, parse_mode="Markdown"
+            text=f"{exc}", reply_markup=keyboard
         )
         return context.user_data.get(CURRENT_STATE, END)
-    else:
-        # set the passenger object, for if the user has changed some information
-        logger.info("We can proceed to payment. Everything looks fine.")
 
-        await set_passenger(update, context)
-
-        p = Payment()
-        p.trip = trip
-        logger.info("Setting context payment object.")
-        context.user_data[PAYMENT] = p
-
-        try:
-            p.set_price()
-            p.set_payment_url()
-        except ValueError as exc:
-            # propably credit card information is not correct
-            await asyncio.sleep(1)
-            await update.callback_query.edit_message_text(
-                text=f"{exc}", reply_markup=keyboard
+    await update.callback_query.edit_message_text(
+        f' Here is your <a href="{p.current_payment_url}">Payment Link</a>',
+        reply_markup=keyboard,
+        parse_mode="HTML",
+    )
+    # we have succesfully created the payment url, now we can check the payment status
+    # But first stop any other check_payment jobs
+    for job in context.job_queue.jobs():
+        # if the check_payment belongs to the same chat_id
+        if job.name == "check_payment" and job.chat_id == update.message.chat_id:
+            logger.info(
+                "Removing job with name: %s, chat_id: %s before starting a new one",
+                job.name,
+                job.chat_id,
             )
-            return context.user_data.get(CURRENT_STATE, END)
-
-        await update.callback_query.edit_message_text(
-            f' Here is your <a href="{p.current_payment_url}">Payment Link</a>',
-            reply_markup=keyboard,
-            parse_mode="HTML",
-        )
-        # we have succesfully created the payment url, now we can check the payment status
-        # But first stop any other check_payment jobs
-        for job in context.job_queue.jobs():
-            # if the check_payment belongs to the same chat_id
-            if job.name == "check_payment" and job.chat_id == update.message.chat_id:
-                logger.info(
-                    "Removing job with name: %s, chat_id: %s before starting a new one",
-                    job.name,
-                    job.chat_id,
-                )
-                job.schedule_removal()
-        # now start checking payment run every 10 seconds until 3 minutes have passed
-        context.job_queue.run_repeating(
-            check_payment,
-            data=context.user_data,
-            chat_id=update.callback_query.message.chat_id,
-            interval=10,
-            first=30,
-            last=300,
-            job_kwargs={"misfire_grace_time": 30},
-        )
+            job.schedule_removal()
+            
+    # now start checking payment run every 10 seconds until 3 minutes have passed
+    context.job_queue.run_repeating(
+        check_payment,
+        data=context.user_data,
+        chat_id=update.callback_query.message.chat_id,
+        interval=10,
+        first=30,
+        last=300,
+        job_kwargs={"misfire_grace_time": 30},
+    )
     return context.user_data.get(CURRENT_STATE, END)
 
 
@@ -722,9 +721,6 @@ async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
 
     p = context.job.data.get(PAYMENT)
     task_id = context.job.data.get("task_id")
-
-    logger.info("task_id: %s", task_id)
-    logger.info("p.trip.passenger: %s", p.trip.passenger.name)
 
     try:
         if p.is_payment_success():
@@ -749,7 +745,7 @@ async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
                     chat_id=context.job.chat_id,
                     text=f"Ticket is created. {p.ticket_reservation_info}",
                 )
-                context.job.data[TRIP] = None
+                #context.job.data[TRIP] = None
 
     except ValueError as exc:
         logger.error("%s", exc)
