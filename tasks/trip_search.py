@@ -175,7 +175,9 @@ class TripSearchApi:
                                 f"Non zero response code: response_json: {response_json}"
                             )
                         end_time = response_json["koltuklarimListesi"][0]["bitisZamani"]
-                        logger.info("Breaking, Response status code: %s", response.status_code)
+                        logger.info(
+                            "Breaking, Response status code: %s", response.status_code
+                        )
                         break
                     else:
                         raise SeatLockedException(empty_seat)
@@ -188,7 +190,9 @@ class TripSearchApi:
             return end_time, empty_seat, response_json
 
     @staticmethod
-    async def get_detailed_vagon_info_empty_seats(vagon_map_req, vagons, event: asyncio.Event = None):
+    async def get_detailed_vagon_info_empty_seats(
+        vagon_map_req, vagons, event: asyncio.Event = None
+    ):
         """
         Retrieves the empty seats for a given vagon.
 
@@ -209,9 +213,11 @@ class TripSearchApi:
 
         while retries < max_retries:
             if event and event.is_set():
-                logger.info("**************************Event is set. Exiting.**************************************")
+                logger.info(
+                    "**************************Event is set. Exiting.**************************************"
+                )
                 break
-            sleep_ = random.randint(int(sleep/3), sleep)
+            sleep_ = random.randint(int(sleep / 3), sleep)
             try:
                 async with aiohttp.ClientSession() as session:
                     async with session.post(
@@ -220,7 +226,7 @@ class TripSearchApi:
                         data=json.dumps(vagon_map_req),
                         timeout=timeout,
                     ) as resp:
-                        #resp.raise_for_status()
+                        # resp.raise_for_status()
                         response_json = await resp.json()
                         logger.info("Breaking, Response status code: %s", resp.status)
                     break
@@ -228,13 +234,21 @@ class TripSearchApi:
             except asyncio.TimeoutError as e:
                 logger.error("Timeout error while getting vagon map: %s", e)
                 retries += 1
-                logger.error("Sleeping: %s before Retrying vagon map. Retry count: %s", sleep_, retries)
+                logger.error(
+                    "Sleeping: %s before Retrying vagon map. Retry count: %s",
+                    sleep_,
+                    retries,
+                )
                 await asyncio.sleep(sleep_)
             except aiohttp.ClientError as e:
                 logger.error("Error while getting vagon map: %s", e)
                 retries += 1
                 # random number between 0 and 30
-                logger.error("Sleeping: %s before Retrying vagon map. Retry count: %s", sleep_, retries)
+                logger.error(
+                    "Sleeping: %s before Retrying vagon map. Retry count: %s",
+                    sleep_,
+                    retries,
+                )
                 await asyncio.sleep(sleep_)
 
         if response_json:
@@ -245,11 +259,18 @@ class TripSearchApi:
                     if vagon["vagonSiraNo"] == vagon_map_req["vagonSiraNo"]
                 )
                 empty_seats.append(empty_seat)
-        logger.info("sefer: %s, vagon: %s, empty seats: %s", vagon_map_req["seferBaslikId"], vagon_map_req["vagonSiraNo"], len(empty_seats))
+        logger.info(
+            "sefer: %s, vagon: %s, empty seats: %s",
+            vagon_map_req["seferBaslikId"],
+            vagon_map_req["vagonSiraNo"],
+            len(empty_seats),
+        )
         return empty_seats
 
     @staticmethod
-    async def get_empty_seats_trip(trip, from_station, to_station, seat_type=None, event: asyncio.Event = None):
+    async def get_empty_seats_trip(
+        trip, from_station, to_station, seat_type=None, event: asyncio.Event = None
+    ):
         """
         Retrieves the empty seats for a given trip.
 
@@ -411,7 +432,7 @@ class TripSearchApi:
                 retries += 1
                 logger.error("Retrying trip search. Retry count: %s", retries)
                 time.sleep(sleep)
-            
+
         response_json = response.json()
 
         sorted_trips = sorted(
@@ -607,6 +628,6 @@ class TripSearchApi:
                 logger.error("Error while verifying mernis: %s", e)
                 logger.error("Retrying mernis verification. Retry count: %s", retries)
                 time.sleep(sleep)
-                
+
         logger.info("Mernis verification succeeded.")
         return True

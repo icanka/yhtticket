@@ -208,7 +208,9 @@ def main() -> None:
                 CallbackQueryHandler(reset_search, pattern="^reset_search$"),
                 CallbackQueryHandler(reset_search, pattern="^stop_search$"),
                 CallbackQueryHandler(search_status, pattern="^search_status$"),
-                CallbackQueryHandler(proceed_to_payment, pattern="^proceed_to_payment$"),
+                CallbackQueryHandler(
+                    proceed_to_payment, pattern="^proceed_to_payment$"
+                ),
                 CallbackQueryHandler(back, pattern=f"^{BACK}$"),
             ],
         },

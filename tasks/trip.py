@@ -146,7 +146,9 @@ class Trip:
             logger.info("Waiting for tasks to complete: len: %s", len(tasks))
             await asyncio.gather(*tasks)
             logger.info("All tasks completed.")
-        logger.info(" YUPPI! Trips with empty seats len: %s", len(trips_with_empty_seats))
+        logger.info(
+            " YUPPI! Trips with empty seats len: %s", len(trips_with_empty_seats)
+        )
         return trips_with_empty_seats
 
     async def check_trip_for_empty_seats(
@@ -158,7 +160,9 @@ class Trip:
 
         # lock for running only a certain amount of tasks concurrently
         if event.is_set():
-            logger.info("-----------------------------------------Event is set returning---------------------------------")
+            logger.info(
+                "-----------------------------------------Event is set returning---------------------------------"
+            )
             return
         async with sem:
             logger.info("Sem count: %s", sem._value)
@@ -167,21 +171,23 @@ class Trip:
             sleep = random.uniform(0, 1)
             logger.info("Sleeping: %s before getting empty seats for trip", sleep)
             await asyncio.sleep(sleep)
-            #while not event.is_set():
+            # while not event.is_set():
             trip = await TripSearchApi.get_empty_seats_trip(
-                    trip,
-                    self.from_station,
-                    self.to_station,
-                    self.passenger.seat_type,
-                    event=event,
+                trip,
+                self.from_station,
+                self.to_station,
+                self.passenger.seat_type,
+                event=event,
             )
             empty_seat_count = await self.get_trip_empty_seat_count(trip)
             if empty_seat_count > 0:
                 # onyl one  task should access the shared resources below at a time
                 async with lock:
-                        #while not event.is_set():
+                    # while not event.is_set():
                     if not event.is_set():
-                        logger.info("Empty seat found setting EVENT. Appending trip to trips_with_empty_seats")
+                        logger.info(
+                            "Empty seat found setting EVENT. Appending trip to trips_with_empty_seats"
+                        )
                         event.set()
                         trips_with_empty_seats.append(trip)
 

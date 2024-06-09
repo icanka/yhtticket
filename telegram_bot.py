@@ -177,7 +177,7 @@ async def show_trip_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return SHOWING_TRIP_INFO
 
     if trip.is_reservation_expired():
-        #trip.reset_reservation_data()
+        # trip.reset_reservation_data()
         text = (
             f"From: *{trip.from_station}*\n"
             f"To: *{trip.to_station}*\n"
@@ -614,7 +614,7 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return context.user_data.get(CURRENT_STATE, END)
     tasks = get_user_task(task_id)
 
-    if tasks:    
+    if tasks:
         for task in tasks:
             if task["name"] == "tasks.celery_tasks.find_trip_and_reserve":
                 logger.info("You still have a task in progress.")
@@ -750,7 +750,7 @@ async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
                     text=f"Ticket is created. {p.ticket_reservation_info}",
                 )
                 context.job.data[TRIP] = None
-                
+
     except ValueError as exc:
         logger.error("%s", exc)
         if "hata" in exc.args[0]:
@@ -896,7 +896,7 @@ async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     logger.info("Resetting search.")
     keyboard = InlineKeyboardMarkup(SEARCH_MENU_BUTTONS)
     text = ""
-    
+
     await remove_user_job(update, context)
     if update.callback_query.data == "reset_search":
         text = "Search has been reset."
@@ -1130,9 +1130,7 @@ async def search_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         text += "No active tasks\n"
     text = text.strip()
     await update.callback_query.answer()
-    await update.callback_query.edit_message_text(
-        text=text, reply_markup=keyboard
-    )
+    await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
 
     return context.user_data.get(CURRENT_STATE, END)
 
@@ -1179,13 +1177,13 @@ async def start_test_check_payment(
 ) -> int:
     """Start the test check_payment."""
     context.job_queue.run_repeating(
-            check_payment,
-            data=context.user_data,
-            chat_id=update.message.chat_id,
-            interval=10,
-            first=0,
-            last=300,
-            job_kwargs={"misfire_grace_time": 30},
+        check_payment,
+        data=context.user_data,
+        chat_id=update.message.chat_id,
+        interval=10,
+        first=0,
+        last=300,
+        job_kwargs={"misfire_grace_time": 30},
     )
     return context.user_data.get(CURRENT_STATE, END)
 
