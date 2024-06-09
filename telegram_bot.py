@@ -187,7 +187,7 @@ async def show_trip_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         if trip.empty_seat_json is not None:
             text += "*Reservation Expired*\n"
         else:
-            text += "*No seat is reserved.*\n"
+            text += "*No seat is currently reserved.*\n"
         await update.callback_query.answer()
         await update.callback_query.edit_message_text(
             text=text, reply_markup=keyboard, parse_mode="Markdown"
@@ -473,7 +473,7 @@ async def start_search(context: ContextTypes.DEFAULT_TYPE) -> int:
 
     if task_id:
         # get active tasks
-        tasks = get_user_task(task_id)
+        tasks = await get_user_task(task_id)
         if tasks:
             for task in tasks:
                 logger.info("Found celery task with id: %s", task_id)
@@ -612,7 +612,7 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
         text = "No trip is configured yet. Please search for a trip first."
         await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
         return context.user_data.get(CURRENT_STATE, END)
-    tasks = get_user_task(task_id)
+    tasks = await get_user_task(task_id)
 
     if tasks:
         for task in tasks:
@@ -655,7 +655,7 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if trip.empty_seat_json is not None:
             text = "*Reservation Expired.*"
         else:
-            text = "*No seat is reserved.*"
+            text = "*No seat is currently reserved.*"
         await update.callback_query.edit_message_text(
             text=text, reply_markup=keyboard, parse_mode="Markdown"
         )
@@ -1044,12 +1044,11 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         )
         return context.user_data.get(CURRENT_STATE, END)
     elif task_id:
-        tasks = get_user_task(task_id)
+        tasks = await get_user_task(task_id)
         if tasks:
             await update.callback_query.edit_message_text(
-                text="*You already have a task in progress*",
+                text="You already have a task in progress",
                 reply_markup=keyboard,
-                parse_mode="Markdownv2",
             )
             return context.user_data.get(CURRENT_STATE, END)
         else:
@@ -1117,8 +1116,7 @@ async def search_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         text += "No queued jobs\n"
 
     if task_id:
-        i = celery_app.control.inspect()
-        tasks = [t for task in i.active().values() for t in task if t["id"] == task_id]
+        tasks = await get_user_task(task_id)
         if tasks:
             text += "Active Tasks\n"
             for task in tasks:
@@ -1135,7 +1133,7 @@ async def search_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     return context.user_data.get(CURRENT_STATE, END)
 
 
-def get_user_task(task_id: str) -> list[dict] | None:
+async def get_user_task(task_id: str) -> list[dict] | None:
     """Get the user task."""
     i = celery_app.control.inspect()
     tasks = [t for task in i.active().values() for t in task if t["id"] == task_id]
