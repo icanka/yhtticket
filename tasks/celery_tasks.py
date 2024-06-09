@@ -34,6 +34,7 @@ def find_trip_and_reserve(self, my_trip: Trip):
     my_trip = pickle.loads(my_trip)
     try:
         trips = asyncio.run(my_trip.find_trips())
+        logger.info("Trips found: %s", len(trips))
         my_trip.trip_json = trips[0]
         logger.info("Reserving: %s", trips[0].get("binisTarih"))
         my_trip.reserve_seat()

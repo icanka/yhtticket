@@ -70,10 +70,9 @@ class Trip:
         try:
             # first reserving of the seat
             if not self.lock_end_time:
-                logger.info("Seat is not reserved, reserving the seat.")
-
                 # check if we have already reserved the seat before
                 if self.empty_seat_json:
+                    logger.info("Reserving the seat again.")
                     lock_end_time, _, self.seat_lock_response = (
                         TripSearchApi.select_first_empty_seat(
                             self.trip_json, self.empty_seat_json
@@ -82,6 +81,7 @@ class Trip:
 
                 # First time reserving the seat
                 else:
+                    logger.info("First time reserving the seat.")
                     lock_end_time, self.empty_seat_json, self.seat_lock_response = (
                         TripSearchApi.select_first_empty_seat(self.trip_json)
                     )
@@ -135,7 +135,7 @@ class Trip:
 
         # if trips_with_empty_seats is empty keep searching for trips
         while len(trips_with_empty_seats) == 0:
-            logger.info("Getting trips.")
+            logger.info("trips_with_empty_seats is empty, Getting trips.")
             trips = self.get_trips()
             tasks = [
                 self.check_trip_for_empty_seats(
@@ -158,7 +158,7 @@ class Trip:
 
         # lock for running only a certain amount of tasks concurrently
         if event.is_set():
-            logger.info("Event is set returning.")
+            logger.info("-----------------------------------------Event is set returning---------------------------------")
             return
         async with sem:
             logger.info("Sem count: %s", sem._value)
@@ -190,10 +190,13 @@ class Trip:
         empty_seat_count = 0
         if self.passenger.seat_type:
             if self.passenger.seat_type == Seat.BUSS:
+                logger.info("BUSS EMpty seat count: %s", trip["buss_empty_seat_count"])
                 empty_seat_count = trip["buss_empty_seat_count"]
             elif self.passenger.seat_type == Seat.ECO:
+                logger.info("ECO EMpty seat count: %s", trip["eco_empty_seat_count"])
                 empty_seat_count = trip["eco_empty_seat_count"]
         else:
+            logger.info("ALL EMpty seat count: %s", trip["empty_seat_count"])
             empty_seat_count = trip["empty_seat_count"]
         return empty_seat_count
 

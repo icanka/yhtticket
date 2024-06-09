@@ -1102,7 +1102,6 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     chat_id = update.callback_query.message.chat_id
 
     if trip is None:
-        await asyncio.sleep(2)
         await update.callback_query.edit_message_text(
             text="*Please search for a trip first*",
             reply_markup=keyboard,
