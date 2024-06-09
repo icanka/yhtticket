@@ -113,7 +113,6 @@ class TripSearchApi:
             dict: The response JSON containing the selected seat information
             if the response code is 200.
         """
-        logger.info("Selecting first empty seat.")
         retries = 0
         max_retries = 3
         sleep = 3
@@ -121,11 +120,8 @@ class TripSearchApi:
         # Select the first empty seat
         seat_select_req = api_constants.koltuk_sec_req_body.copy()
         s_check = api_constants.seat_check.copy()
-        logger.info("empty_seats: %s", trip.get("empty_seats"))
         if trip.get("empty_seats"):
-            logger.info("Empty seats found. %s", len(trip["empty_seats"]))
             empty_seat = trip["empty_seats"][0] if empty_seat is None else empty_seat
-            logger.info("Selecting empty seat: koltukNo: %s", empty_seat["koltukNo"])
 
             seat_select_req["seferId"] = trip["seferId"]
             seat_select_req["vagonSiraNo"] = empty_seat["vagonSiraNo"]
@@ -207,7 +203,6 @@ class TripSearchApi:
         sleep = 3
         timeout = 3
 
-        logger.info("Creating empty list for empty_seats.")
         empty_seats = list()
         response_json = None
 
@@ -285,7 +280,6 @@ class TripSearchApi:
 
         trip_with_seats = trip.copy()
         vagon_map_req = api_constants.vagon_harita_req_body.copy()
-        logger.info("Creating empty list for empty_seats.")
         trip_with_seats["empty_seats"] = list()
 
         for vagon in trip["vagons"]:
@@ -300,9 +294,7 @@ class TripSearchApi:
             empty_seats = await TripSearchApi.get_detailed_vagon_info_empty_seats(
                 vagon_map_req, trip["vagons"], event=event
             )
-            logger.info("Length of empty seats: %s", len(empty_seats))
             trip_with_seats["empty_seats"].extend(empty_seats)
-        logger.info("Length of empty seats: %s", len(trip_with_seats["empty_seats"]))
 
         return trip_with_seats
 

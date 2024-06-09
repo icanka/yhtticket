@@ -3,7 +3,8 @@
 import asyncio
 import logging
 import pickle
-from datetime import datetime, timedelta
+import json
+from datetime import datetime
 from uuid import uuid4
 
 import regex
@@ -13,7 +14,6 @@ from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     InlineQueryResultArticle,
-    InputMediaAnimation,
     InputTextMessageContent,
     Update,
 )
@@ -176,7 +176,11 @@ async def show_trip_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
         return SHOWING_TRIP_INFO
 
+    logger.info("chat_id: %s", update.callback_query.message.chat_id)
+    await update_trip_lock_end_time(trip, update.callback_query.message.chat_id)
+
     if trip.is_reservation_expired():
+        logger.info("Reservation is expired. lock_end_time: %s", trip.lock_end_time)
         # trip.reset_reservation_data()
         text = (
             f"From: *{trip.from_station}*\n"
@@ -206,7 +210,9 @@ async def show_trip_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             f"Remaining Reserve Time: *{time_diff}* min.\n"
         )
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
+        await update.callback_query.edit_message_text(
+            text=text, reply_markup=keyboard, parse_mode="Markdown"
+        )
         return SHOWING_TRIP_INFO
 
 
@@ -463,14 +469,6 @@ async def start_search(context: ContextTypes.DEFAULT_TYPE) -> int:
     task_id = user_data.get("task_id")
     trip = user_data.get(TRIP)
 
-    await context.bot.send_message(
-        chat_id=context.job.chat_id,
-        text=f"*BEEEP*, starting to search for trip *{
-            trip.from_station}* to *{trip.to_station}* on *{trip.from_date}*.",
-        parse_mode="Markdown",
-    )
-    await asyncio.sleep(3)
-
     if task_id:
         # get active tasks
         tasks = await get_user_task(task_id)
@@ -487,7 +485,14 @@ async def start_search(context: ContextTypes.DEFAULT_TYPE) -> int:
 
     logger.info("trip: %s, type: %s", trip, type(trip))
     logger.info("trip.passenger: %s", trip.passenger)
-
+    await context.bot.send_message(
+        chat_id=context.job.chat_id,
+        text=f"*BEEEP*, starting to search for trip *{
+            trip.from_station}* to *{trip.to_station}* on *{trip.from_date}*.",
+        parse_mode="Markdown",
+    )
+    # reset old reservation data
+    trip.reset_reservation_data()
     # serialize the trip object
     trip_ = pickle.dumps(trip)
     # start the celery task
@@ -495,10 +500,6 @@ async def start_search(context: ContextTypes.DEFAULT_TYPE) -> int:
     # save the task id to the context
     logger.info("SETTING TASK_ID: %s", task.id)
     user_data["task_id"] = task.id
-    await context.bot.send_message(
-        chat_id=context.job.chat_id,
-        text="Search task started.",
-    )
 
     return user_data.get(CURRENT_STATE, END)
 
@@ -516,23 +517,24 @@ async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
         return context.job.data.get(CURRENT_STATE, END)
 
     # try active tasks first
-    i = celery_app.control.inspect()
-    active_tasks = i.active()
-    logger.info("active_tasks: %s", len(active_tasks))
-    for task in active_tasks.values():
-        for t in task:
-            logger.info("task_name : %s", t["name"])
-            if t["name"] != "tasks.celery_tasks.find_trip_and_reserve":
+
+    tasks = await get_user_task(task_id)
+    if tasks:
+        logger.info("tasks len: %s", len(tasks))
+        for task in tasks:
+            logger.info("task_name : %s", task["name"])
+            if task["name"] != "tasks.celery_tasks.find_trip_and_reserve":
                 logger.info("No active search task in progress. Removing this job.")
                 context.job.schedule_removal()
                 return context.job.data.get(CURRENT_STATE, END)
-            elif t["id"] == task_id:
+            elif task["id"] == task_id:
                 logger.info("Found search task with task_id: %s", task_id)
                 task_ = AsyncResult(task_id)
 
     # maybe task finished before we checked active tasks, so try to get the result anyway
     # if task if none
     if task_ is None:
+        logger.info("Getting task with id: %s", task_id)
         task_ = AsyncResult(task_id)
 
     if task_.ready():
@@ -549,18 +551,6 @@ async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
         logger.info("setting context trip")
         context.job.data[TRIP] = my_trip
 
-        # dtime = datetime.strptime(my_trip.trip_json["binisTarih"], my_trip.time_format)
-        # dtime = datetime.strftime(dtime, my_trip.output_time_format)
-
-        # await context.bot.send_message(
-        #     chat_id=context.job.chat_id,
-        #     text=f"Seat {my_trip.empty_seat_json['koltukNo']} in vagon {
-        #         my_trip.empty_seat_json['vagonSiraNo']} is reserved for trip {dtime}",
-        # )
-        # await context.bot.send_message(
-        #     chat_id=context.job.chat_id,
-        #     text="Keeping the seat lock until you progress to payment.",
-        # )
         logger.info("SETTING TASK_ID: None")
         context.job.data["task_id"] = None
         logger.warning("Revoking task with id: %s", task_id)
@@ -575,10 +565,6 @@ async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
             job_kwargs={"misfire_grace_time": 60},
         )
         logger.info("Job queue: %s", context.job_queue.jobs())
-        # context.bot.send_message(
-        #     chat_id=context.job.chat_id,
-        #     text="Keeping the seat locked.",
-        # )
 
         logger.info(
             "This job: %s has completed its purpose, removing it.", context.job.name
@@ -592,7 +578,7 @@ async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
 async def keep_seat_lock(context: ContextTypes.DEFAULT_TYPE) -> int:
     """Keep the seat lock until the user progresses to payment."""
     trip = context.job.data.get(TRIP)
-    task = keep_reserving_seat.delay(pickle.dumps(trip))
+    task = keep_reserving_seat.delay(pickle.dumps(trip), context.job.chat_id)
     logger.info("Setting task_id to context.user_data")
     # save the task id to the context
     logger.warning("SETTING TASK_ID: %s", task.id)
@@ -609,6 +595,7 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
     logger.info("task_id: %s", task_id)
     trip = context.user_data.get(TRIP)
 
+    await update_trip_lock_end_time(trip, update.callback_query.message.chat_id)
     if trip and trip.is_reservation_expired():
         if trip.empty_seat_json is not None:
             text = "*Reservation Expired.*"
@@ -618,12 +605,12 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
             text=text, reply_markup=keyboard, parse_mode="Markdown"
         )
         return context.user_data.get(CURRENT_STATE, END)
-        
+
     if trip is None:
         text = "No trip is configured yet. Please search for a trip first."
         await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
         return context.user_data.get(CURRENT_STATE, END)
-    
+
     tasks = await get_user_task(task_id)
 
     if tasks:
@@ -658,7 +645,6 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
                     chat_id=update.callback_query.message.chat_id,
                     job_kwargs={"misfire_grace_time": 60},
                 )
-
 
     logger.info("We can proceed to payment. Everything looks fine.")
     # set the passenger object, for if the user has changed some information
@@ -696,7 +682,7 @@ async def proceed_to_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 job.chat_id,
             )
             job.schedule_removal()
-            
+
     # now start checking payment run every 10 seconds until 3 minutes have passed
     context.job_queue.run_repeating(
         check_payment,
@@ -745,7 +731,7 @@ async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
                     chat_id=context.job.chat_id,
                     text=f"Ticket is created. {p.ticket_reservation_info}",
                 )
-                #context.job.data[TRIP] = None
+                # context.job.data[TRIP] = None
 
     except ValueError as exc:
         logger.error("%s", exc)
@@ -892,35 +878,48 @@ async def reset_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     logger.info("Resetting search.")
     keyboard = InlineKeyboardMarkup(SEARCH_MENU_BUTTONS)
     text = ""
+    removed_task = await remove_user_task(context)
+    removed_queued_jobs = await remove_queued_jobs(context)
 
-    await remove_user_job(update, context)
     if update.callback_query.data == "reset_search":
         text = "Search has been reset."
         if context.user_data.get(TRIP):
             context.user_data.get(TRIP).reset_reservation_data()
-    else:
-        text = "Search has been cancelled."
+
+    elif update.callback_query.data == "stop_search":
+        if removed_task or removed_queued_jobs:
+            text = "Search has been stopped."
+        else:
+            text = "No task in progress to cancel."
+
     await update.callback_query.answer()
     await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
     return context.user_data.get(CURRENT_STATE, END)
 
 
-async def remove_user_job(_: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def remove_user_task(context: ContextTypes.DEFAULT_TYPE) -> bool:
     """Remove the user jobs and tasks."""
-    logger.info("Removing user job.")
 
-    for job in context.job_queue.jobs():
-        job.schedule_removal()
-
-    if context.user_data.get("task_id"):
+    tasks = await get_user_task(context.user_data.get("task_id"))
+    if tasks:
         task_id = context.user_data.get("task_id")
-        logger.info("Revoking task with id: %s", task_id)
-        task = AsyncResult(task_id)
-        task.revoke(terminate=True)
-        logger.warning("SETTING TASK_ID: None")
+        for task in tasks:
+            logger.info("Revoking task with id: %s", task_id)
+            task = AsyncResult(task_id)
+            task.revoke(terminate=True)
+            logger.warning("SETTING TASK_ID: None")
         context.user_data["task_id"] = None
+        return True
+    return False
 
-    return context.user_data.get(CURRENT_STATE, END)
+
+async def remove_queued_jobs(context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """Remove the queued jobs."""
+    if len(context.job_queue.jobs()) > 0:
+        for job in context.job_queue.jobs():
+            job.schedule_removal()
+        return True
+    return False
 
 
 async def delete_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -1053,7 +1052,9 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
                 "No task found associated with task_id: %s",
                 context.user_data["task_id"],
             )
-    elif not trip.is_reservation_expired:
+
+    await update_trip_lock_end_time(trip, chat_id)
+    if not trip.is_reservation_expired:
         text = (
             f"*{trip.empty_seat_json['koltukNo']}* in vagon *{trip.empty_seat_json['vagonSiraNo']}*"
             f"is already reserved. Seat lock will expire at: *{trip.lock_end_time}*"
@@ -1080,7 +1081,7 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         interval=60,
         data=context.user_data,
         chat_id=chat_id,
-        job_kwargs={"misfire_grace_time": 30},
+        job_kwargs={"misfire_grace_time": 60},
     )
     return context.user_data.get(CURRENT_STATE, END)
 
@@ -1138,22 +1139,36 @@ async def get_user_task(task_id: str) -> list[dict] | None:
     return None
 
 
+async def update_trip_lock_end_time(trip: Trip, chat_id: int) -> None:
+    """Update the trip lock end time."""
+    chat_data = redis_client.get(str(chat_id))
+
+    if chat_data:
+        chat_data = json.loads(chat_data)
+        lock_end_time = datetime.strptime(chat_data["lock_end_time"], trip.time_format)
+        trip.lock_end_time = lock_end_time
+        logger.info("Trip lock end time updated.")
+    else:
+        logger.info("No chat_data found.")
+
+
 ########################################################################################
 # create a test function that starts a job that runs every 10 seconds
 async def test_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Test the job."""
-    await update.callback_query.answer()
-    chat_id = update.callback_query.message.chat_id
-    logger.info("Starting test job.")
+    try:
+        await update.callback_query.answer()
+        chat_id = update.callback_query.message.chat_id
+    except AttributeError:
+        chat_id = update.message.chat_id
+
     for i in range(1):
-        logger.info("RUNNING THE %sth TIME", i)
         job = context.job_queue.run_once(
-            callback=test_task,
+            callback=test_job_callback,
             when=0,
             data=context.user_data,
             chat_id=chat_id,
         )
-        logger.info("Job id: %s", job.id)
     # wait until the job is actually executed
     return context.user_data.get(CURRENT_STATE, END)
 
@@ -1161,8 +1176,19 @@ async def test_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 # create test_job_callback that sends a message to the user
 async def test_job_callback(context: ContextTypes.DEFAULT_TYPE) -> int:
     """Test the job callback."""
-    # run
-    await asyncio.sleep(10)
+    logger.info("test_job_callback")
+    for item in context.chat_data:
+        logger.info("chat_data: %s", item)
+    logger.info(context.job.chat_id)
+    logger.info("chat id type: %s", type(context.job.chat_id))
+    # start celery task
+    test_task_.delay(context.job.chat_id)
+    # print redis key values
+    for key in redis_client.keys():
+        if key.decode() == str(context.job.chat_id):
+            chat_id_data = json.loads(redis_client.get(key))
+            logger.info("chat_id_data: %s", chat_id_data)
+
     return context.job.data.get(CURRENT_STATE, END)
 
 

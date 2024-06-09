@@ -313,6 +313,9 @@ def main() -> None:
     sen_task_id_handler = CommandHandler("send_task_id", send_redis_key)
     app.add_handler(sen_task_id_handler)
 
+    test_job_command_handler = CommandHandler("test_job", test_job)
+    app.add_handler(test_job_command_handler)
+
     unknown_command_handler = MessageHandler(filters.COMMAND, unknown_command)
     app.add_handler(unknown_command_handler)
 

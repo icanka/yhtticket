@@ -1,5 +1,6 @@
 from datetime import datetime
 import asyncio
+import json
 import time
 import logging
 import pickle
@@ -51,12 +52,13 @@ def find_trip_and_reserve(self, my_trip: Trip):
 
 
 @celery_app.task(bind=True, max_retries=None)
-def keep_reserving_seat(self, my_trip: Trip):
+def keep_reserving_seat(self, my_trip: Trip, chat_id: int):
     """Reserve a seat for a trip."""
     my_trip = pickle.loads(my_trip)
     text = f"Reserving seat for trip: {my_trip.trip_json.get('binisTarih')}, {
         my_trip.empty_seat_json.get('koltukNo')}"
     logger.info(text)
+
     while True:
         if should_stop(self):
             return pickle.dumps(my_trip)
@@ -65,7 +67,14 @@ def keep_reserving_seat(self, my_trip: Trip):
             logger.info("lock_end_time: %s", my_trip.lock_end_time)
 
         try:
-            my_trip.reserve_seat()
+            if my_trip.reserve_seat():
+                logger.info("Seat reserve operation is successful.")
+                time_ = datetime.strftime(my_trip.lock_end_time, my_trip.time_format)
+                chat_id_data = {"lock_end_time": time_}
+                logger.info("chat_id_data: %s", chat_id_data)
+                logger.info("Setting redis keys...")
+                redis_client.set(chat_id, json.dumps(chat_id_data), ex=600)
+
         except Exception as e:  # pylint: disable=broad-except
             logger.error("Error while reserving seat: %s", e)
             # retry indefinitely
@@ -75,15 +84,21 @@ def keep_reserving_seat(self, my_trip: Trip):
 
 
 @celery_app.task(bind=True)
-def test_task_(self):
+def test_task_(self, chat_id: int):
     """Test task."""
     # byte request id
-    while True:
-        logger.info("Task is running")
-        if should_stop(self):
-            break
-        logger.info("redis keys: %s", redis_client.keys())
-        time.sleep(30)
+    time_ = datetime.now()
+    chat_id_data = json.dumps({"lock_end_time": time_.strftime("%H:%M:%S")})
+
+    logger.info("Task is running Setting redis keys...")
+    redis_client.set(chat_id, chat_id_data, ex=60)
+
+    # while True:
+    #     logger.info("Task is running")
+    #     if should_stop(self):
+    #         break
+    #     logger.info("redis keys: %s", redis_client.keys())
+    #     time.sleep(30)
 
 
 def should_stop(task_instance):

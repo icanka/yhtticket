@@ -35,7 +35,7 @@ class Trip:
         self.seat_lock_response = None
         self.koltuk_lock_id_list = []
         self.lock_end_time = None
-        self.semaphore_count = 3
+        self.semaphore_count = 2
 
     def is_reservation_expired(self):
         """Check if the seat reservation is expired."""
@@ -68,11 +68,9 @@ class Trip:
         """Reserve a seat for the given trip."""
 
         try:
-            # first reserving of the seat
             if not self.lock_end_time:
                 # check if we have already reserved the seat before
                 if self.empty_seat_json:
-                    logger.info("Reserving the seat again.")
                     lock_end_time, _, self.seat_lock_response = (
                         TripSearchApi.select_first_empty_seat(
                             self.trip_json, self.empty_seat_json
@@ -81,15 +79,15 @@ class Trip:
 
                 # First time reserving the seat
                 else:
-                    logger.info("First time reserving the seat.")
                     lock_end_time, self.empty_seat_json, self.seat_lock_response = (
                         TripSearchApi.select_first_empty_seat(self.trip_json)
                     )
-
+                logger.info(
+                    "Seat is reserved, setting lock_end_time: %s", lock_end_time
+                )
                 self.lock_end_time = datetime.strptime(lock_end_time, self.time_format)
                 self.set_seat_lock_id()
-                if datetime.now().second % 30 == 0:
-                    logger.info("lock_end_time: %s", self.lock_end_time)
+                return True
 
             # we have already reserved the seat check lock_end_time and
             # if it is passed then reserve the seat again
@@ -101,9 +99,8 @@ class Trip:
                 # after the lock_end_time so we are starting to reserve
                 #  the seat again 10 seconds after the lock_end_time
                 if time_diff.total_seconds() < -10:
+                    logger.info("Lock time expired, setting lock_end_time to None")
                     self.lock_end_time = None
-
-            logger.info("lock_end_time: %s", self.lock_end_time)
 
         except SeatLockedException as e:
             logging.error("Error while reserving the seat: %s", e)
@@ -160,12 +157,9 @@ class Trip:
 
         # lock for running only a certain amount of tasks concurrently
         if event.is_set():
-            logger.info(
-                "-----------------------------------------Event is set returning---------------------------------"
-            )
+            logger.info("-------------Event is set returning-----------------")
             return
         async with sem:
-            logger.info("Sem count: %s", sem._value)
             # sleep random first before starting, because of concurrent requests
             # we dont want to start all requests at the same time
             sleep = random.uniform(0, 1)
@@ -196,13 +190,13 @@ class Trip:
         empty_seat_count = 0
         if self.passenger.seat_type:
             if self.passenger.seat_type == Seat.BUSS:
-                logger.info("BUSS EMpty seat count: %s", trip["buss_empty_seat_count"])
+                # logger.info("BUSS empty seat count: %s", trip["buss_empty_seat_count"])
                 empty_seat_count = trip["buss_empty_seat_count"]
             elif self.passenger.seat_type == Seat.ECO:
-                logger.info("ECO EMpty seat count: %s", trip["eco_empty_seat_count"])
+                # logger.info("ECO empty seat count: %s", trip["eco_empty_seat_count"])
                 empty_seat_count = trip["eco_empty_seat_count"]
         else:
-            logger.info("ALL EMpty seat count: %s", trip["empty_seat_count"])
+            # logger.info("ALL empty seat count: %s", trip["empty_seat_count"])
             empty_seat_count = trip["empty_seat_count"]
         return empty_seat_count
 
