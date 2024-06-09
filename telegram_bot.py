@@ -171,7 +171,7 @@ async def show_trip_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     context.user_data[CURRENT_STATE] = SHOWING_TRIP_INFO
     trip = context.user_data.get(TRIP)
     if trip is None:
-        text = "No trip is configured."
+        text = "No trip is configured yet. Please search for a trip first."
         await update.callback_query.answer()
         await update.callback_query.edit_message_text(text=text, reply_markup=keyboard)
         return SHOWING_TRIP_INFO
@@ -1103,9 +1103,8 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     if trip is None:
         await update.callback_query.edit_message_text(
-            text="*Please search for a trip first*",
+            text="No trip is configured yet. Please search for a trip first.",
             reply_markup=keyboard,
-            parse_mode="Markdownv2",
         )
         return context.user_data.get(CURRENT_STATE, END)
     elif task_id:
