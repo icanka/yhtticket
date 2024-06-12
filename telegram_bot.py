@@ -1,6 +1,7 @@
 """ Telegram bot functions. """
 
 import asyncio
+import base64
 import logging
 import pickle
 import json
@@ -28,6 +29,7 @@ from tasks.celery_tasks import (
     keep_reserving_seat,
     redis_client,
     test_task_,
+    run_indefinete_task,
 )
 from tasks.trip import Trip
 from tasks.trip_search import TripSearchApi
@@ -1032,6 +1034,14 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     trip = context.user_data.get(TRIP)
     chat_id = update.callback_query.message.chat_id
 
+    for k,v in celery_app.control.inspect().stats().items():
+        logger.info("k: %s, v: %s", k, v)
+        if isinstance(v, dict):
+            for k_, v_ in v.items():
+                logger.info("k_: %s, v_: %s", k_, v_)
+    
+    return context.user_data.get(CURRENT_STATE, END)
+
     if trip is None:
         await update.callback_query.edit_message_text(
             text="No trip is configured yet. Please search for a trip first.",
@@ -1201,15 +1211,15 @@ async def start_test_check_payment(
     return context.user_data.get(CURRENT_STATE, END)
 
 
-async def test_task(context: ContextTypes.DEFAULT_TYPE) -> int:
+async def test_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Test the celery task."""
     # create test_task celery task and print its id
-    task = test_task_.delay()
+    task = run_indefinete_task.delay()
     # set the task_id to the context
     logger.info("SETTING TASK_ID: %s", task.id)
-    context.job.data["task_id"] = task.id
-    logger.info("task_id: %s", context.job.data["task_id"])
-    return context.job.data.get(CURRENT_STATE, END)
+    # context.job.data["task_id"] = task.id
+    # logger.info("task_id: %s", context.job.data["task_id"])
+    return context.user_data.get(CURRENT_STATE, END)
 
 
 async def send_redis_key(_: Update, context: ContextTypes.DEFAULT_TYPE) -> int:

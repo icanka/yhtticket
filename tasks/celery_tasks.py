@@ -107,3 +107,19 @@ def should_stop(task_instance):
     if request_id in redis_client.keys():
         return True
     return False
+
+
+@celery_app.task(bind=True)
+def run_indefinete_task(self):
+    """Run an indefinite task."""
+    while True:
+        logger.info("Task is running")
+        time.sleep(10)
+
+def available_workers():
+    """Get the number of available workers."""
+    stats = celery_app.control.inspect().stats()
+    # Find the 'max-concurrency key's value in the stats
+    return stats["celery@localhost"]["pool"]["max-concurrency"]
+
+    
