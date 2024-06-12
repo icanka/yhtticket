@@ -1,6 +1,7 @@
 from datetime import datetime
 import asyncio
 import json
+import pprint
 import time
 import logging
 import pickle
@@ -23,6 +24,8 @@ celery_app = Celery(
     backend="redis://localhost:6379/0",
     broker="redis://localhost:6379/0",
     include=["tasks.celery_tasks"],
+    task_acks_late=True,
+    worker_prefetch_multiplier=1, # see https://docs.celeryq.dev/en/stable/userguide/optimizing.html
 )
 
 redis_client = redis.Redis(host="localhost", port=6379, db=0)
@@ -118,8 +121,18 @@ def run_indefinete_task(self):
 
 def available_workers():
     """Get the number of available workers."""
-    stats = celery_app.control.inspect().stats()
-    # Find the 'max-concurrency key's value in the stats
-    return stats["celery@localhost"]["pool"]["max-concurrency"]
-
-    
+    worker_count = 0
+    active_task_count = 0
+    i = celery_app.control.inspect()
+    pprint.pprint(i.stats())
+    active = i.active()
+    active_queues = i.scheduled()
+    pprint.pprint(active_queues)
+    for k, host in active.items():
+        for task in host:
+            active_task_count += 1
+    stats = i.stats()
+    for _, v in stats.items():
+        worker_count += v["pool"]["max-concurrency"]
+    pprint.pprint(f"Worker count: {worker_count}, Active task count: {active_task_count}")
+    #pprint.pprint(celery_app.conf)
