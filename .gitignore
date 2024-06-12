@@ -1,7 +1,7 @@
 **/venv
 **/__pycache__
+**/bot_data
+**/static
 temp/
 .vscode/
 *.json
-bot_data/**
-static/**
