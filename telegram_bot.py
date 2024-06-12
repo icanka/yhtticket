@@ -507,6 +507,7 @@ async def start_search(context: ContextTypes.DEFAULT_TYPE) -> int:
 async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
     """Check the status of the task."""
     task_id = context.job.data.get("task_id")
+    logger.info("task_id: %s", task_id)
     task_ = None
     if task_id is None:
         await context.bot.send_message(
@@ -517,7 +518,6 @@ async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
         return context.job.data.get(CURRENT_STATE, END)
 
     # try active tasks first
-
     tasks = await get_user_task(task_id)
     if tasks:
         logger.info("tasks len: %s", len(tasks))
@@ -1163,9 +1163,10 @@ async def test_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         chat_id = update.message.chat_id
 
     for i in range(1):
-        job = context.job_queue.run_once(
-            callback=test_job_callback,
-            when=0,
+        job = context.job_queue.run_repeating(
+            callback=check_search_status,
+            first=0,
+            interval=10,
             data=context.user_data,
             chat_id=chat_id,
         )
@@ -1177,17 +1178,9 @@ async def test_job(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def test_job_callback(context: ContextTypes.DEFAULT_TYPE) -> int:
     """Test the job callback."""
     logger.info("test_job_callback")
-    for item in context.chat_data:
-        logger.info("chat_data: %s", item)
-    logger.info(context.job.chat_id)
-    logger.info("chat id type: %s", type(context.job.chat_id))
-    # start celery task
-    test_task_.delay(context.job.chat_id)
-    # print redis key values
-    for key in redis_client.keys():
-        if key.decode() == str(context.job.chat_id):
-            chat_id_data = json.loads(redis_client.get(key))
-            logger.info("chat_id_data: %s", chat_id_data)
+    task_id = context.job.data.get("task_id")
+    task_ = AsyncResult(task_id)
+    logger.info("task_: %s", task_)
 
     return context.job.data.get(CURRENT_STATE, END)
 
@@ -1237,3 +1230,17 @@ async def check_payment_test(context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.info("TEST METHOD.Sleeping for 60 seconds.")
     asyncio.sleep(60)
     return context.job.data.get(CURRENT_STATE, END)
+
+
+async def print_user_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Print the user data."""
+    logger.info("user_data: %s", context.user_data)
+    logger.info("--------------key, value----------------")
+    for key, value in context.user_data.items():
+        logger.info(f"{key}: {value}")
+    return context.user_data.get(CURRENT_STATE, END)
+
+
+# TODO check celery worker availability and inform the user if not available
+# TODO user_data violation
+# TODO add to make only authorized users to use the bot

@@ -2,6 +2,7 @@
 
 from datetime import datetime
 import logging
+import os
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -38,6 +39,14 @@ handlers = [logging.FileHandler("bot_data/logs/main.log"), logging.StreamHandler
 formatter = logging.Formatter(
     "%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s"
 )
+
+# get bot token from environment
+if os.getenv("BOT_TOKEN") is None:
+    logger.error("BOT_TOKEN is not set in the environment")
+    raise ValueError("BOT_TOKEN is not set in the environment")
+
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+
 for handler in handlers:
     handler.setFormatter(formatter)
     logger.addHandler(handler)
@@ -49,7 +58,7 @@ def main() -> None:
     my_persistance = PicklePersistence(filepath="bot_data/my_persistence")
     app = (
         ApplicationBuilder()
-        .token("***REMOVED***")
+        .token(BOT_TOKEN)
         .arbitrary_callback_data(True)
         .persistence(persistence=my_persistance)
         .concurrent_updates(
@@ -315,6 +324,9 @@ def main() -> None:
 
     test_job_command_handler = CommandHandler("test_job", test_job)
     app.add_handler(test_job_command_handler)
+
+    print_user_data_command_handler = CommandHandler("user_data", print_user_data)
+    app.add_handler(print_user_data_command_handler)
 
     unknown_command_handler = MessageHandler(filters.COMMAND, unknown_command)
     app.add_handler(unknown_command_handler)
