@@ -1,6 +1,6 @@
 **/venv
 **/__pycache__
-**/bot_data/
+**/bot_data/*
 **/static
 temp/
 .vscode/
