@@ -28,8 +28,8 @@ from tasks.celery_tasks import (
     find_trip_and_reserve,
     keep_reserving_seat,
     redis_client,
-    test_task_,
     run_indefinete_task,
+    available_workers,
 )
 from tasks.trip import Trip
 from tasks.trip_search import TripSearchApi
@@ -1034,14 +1034,6 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     trip = context.user_data.get(TRIP)
     chat_id = update.callback_query.message.chat_id
 
-    for k,v in celery_app.control.inspect().stats().items():
-        logger.info("k: %s, v: %s", k, v)
-        if isinstance(v, dict):
-            for k_, v_ in v.items():
-                logger.info("k_: %s, v_: %s", k_, v_)
-    
-    return context.user_data.get(CURRENT_STATE, END)
-
     if trip is None:
         await update.callback_query.edit_message_text(
             text="No trip is configured yet. Please search for a trip first.",
@@ -1073,6 +1065,13 @@ async def start_res(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             text=text,
             reply_markup=keyboard,
             parse_mode="Markdown",
+        )
+        return context.user_data.get(CURRENT_STATE, END)
+
+    if available_workers() < 1:
+        await update.callback_query.edit_message_text(
+            text="No worker available. Please try again later.",
+            reply_markup=keyboard,
         )
         return context.user_data.get(CURRENT_STATE, END)
 

@@ -21,8 +21,8 @@ for handler in logger.handlers:
 
 celery_app = Celery(
     "celery_tasks",
-    backend="redis://localhost:6379/0",
-    broker="redis://localhost:6379/0",
+    backend="redis://jupiter:6379/0",
+    broker="redis://jupiter:6379/0",
     include=["tasks.celery_tasks"],
     task_acks_late=True,
     worker_prefetch_multiplier=1, # see https://docs.celeryq.dev/en/stable/userguide/optimizing.html
@@ -124,15 +124,16 @@ def available_workers():
     worker_count = 0
     active_task_count = 0
     i = celery_app.control.inspect()
-    pprint.pprint(i.stats())
     active = i.active()
-    active_queues = i.scheduled()
-    pprint.pprint(active_queues)
-    for k, host in active.items():
-        for task in host:
-            active_task_count += 1
+    # scheduled = i.scheduled()
+    # reserved = i.reserved()
+    # registered = i.registered()
+
+    for _, v in active.items():
+        active_task_count += len(v)
+
     stats = i.stats()
     for _, v in stats.items():
         worker_count += v["pool"]["max-concurrency"]
-    pprint.pprint(f"Worker count: {worker_count}, Active task count: {active_task_count}")
-    #pprint.pprint(celery_app.conf)
+
+    return worker_count - active_task_count
