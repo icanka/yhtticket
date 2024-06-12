@@ -28,12 +28,6 @@ if os.environ.get("AUTH_USER_IDS") is None:
     logger.error("AUTH_USER_IDS is not set in the environment")
     raise ValueError("AUTH_USER_IDS is not set in the environment")
 
-auth_user_ids = [
-    int(user_id) for user_id in os.environ.get("AUTH_USER_IDS", "").split(",")
-]
-
-logger.info("Authorized user IDs: %s", auth_user_ids)
-
 
 class CustomUpdateProcessor(BaseUpdateProcessor):
     """Simple implementation of a custom update processor that logs the updates."""
