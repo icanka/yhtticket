@@ -25,7 +25,7 @@ celery_app = Celery(
     broker="redis://jupiter:6379/0",
     include=["tasks.celery_tasks"],
     task_acks_late=True,
-    worker_prefetch_multiplier=1, # see https://docs.celeryq.dev/en/stable/userguide/optimizing.html
+    worker_prefetch_multiplier=1,  # see https://docs.celeryq.dev/en/stable/userguide/optimizing.html
 )
 
 redis_client = redis.Redis(host="localhost", port=6379, db=0)
@@ -118,6 +118,7 @@ def run_indefinete_task(self):
     while True:
         logger.info("Task is running")
         time.sleep(10)
+
 
 def available_workers():
     """Get the number of available workers."""

@@ -1,7 +1,6 @@
 """ Telegram bot functions. """
 
 import asyncio
-import base64
 import logging
 import pickle
 import json
@@ -207,6 +206,7 @@ async def show_trip_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             f"To: *{trip.to_station}*\n"
             f"From Date: *{trip.from_date}*\n"
             f"To Date: *{trip.to_date}*\n"
+            f"Reserved Trip: *{trip.trip_json.get('binisTarih')}*\n"
             f"Reserved Vagon: *{trip.empty_seat_json.get('vagonSiraNo')}*\n"
             f"Reserved Seat: *{trip.empty_seat_json.get('koltukNo')}*\n"
             f"Remaining Reserve Time: *{time_diff}* min.\n"
@@ -571,6 +571,19 @@ async def check_search_status(context: ContextTypes.DEFAULT_TYPE) -> int:
         logger.info(
             "This job: %s has completed its purpose, removing it.", context.job.name
         )
+        text = (
+            "FOUND TRIP!\n"
+            f"Reserved Trip: *{my_trip.trip_json.get('binisTarih')}*\n"
+            f"Reserved Vagon: *{my_trip.empty_seat_json.get('vagonSiraNo')}*\n"
+            f"Reserved Seat: *{my_trip.empty_seat_json.get('koltukNo')}*\n"
+        )
+        # notify the user
+        await context.bot.send_message(
+            chat_id=context.job.chat_id,
+            text=text,
+            parse_mode="Markdown",
+        )
+
         # remove this job
         context.job.schedule_removal()
 
@@ -729,9 +742,13 @@ async def check_payment(context: ContextTypes.DEFAULT_TYPE) -> int:
 
                 logger.info("TICKET RESERVATION IS SUCCESSFUL.")
                 logger.info("TICKET: %s", p.ticket_reservation_info)
+                text = (
+                    f"Ticket is created successfully.\n"
+                    f"pnrNo: {p.ticket_reservation_info.get("biletRezOzetList")[0].get("pnrNO")}\n"
+                )
                 await context.bot.send_message(
                     chat_id=context.job.chat_id,
-                    text=f"Ticket is created. {p.ticket_reservation_info}",
+                    text=text,
                 )
                 # context.job.data[TRIP] = None
 
@@ -1246,7 +1263,7 @@ async def print_user_data(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     logger.info("user_data: %s", context.user_data)
     logger.info("--------------key, value----------------")
     for key, value in context.user_data.items():
-        logger.info(f"{key}: {value}")
+        logger.info("%s: %s", key, value)
     return context.user_data.get(CURRENT_STATE, END)
 
 
