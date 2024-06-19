@@ -23,7 +23,7 @@ httpcore==1.0.5
 httpx==0.27.0
 idna==3.7
 jsbeautifier==1.15.1
-json5==0.9.24
+json5==0.9.25
 kombu==5.3.7
 mypy-extensions==1.0.0
 packaging==24.1
