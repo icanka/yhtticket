@@ -81,7 +81,6 @@ def main() -> None:
     scheduler.add_listener(mis_listener, EVENT_JOB_MISSED)
     scheduler.add_listener(max_instances_listener, EVENT_JOB_MAX_INSTANCES)
     scheduler.add_listener(job_executed_listener, EVENT_JOB_EXECUTED | EVENT_JOB_ERROR)
-    # logger.info("scheduler configuration: %s", scheduler.__dict__)
 
     fallback_handlers = [
         CommandHandler("stop", stop),
@@ -240,10 +239,6 @@ def main() -> None:
                 adding_self_conv_handler,
                 adding_credit_card_conv_handler,
                 search_menu_conv_handler,
-                # CallbackQueryHandler(adding_self, pattern=f"^{ADDING_PERSONAL_INFO}$"),
-                # CallbackQueryHandler(
-                #     unimplemented, pattern=f"^{ADDING_CREDIT_CARD_INFO}$"
-                # ),
                 CallbackQueryHandler(show_info, pattern=f"^{SHOWING_INFO}$"),
                 CallbackQueryHandler(show_trip_info, pattern=f"^{SHOWING_TRIP_INFO}$"),
                 CallbackQueryHandler(end, pattern=f"^{END}$"),
@@ -265,75 +260,12 @@ def main() -> None:
     app.add_handler(main_conv_handler)
     app.add_handler(inline_caps_handler)
 
-    # echo_handler = MessageHandler(filters.TEXT & (~filters.COMMAND), echo)
-    # app.add_handler(echo_handler)
-
-    res_handler = CommandHandler("res", res)
-    app.add_handler(res_handler)
-
-    init_handler = CommandHandler("init_passenger", init_passenger)
-    app.add_handler(init_handler)
-    delete_key_handler = CommandHandler("delete_key", delete_key)
-    app.add_handler(delete_key_handler)
-    # app.add_handler(inline_caps_handler)
-
-    print_state_handler = CommandHandler("print_state", print_state)
-    app.add_handler(print_state_handler)
 
     datetime_type_handler = CallbackQueryHandler(handle_datetime_type, pattern=datetime)
     app.add_handler(datetime_type_handler)
 
-    start_reservation_handler = CommandHandler("start_res", start_res)
-    app.add_handler(start_reservation_handler)
-
-    reset_search_handler = CommandHandler("reset_search", reset_search)
-    app.add_handler(reset_search_handler)
-
-    check_task_handler = CommandHandler("check_task", check_task)
-    app.add_handler(check_task_handler)
-
-    print_trip_handler = CommandHandler("print_trip", print_trip)
-    app.add_handler(print_trip_handler)
-
-    proceed_to_payment_handler = CommandHandler("to_payment", proceed_to_payment)
-    app.add_handler(proceed_to_payment_handler)
-
-    set_passenger_handler = CommandHandler("set_passenger", set_passenger)
-    app.add_handler(set_passenger_handler)
-
-    check_search_status_handler = CommandHandler(
-        "check_search_status", check_search_status
-    )
-    app.add_handler(check_search_status_handler)
-
-    get_set_current_trip_handler = CommandHandler(
-        "get_set_current_trip", get_set_current_trip
-    )
-    app.add_handler(get_set_current_trip_handler)
-
-    check_payment_test_handler = CommandHandler(
-        "check_payment_test", start_test_check_payment
-    )
-    app.add_handler(check_payment_test_handler)
-
-    test_command_handler = CommandHandler("test", test_task)
-    app.add_handler(test_command_handler)
-
-    sen_task_id_handler = CommandHandler("send_task_id", send_redis_key)
-    app.add_handler(sen_task_id_handler)
-
-    test_job_command_handler = CommandHandler("test_job", test_job)
-    app.add_handler(test_job_command_handler)
-
-    print_user_data_command_handler = CommandHandler("user_data", print_user_data)
-    app.add_handler(print_user_data_command_handler)
-
     unknown_command_handler = MessageHandler(filters.COMMAND, unknown_command)
     app.add_handler(unknown_command_handler)
-
-    # app.add_handler(CommandHandler("put", put))
-    # pprint(app.user_data)
-    # pprint(app.chat_data)
 
     app.run_polling()
 
