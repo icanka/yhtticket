@@ -37,7 +37,7 @@ python-telegram-bot==21.1.1
 pytz==2024.1
 PyYAML==6.0.1
 rapidfuzz==3.9.0
-redis==5.0.4
+redis==5.0.5
 regex==2023.12.25
 requests==2.32.2
 setuptools==70.0.0
