@@ -255,18 +255,21 @@ def main() -> None:
         },
         fallbacks=fallback_handlers,
     )
+
     inline_caps_handler = InlineQueryHandler(inline_funcs)
-
-    app.add_handler(main_conv_handler)
-    app.add_handler(inline_caps_handler)
-
-
     datetime_type_handler = CallbackQueryHandler(handle_datetime_type, pattern=datetime)
-    app.add_handler(datetime_type_handler)
-
+    res_handler = CommandHandler("res", res)
     unknown_command_handler = MessageHandler(filters.COMMAND, unknown_command)
-    app.add_handler(unknown_command_handler)
 
+    app.add_handlers(
+        [
+            main_conv_handler,
+            inline_caps_handler,
+            res_handler,
+            datetime_type_handler,
+            unknown_command_handler,
+        ]
+    )
     app.run_polling()
 
 
