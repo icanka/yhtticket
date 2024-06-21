@@ -1,7 +1,6 @@
 **/bot_data
 **/sonar-project.properties
 **/sonar-data
-**/
 .github/
 .vscode/
 *.json
