@@ -1,0 +1,29 @@
+name: yhtticket-deployment
+
+services:
+  bot:
+    # use dockerfile to build image
+    entrypoint: ["/run/secrets/secrets2env.sh", "python", "/test.py"]
+    secrets:
+    - BOT_TOKEN.env
+    - AUTH_USER_IDS.env
+    - secrets2env.sh
+    container_name: bot
+    image: python:3.12-alpine3.20
+    build: .
+    volumes:
+    - ./src:/src
+    - ./bot_data:/bot_data
+    - ./test.py:/test.py
+    working_dir: /src
+    restart: always
+
+
+secrets:
+  BOT_TOKEN.env:
+    environment: BOT_TOKEN
+  AUTH_USER_IDS.env:
+    environment: AUTH_USER_IDS
+  secrets2env.sh:
+    file: ./secrets2env.sh
+

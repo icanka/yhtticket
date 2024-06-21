@@ -2,7 +2,6 @@ amqp==5.2.0
 anyio==4.3.0
 APScheduler==3.10.4
 billiard==4.2.0
-black==24.4.2
 cachetools==5.3.3
 celery==5.4.0
 certifi==2024.2.2
@@ -38,7 +37,6 @@ pytz==2024.1
 PyYAML==6.0.1
 rapidfuzz==3.9.0
 redis==5.0.5
-regex==2023.12.25
 requests==2.32.2
 setuptools==70.0.0
 six==1.16.0
@@ -50,3 +48,4 @@ tzlocal==5.2
 urllib3==2.2.2
 vine==5.1.0
 wcwidth==0.2.13
+aiohttp==3.9.5
