@@ -103,7 +103,7 @@ def main() -> None:
     # Create the Application and pass it your bot's token.
     application = (
         Application.builder()
-        .token("***REMOVED***")
+        .token("YOUR_TOKEN")
         .concurrent_updates(CustomUpdateProcessor(max_concurrent_updates=3))
         .build()
     )
