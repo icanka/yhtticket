@@ -19,8 +19,10 @@ services:
     networks:
       - yhtticker-network
     depends_on:
-      - redis
-      - celery
+      redis:
+        condition: service_healthy
+      celery:
+        condition: service_healthy
   
   celery:
     container_name: celery
@@ -30,6 +32,12 @@ services:
     volumes:
       - ./src:/src
       - ./bot_data:/bot_data
+    healthcheck:
+      test: celery -A tasks.celery_tasks inspect ping -d celery@$(hostname)
+      interval: 60s
+      start_interval: 10s
+      timeout: 10s
+      retries: 3
     working_dir: /src
     command: celery -A tasks.celery_tasks worker -c 1 --loglevel=INFO 
     restart: always
@@ -37,11 +45,18 @@ services:
       - yhtticker-network
     # requires redis first
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+
 
   redis:
     image: redis:alpine
     container_name: redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
     ports:
       - "6379:6379"
     networks:
