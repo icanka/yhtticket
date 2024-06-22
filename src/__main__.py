@@ -55,7 +55,11 @@ for handler in handlers:
 def main() -> None:
     """Run the bot."""
     logger.info("Starting the bot")
-    my_persistance = PicklePersistence(filepath="bot_data/my_persistence")
+    # get PERSISTENCE_FILE from environment
+    if os.getenv("PERSISTENCE_FILE_PATH") is None:
+        logger.error("Persistence file path is not set in the environment")
+        raise ValueError("PERSISTENCE_FILE_PATH is not set in the environment")
+    my_persistance = PicklePersistence(filepath=os.environ.get("PERSISTENCE_FILE_PATH"))
     app = (
         ApplicationBuilder()
         .token(BOT_TOKEN)
@@ -68,7 +72,7 @@ def main() -> None:
     )
 
     scheduler_configuration = {
-        "max_instances": APS_SCHEDULER_MAX_INSTANCES,  # default is 1
+        "max_instances": APS_SCHEDULER_MAX_INSTANCES, 
         "coalesce": True,
         "misfire_grace_time": 10,  # default misfire time
     }
@@ -85,7 +89,6 @@ def main() -> None:
     fallback_handlers = [
         CommandHandler("stop", stop),
         CommandHandler("res", res),
-        CommandHandler("print_state", print_state),
         CallbackQueryHandler(handle_datetime_type, pattern=datetime),
         MessageHandler(filters.COMMAND, unknown_command),
     ]

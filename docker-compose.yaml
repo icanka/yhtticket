@@ -14,6 +14,8 @@ services:
     volumes:
       - ./src:/src
       - ./bot_data:/bot_data
+    environment:
+      - PERSISTENCE_FILE_PATH=/bot_data/my_persistence
     working_dir: /src
     restart: always
     networks:
@@ -23,6 +25,11 @@ services:
         condition: service_healthy
       celery:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
   
   celery:
     container_name: celery
@@ -47,6 +54,11 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
 
 
   redis:
@@ -62,6 +74,11 @@ services:
     networks:
       - yhtticker-network
     restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
 
 
 networks:

@@ -59,19 +59,22 @@ class CustomUpdateProcessor(BaseUpdateProcessor):
         # check if a lock for this user ID is already acquired
         if user_id not in self.user_locks:
             # if not, create a new lock and add it to the dictionary
+            logger.info("Creating new lock for user ID: %s", user_id)
             self.user_locks[user_id] = asyncio.Lock()
 
         # Get the lock for this user ID
+        logger.info("Acquiring lock for user ID: %s", user_id)
         user_lock = self.user_locks[user_id]
 
         # Acquire the lock using async with to ensure exclusive access
         async with user_lock:
             try:
-                # Simulate some processing time
+                logger.info("Processing update: %s", update)
                 await coroutine
             except Exception as e:  # pylint: disable=broad-except
                 logger.error("Error processing update: %s", e, exc_info=True)
                 coroutine.close()
+        logger.info("Releasing lock for user ID: %s", user_id)
 
     def __init__(self, **kwargs) -> None:
         super().__init__(max_concurrent_updates=kwargs.get("max_concurrent_updates", 1))

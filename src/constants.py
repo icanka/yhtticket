@@ -42,7 +42,7 @@ END = ConversationHandler.END
 ) = range(10, 28)
 
 APS_SCHEDULER_MAX_INSTANCES = 1
-BOT_MAX_CONCURRENT_UPTADES = 3
+BOT_MAX_CONCURRENT_UPTADES = 2 # increase this according to possible number of concurrent users
 
 FEATURE_HELP_MESSAGES = {
     "birthday": "Please enter your birthday in the format dd/mm/yyyy.",

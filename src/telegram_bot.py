@@ -1238,6 +1238,13 @@ async def test_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return context.user_data.get(CURRENT_STATE, END)
 
 
+async def test_wait_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Test the wait command."""
+    logger.info("test_wait_command for user: %s", update.message.chat_id)
+    await asyncio.sleep(100)
+    return context.user_data.get(CURRENT_STATE, END)
+
+
 async def send_redis_key(_: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Send the redis key."""
     # get chat_id
