@@ -72,7 +72,7 @@ def main() -> None:
     )
 
     scheduler_configuration = {
-        "max_instances": APS_SCHEDULER_MAX_INSTANCES, 
+        "max_instances": APS_SCHEDULER_MAX_INSTANCES,
         "coalesce": True,
         "misfire_grace_time": 10,  # default misfire time
     }
