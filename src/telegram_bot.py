@@ -1272,8 +1272,3 @@ async def print_user_data(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     for key, value in context.user_data.items():
         logger.info("%s: %s", key, value)
     return context.user_data.get(CURRENT_STATE, END)
-
-
-# TODO check celery worker availability and inform the user if not available
-# TODO user_data violation
-# TODO add to make only authorized users to use the bot
