@@ -165,6 +165,7 @@ async def show_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def show_trip_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Show configure trip information"""
+    logger.info("Showing trip info.")
     keyboard = InlineKeyboardMarkup(
         [[InlineKeyboardButton("Back", callback_data=str(BACK))]]
     )
@@ -1167,7 +1168,9 @@ async def get_user_task(task_id: str) -> list[dict] | None:
 
 async def update_trip_lock_end_time(trip: Trip, chat_id: int) -> None:
     """Update the trip lock end time."""
+    logger.info("Updating trip lock end time.")
     chat_data = redis_client.get(str(chat_id))
+    logger.info("Successfully connected to redis.")
 
     if chat_data:
         chat_data = json.loads(chat_data)
