@@ -1,6 +1,6 @@
-# YHSTBOT
+# YHSTBOT - Yüksek Hızlı Tren Telegram Botu
 
-export BOT_TOKEN and AUTH_USER_IDS environmend variables before starting docker compose.
+export BOT_TOKEN and AUTH_USER_IDS environment variables before starting docker compose.
 
 `export BOT_TOKEN=<telegram_bot_token>`
 
@@ -15,3 +15,4 @@ docker compose up -d
 
 "@YHSTBOT query pendik ankara 17ekim15:30" for setting the start trip for search
 "@YHSTBOT stations" for listing avaliable YHT stations
+
