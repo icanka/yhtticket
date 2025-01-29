@@ -1,4 +1,4 @@
-# YHSTBOT - Yüksek Hızlı Tren Telegram Botu - TCDD HIZLI TREN BOT
+# YHSTBOT - Yüksek Hızlı Tren Telegram Botu - TCDD HIZLI TREN BOT - YHT Bot
 
 export BOT_TOKEN and AUTH_USER_IDS environment variables before starting docker compose.
 
